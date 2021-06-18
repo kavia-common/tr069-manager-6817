@@ -1,0 +1,24 @@
+%config {
+    name = "cwmp_plugin";
+    import-dbg = true;
+
+    // main files
+    definition_file = "${name}-definition.odl";
+    defaults_file = "${name}-defaults.odl";
+    save_file = "${prefix}${cfg-dir}/${name}/cwmp-settings.odl";
+
+}
+
+#include "${name}-${storage-type}.odl";
+
+import "${name}.so" as "${name}";
+
+include "${definition_file}";
+include "${defaults_file}";
+
+%define {
+    entry-point cwmp_plugin.cwmp_plugin_main;
+}
+
+%populate {
+}

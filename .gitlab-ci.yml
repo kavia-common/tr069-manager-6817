@@ -1,0 +1,8 @@
+variables:
+  BUILD_DEPS: libamxc libamxj libamxd libamxp libamxb libamxo sah-lib-sahtrace-dev
+  BUILD_TARGET: tr069-manager
+  PC_DOC_GEN: "off"
+
+include:
+  - remote: 'https://gitlab.com/soft.at.home/ci/gitlab-ci/raw/main/ambiorix-default-pipeline.yml'
+

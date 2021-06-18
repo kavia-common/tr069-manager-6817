@@ -1,0 +1,13 @@
+%config {
+    // UCI
+    %global uci = {
+        commit = "never",
+        watch-commits = true,
+        //import-dm-eventing = false,
+        import-params = "strict",
+        load = "ManagementServer.load",
+        save = "ManagementServer.save",
+    };
+}
+
+include "mod_dmuci.odl";

@@ -1,0 +1,9 @@
+datamodel {
+  object ManagementServer {
+    parameter EnableCWMP=1;
+    parameter PeriodicInformEnable=1;
+    parameter PeriodicInformInterval=432000;
+    parameter UpgradesManaged=1;
+    parameter InstanceWildcardsSupported=1;
+  }
+}
