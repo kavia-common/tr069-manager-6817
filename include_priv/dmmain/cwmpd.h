@@ -57,35 +57,68 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 **
 ****************************************************************************/
+#if !defined(_CWMPD_H_)
+#define _CWMPD_H_
 
-#include "cwmp_plugin.h"
+#include <libwebsockets.h>
+//#include<libwebsockets/lws-dll2.h>
+#include "dmengine/DM_ENG_NotificationInterface.h"
+#include "httpparser/picohttpparser.h"
 
-amxd_status_t _ManagementServer_save(amxd_object_t* object,
-                                     UNUSED amxd_function_t* func,
-                                     UNUSED amxc_var_t* args,
-                                     UNUSED amxc_var_t* ret) {
-    amxo_parser_t* parser = cwmp_plugin_get_parser();
-    amxc_var_t* config = cwmp_plugin_get_config();
-    const char* filename = GET_CHAR(config, "save_file");
+#define CWMPD_DEBUG 0 /* used for local debug */
+#define COPY_BUFFER_SIZE 4 * 1024
 
-    amxo_parser_save_object(parser, filename, object, false);
+typedef enum server_state {INIT = 0, RUN, EXIT, ERROR } server_state_t;
+typedef enum cwmp_status {cwmp_status_ok=0, cwmp_status_ko} cwmp_status_t;
 
-    return amxd_status_ok;
-}
+struct application {
+    char* name;
+    int daemonize;
+    int traceLevel;
+    int traceType;
+#if CWMPD_DEBUG
+    /* when enabled the cwmpd will connect to a fake server on localhost */
+    int runlocal;
+    /* port where to find the fake server*/
+    int localPort;
+#endif
+    server_state_t state;
+    char* trustedCA;
+    char* pidFile;
+    char* da_path;
+};
 
-amxd_status_t _ManagementServer_load(amxd_object_t* object,
-                                     UNUSED amxd_function_t* func,
-                                     UNUSED amxc_var_t* args,
-                                     UNUSED amxc_var_t* ret) {
-    amxc_var_t* cfg_pop = NULL;
-    amxo_parser_t* parser = cwmp_plugin_get_parser();
-    amxc_var_t* config = cwmp_plugin_get_config();
-    const char* filename = GET_CHAR(config, "save_file");
-    amxd_object_t* root = amxd_object_get_root(object);
+typedef struct application application_t;
 
-    amxo_parser_parse_file(parser, filename, root);
-    cfg_pop = GET_ARG(config, "populate-behavior");
-    amxc_var_delete(&cfg_pop);
+cwmp_status_t cwmp_server_init(struct lws_context_creation_info* lws_ctx_info);
 
-    return amxd_status_ok;
-}
+cwmp_status_t cwmp_server_start(struct lws_context_creation_info* lws_ctx_info,
+                                void** evlp, struct lws_context* lws_ctx);
+
+cwmp_status_t cwmp_server_stop(struct lws_context* lws_ctx);
+
+
+cwmp_status_t cwmp_client_init(struct lws_context_creation_info* lws_ctx_info);
+
+cwmp_status_t cwmp_client_start_session(struct lws_context_creation_info* lws_ctx_info,
+                                        void** evlp, struct lws_context* lws_ctx);
+
+cwmp_status_t cwmp_client_stop(struct lws_context* lws_ctx);
+
+int timer_stop(const char* name);
+
+int timer_start(const char* name, int waitTime, int intervalTime, timerHandler handler);
+
+void timer_cleanup();
+
+unsigned int timer_remainingTime(const char* name);
+
+int get_content_length(struct phr_header* values, int len);
+int append_read_buffer(char** msg, int* len);
+int create_read_buffer(char* raw, int len);
+void reset_read_buffer();
+int process_body(char* body, int len);
+
+
+
+#endif // !_CWMPD_H_

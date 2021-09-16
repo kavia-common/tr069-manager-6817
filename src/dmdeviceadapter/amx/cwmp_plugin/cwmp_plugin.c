@@ -64,13 +64,23 @@
 #include "cwmp_plugin.h"
 
 static cwmp_plugin_app_t app;
+static const char* AMXB_URI = "AMXB_URI";
+
 
 static void cwmp_plugin_init(amxd_dm_t* dm, amxo_parser_t* parser) {
+    /* SAH_TRACEZ_INFO(ME, "**************************************"); */
+    /* SAH_TRACEZ_INFO(ME, "*        cwmp_plugin started          *"); */
+    /* SAH_TRACEZ_INFO(ME, "**************************************"); */
     app.dm = dm;
     app.parser = parser;
     app.amxb_bus_ctx = NULL;
+    app.dns_resolv_invoke = NULL;
+    char* amxb_uri = getenv(AMXB_URI);
 
-    if(amxb_connect(&app.amxb_bus_ctx, "ubus:///var/run/ubus/ubus.sock") == AMXB_STATUS_OK) {
+    if(amxb_uri && (amxb_connect(&app.amxb_bus_ctx, amxb_uri) == AMXB_STATUS_OK)) {
+        amxb_new_invoke(&app.dns_resolv_invoke, app.amxb_bus_ctx, "DNS", NULL, "resolvURI");
+    } else {
+        fprintf(stderr, "Couldn't connect to amxb bus %s\n", amxb_uri);
     }
     // Load previous config
     amxo_parser_parse_file(parser, GET_CHAR(&parser->config, "save_file"), (amxd_object_t*) dm);
@@ -88,6 +98,10 @@ amxc_var_t* cwmp_plugin_get_config(void) {
     return &(app.parser->config);
 }
 
+amxb_invoke_t* cwmp_plugin_get_dns_resolv_invoke(void) {
+    return app.dns_resolv_invoke;
+}
+
 amxb_bus_ctx_t* cwmp_plugin_get_bus(void) {
     return app.amxb_bus_ctx;
 }
@@ -96,6 +110,7 @@ int _cwmp_plugin_main(int reason, amxd_dm_t* dm, amxo_parser_t* parser) {
 
     int retval = 0;
 
+    //SAH_TRACEZ_INFO(ME, "cwmp_plugin_main, reason: %i", reason);
     switch(reason) {
     case 0:     // START
         cwmp_plugin_init(dm, parser);
@@ -103,6 +118,7 @@ int _cwmp_plugin_main(int reason, amxd_dm_t* dm, amxo_parser_t* parser) {
     case 1:     // STOP
         app.dm = NULL;
         app.parser = NULL;
+        app.dns_resolv_invoke = NULL;
         app.amxb_bus_ctx = NULL;
         break;
     default:

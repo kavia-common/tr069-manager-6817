@@ -2,7 +2,7 @@ MACHINE = $(shell $(CC) -dumpmachine)
 
 SRCDIR = $(realpath ../../src)
 OBJDIR = $(realpath ../../output/$(MACHINE)/coverage)
-INCDIR = $(realpath ../../include ../../include_priv)
+INCDIR = $(realpath ../../include ../../include_priv ../../libs/include_priv ../../libs/include)
 MOCK_SRCDIR = $(realpath ../common/)
 
 HEADERS = $(wildcard $(INCDIR)/*.h)

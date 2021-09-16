@@ -1,3 +1,4 @@
+
 /****************************************************************************
 **
 ** Copyright (c) 2021 SoftAtHome
@@ -57,35 +58,5 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 **
 ****************************************************************************/
-
-#include "cwmp_plugin.h"
-
-amxd_status_t _ManagementServer_save(amxd_object_t* object,
-                                     UNUSED amxd_function_t* func,
-                                     UNUSED amxc_var_t* args,
-                                     UNUSED amxc_var_t* ret) {
-    amxo_parser_t* parser = cwmp_plugin_get_parser();
-    amxc_var_t* config = cwmp_plugin_get_config();
-    const char* filename = GET_CHAR(config, "save_file");
-
-    amxo_parser_save_object(parser, filename, object, false);
-
-    return amxd_status_ok;
-}
-
-amxd_status_t _ManagementServer_load(amxd_object_t* object,
-                                     UNUSED amxd_function_t* func,
-                                     UNUSED amxc_var_t* args,
-                                     UNUSED amxc_var_t* ret) {
-    amxc_var_t* cfg_pop = NULL;
-    amxo_parser_t* parser = cwmp_plugin_get_parser();
-    amxc_var_t* config = cwmp_plugin_get_config();
-    const char* filename = GET_CHAR(config, "save_file");
-    amxd_object_t* root = amxd_object_get_root(object);
-
-    amxo_parser_parse_file(parser, filename, root);
-    cfg_pop = GET_ARG(config, "populate-behavior");
-    amxc_var_delete(&cfg_pop);
-
-    return amxd_status_ok;
-}
+void DM_ENG_Device_Reboot_DoReboot(dm_amx_env_t* amx);
+void DM_ENG_Device_FactoryReset_DoReset(dm_amx_env_t* amx);

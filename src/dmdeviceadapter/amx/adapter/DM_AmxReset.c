@@ -57,35 +57,57 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 **
 ****************************************************************************/
+#include <stdio.h>
+#include <stdlib.h>
 
-#include "cwmp_plugin.h"
+#include <debug/sahtrace.h>
+#include <string.h>
+#include <dmengine/DM_ENG_Error.h>
+#include "DM_AmxCommon.h"
 
-amxd_status_t _ManagementServer_save(amxd_object_t* object,
-                                     UNUSED amxd_function_t* func,
-                                     UNUSED amxc_var_t* args,
-                                     UNUSED amxc_var_t* ret) {
-    amxo_parser_t* parser = cwmp_plugin_get_parser();
-    amxc_var_t* config = cwmp_plugin_get_config();
-    const char* filename = GET_CHAR(config, "save_file");
+#define OBJECTPATH "NMC"
+#define REBOOT_FUNCTION "reboot"
+#define RESET_FUNCTION "reset"
 
-    amxo_parser_save_object(parser, filename, object, false);
+//---------------------------------------------------------------------------------------------
+/**
+ * @addtogroup sah_cwmp_amxdeviceadapter
+ * @{
+ */
 
-    return amxd_status_ok;
+//---------------------------------------------------------------------------------------------
+/**
+   @brief
+   Effectively do a reboot by setting the reboot parameteter in the datamodel.
+
+   @details
+   Effectively do a reboot by setting the reboot parameteter in the datamodel.
+
+   @param amx A pointer to the ambiorix system bus environment variable
+ */
+void DM_ENG_Device_Reboot_DoReboot(dm_amx_env_t* amx) {
+    SAH_TRACEZ_IN("DM_DA");
+    (void) amx;
+
+    fprintf(stderr, "DM_ENG_Device_Reboot_DoReboot Not yet Implemented \n");
+
+    SAH_TRACEZ_OUT("DM_DA");
+}
+//---------------------------------------------------------------------------------------------
+/**
+   @brief
+   Effectively do a factoryreset by setting the reset parameter in the datamodel.
+
+   @details
+   Effectively do a factoryreset by setting the reset parameter in the datamodel.
+
+   @param amx A pointer to the ambiorix system bus environment variable
+ */
+void DM_ENG_Device_FactoryReset_DoReset(dm_amx_env_t* amx) {
+    SAH_TRACEZ_IN("DM_DA");
+    (void) amx;
+    fprintf(stderr, "DM_ENG_Device_FactoryReset_DoReset Not yet Implemented \n");
+    SAH_TRACEZ_OUT("DM_DA");
 }
 
-amxd_status_t _ManagementServer_load(amxd_object_t* object,
-                                     UNUSED amxd_function_t* func,
-                                     UNUSED amxc_var_t* args,
-                                     UNUSED amxc_var_t* ret) {
-    amxc_var_t* cfg_pop = NULL;
-    amxo_parser_t* parser = cwmp_plugin_get_parser();
-    amxc_var_t* config = cwmp_plugin_get_config();
-    const char* filename = GET_CHAR(config, "save_file");
-    amxd_object_t* root = amxd_object_get_root(object);
-
-    amxo_parser_parse_file(parser, filename, root);
-    cfg_pop = GET_ARG(config, "populate-behavior");
-    amxc_var_delete(&cfg_pop);
-
-    return amxd_status_ok;
-}
+/** @} */

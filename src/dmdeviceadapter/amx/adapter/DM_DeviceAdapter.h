@@ -1,3 +1,4 @@
+
 /****************************************************************************
 **
 ** Copyright (c) 2021 SoftAtHome
@@ -57,35 +58,42 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 **
 ****************************************************************************/
+#ifndef _DM_DEVICEADAPTER_H_
+#define _DM_DEVICEADAPTER_H_
 
-#include "cwmp_plugin.h"
+#include <amxc/amxc.h>
+#include <amxp/amxp.h>
+#include <amxd/amxd_dm.h>
+#include <amxb/amxb.h>
+#include <dmengine/DM_ENG_RPCInterface.h>
 
-amxd_status_t _ManagementServer_save(amxd_object_t* object,
-                                     UNUSED amxd_function_t* func,
-                                     UNUSED amxc_var_t* args,
-                                     UNUSED amxc_var_t* ret) {
-    amxo_parser_t* parser = cwmp_plugin_get_parser();
-    amxc_var_t* config = cwmp_plugin_get_config();
-    const char* filename = GET_CHAR(config, "save_file");
 
-    amxo_parser_save_object(parser, filename, object, false);
+typedef struct dm_amx_env_t_ {
+    amxb_bus_ctx_t* bus_ctx;
+    const char* prefix;  /* ACS path prefix */
+    char* instance_mode; /*Aliaces based adressing instance mode*/
+    bool autoCreateInstances;
+} dm_amx_env_t;
 
-    return amxd_status_ok;
-}
+typedef struct dm_deviceadapter_t_ {
+    dm_amx_env_t acs;    /* connection used for ACS , restricted access*/
+    dm_amx_env_t system; /* Connection used for internal com*/
+} dm_deviceadapter_t;
 
-amxd_status_t _ManagementServer_load(amxd_object_t* object,
-                                     UNUSED amxd_function_t* func,
-                                     UNUSED amxc_var_t* args,
-                                     UNUSED amxc_var_t* ret) {
-    amxc_var_t* cfg_pop = NULL;
-    amxo_parser_t* parser = cwmp_plugin_get_parser();
-    amxc_var_t* config = cwmp_plugin_get_config();
-    const char* filename = GET_CHAR(config, "save_file");
-    amxd_object_t* root = amxd_object_get_root(object);
 
-    amxo_parser_parse_file(parser, filename, root);
-    cfg_pop = GET_ARG(config, "populate-behavior");
-    amxc_var_delete(&cfg_pop);
+dm_amx_env_t* DM_ENG_Device_GetACSInfo();
+dm_amx_env_t* DM_ENG_Device_GetSystemInfo();
 
-    return amxd_status_ok;
-}
+#define MANAGEMENTSERVER_TRANSFERS_NODE "ManagementServer.QueuedTransfers.Entry"
+#define MANAGEMENTSERVER_PATH           "ManagementServer"
+#define DEVICEINFO_PATH                 "DeviceInfo"
+#define TIME_PATH                       "Time"
+#define AMXB_BACKEND                    "AMXB_BACKEND"
+#define AMXB_URI                        "AMXB_URI"
+/* ubus specefic values*/
+#define AMXB_BACKEND_DEFAULT            "/usr/bin/mods/amxb/mod-amxb-ubus.so"
+#define AMXB_URI_DEFAULT                "ubus:/var/run/ubus.sock"
+
+int DM_ENG_Device_GetConfigValue(DM_ENG_SystemParameter_t parameter, char** pResult);
+
+#endif

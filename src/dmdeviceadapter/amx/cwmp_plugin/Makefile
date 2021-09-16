@@ -15,7 +15,7 @@ TARGET_M4 = $(OBJDIR)/$(COMPONENT)-definition.odl
 # directories
 # source directories
 SRCDIR = ./
-INCDIR_PUB =
+INCDIR_PUB = /include
 INCDIR_PRIV = $(ROOT)/include_priv
 INCDIRS = $(INCDIR_PUB) $(INCDIR_PRIV) $(if $(STAGINGDIR), $(STAGINGDIR)/include) $(if $(STAGINGDIR), $(STAGINGDIR)/usr/include)
 STAGING_LIBDIR = $(if $(STAGINGDIR), -L$(STAGINGDIR)/lib) $(if $(STAGINGDIR), -L$(STAGINGDIR)/usr/lib)
@@ -30,6 +30,9 @@ CFLAGS += -Wall -Wextra \
           -Wformat=2 -Wshadow -Wwrite-strings -Wredundant-decls \
           -Wmissing-declarations -Wno-attributes -Wno-format-nonliteral \
           -fPIC -g3 $(addprefix -I ,$(INCDIRS)) \
+		  -DSAHTRACES_ENABLED -DSAHTRACES_LEVEL_DEFAULT=700
+
+CFLAGS += -D_DEFAULT_SOURCE
 
 ifeq ($(CC_NAME),g++)
     CFLAGS += -std=c++2a
@@ -38,7 +41,7 @@ else
 endif
 
 LDFLAGS += $(STAGING_LIBDIR) -shared -fPIC
-LDFLAGS += -lamxc -lamxd -lamxo -lamxb -lamxp
+LDFLAGS += -lamxc -lamxd -lamxo -lamxb -lamxp -lsahtrace
 
 # helper functions - used in multiple targets
 define install_to

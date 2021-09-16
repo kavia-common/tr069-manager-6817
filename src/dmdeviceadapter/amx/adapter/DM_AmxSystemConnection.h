@@ -57,35 +57,17 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 **
 ****************************************************************************/
+#include <amxc/amxc.h>
+#include <amxp/amxp.h>
+#include <amxd/amxd_dm.h>
+#include <amxb/amxb.h>
 
-#include "cwmp_plugin.h"
+#include "DM_DeviceAdapter.h"
+#include <dmengine/DM_ENG_RPCInterface.h>
 
-amxd_status_t _ManagementServer_save(amxd_object_t* object,
-                                     UNUSED amxd_function_t* func,
-                                     UNUSED amxc_var_t* args,
-                                     UNUSED amxc_var_t* ret) {
-    amxo_parser_t* parser = cwmp_plugin_get_parser();
-    amxc_var_t* config = cwmp_plugin_get_config();
-    const char* filename = GET_CHAR(config, "save_file");
-
-    amxo_parser_save_object(parser, filename, object, false);
-
-    return amxd_status_ok;
-}
-
-amxd_status_t _ManagementServer_load(amxd_object_t* object,
-                                     UNUSED amxd_function_t* func,
-                                     UNUSED amxc_var_t* args,
-                                     UNUSED amxc_var_t* ret) {
-    amxc_var_t* cfg_pop = NULL;
-    amxo_parser_t* parser = cwmp_plugin_get_parser();
-    amxc_var_t* config = cwmp_plugin_get_config();
-    const char* filename = GET_CHAR(config, "save_file");
-    amxd_object_t* root = amxd_object_get_root(object);
-
-    amxo_parser_parse_file(parser, filename, root);
-    cfg_pop = GET_ARG(config, "populate-behavior");
-    amxc_var_delete(&cfg_pop);
-
-    return amxd_status_ok;
-}
+bool DM_ENG_Device_SystemConnectionInitialize(dm_amx_env_t* amx);
+void DM_ENG_Device_SystemConnectionCleanup(dm_amx_env_t* amx);
+char* DM_ENG_Device_SystemConnectionGetParameter(dm_amx_env_t* amx, DM_ENG_SystemParameter_t parameter);
+bool DM_ENG_Device_SystemConnectionSetParameter(dm_amx_env_t* amx, DM_ENG_SystemParameter_t parameter, char* pValue);
+void DM_ENG_Device_SystemConnectionHandleFinishedTransferObject(char* objectName);
+bool DM_ENG_Device_SystemConnectionExecuteFunction(dm_amx_env_t* amx, DM_ENG_SystemFunction_t function);

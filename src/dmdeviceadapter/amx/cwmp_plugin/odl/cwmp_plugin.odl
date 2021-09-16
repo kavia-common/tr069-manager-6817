@@ -6,7 +6,6 @@
     definition_file = "${name}-definition.odl";
     defaults_file = "${name}-defaults.odl";
     save_file = "${prefix}${cfg-dir}/${name}/cwmp-settings.odl";
-
 }
 
 #include "${name}-${storage-type}.odl";
@@ -21,4 +20,12 @@ include "${defaults_file}";
 }
 
 %populate {
+    on event "dm:object-changed" call writeURL
+        filter 'path == "ManagementServer." && contains("parameters.URL")';
+    on event "dm:object-changed" call updateConnectionRequestURL
+        filter 'path == "ManagementServer.ConnRequest." && (contains("parameters.ConnRequestHost") || contains("parameters.ConnRequestPort") || contains("parameters.ConnRequestPath"))';
+    on event "dm:object-changed" call writeInterface
+        filter 'path == "ManagementServer." && contains("parameters.Interface")';
+    on event "dm:object-changed" call manageCwmpd
+        filter 'path == "ManagementServer." && contains("parameters.EnableCWMP")';
 }

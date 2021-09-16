@@ -1,3 +1,4 @@
+
 /****************************************************************************
 **
 ** Copyright (c) 2021 SoftAtHome
@@ -57,35 +58,31 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 **
 ****************************************************************************/
+#include <amxc/amxc.h>
+#include <amxp/amxp.h>
+#include <amxd/amxd_dm.h>
+#include <amxd/amxd_path.h>
+#include <amxd/amxd_object.h>
+#include <amxb/amxb.h>
+#include <sys/types.h>
+#include <dmengine/DM_ENG_ParameterType.h>
+#include "DM_DeviceAdapter.h"
 
-#include "cwmp_plugin.h"
+#define SetErrorGotoStop(errorNumber, message) \
+    { error = errorNumber; SAH_TRACEZ_ERROR("DM_DA", message); goto stop; }
 
-amxd_status_t _ManagementServer_save(amxd_object_t* object,
-                                     UNUSED amxd_function_t* func,
-                                     UNUSED amxc_var_t* args,
-                                     UNUSED amxc_var_t* ret) {
-    amxo_parser_t* parser = cwmp_plugin_get_parser();
-    amxc_var_t* config = cwmp_plugin_get_config();
-    const char* filename = GET_CHAR(config, "save_file");
+#define GotoStop(message) \
+    { SAH_TRACEZ_ERROR("DM_DA", message); goto stop; }
 
-    amxo_parser_save_object(parser, filename, object, false);
+char* DM_ENG_Device_Common_ACSToAMXPath_noalloc(const char* acsPath);
+char* DM_ENG_Device_Common_ACSToAMXPath(const char* acsPath);
+bool DM_ENG_Device_Common_CheckSystem(dm_amx_env_t* amx);
+bool DM_ENG_Device_Common_AmxConnect(dm_amx_env_t* amx, const char* envVariable, const char* defaultLocation, const char* envURI, const char* defaultURI);
+bool DM_ENG_Device_Common_IsWildcardPath(const char* path);
+bool DM_ENG_Device_Common_IsWildcardPathValid(const char* path);
+bool DM_ENG_Device_Common_Resolve_Path(dm_amx_env_t* amx, char* path, amxc_var_t* resolved);
+DM_ENG_ParameterType DM_ENG_Device_Common_ConvertParameterType(u_int32_t type);
+char* DM_ENG_Device_Common_GetRootParameterInternalPath(char* path);
+char* DM_ENG_Device_Common_GetRootParameterAcsPath(char* path);
+bool DM_ENG_Device_Common_IsRootParameter(char* path);
 
-    return amxd_status_ok;
-}
-
-amxd_status_t _ManagementServer_load(amxd_object_t* object,
-                                     UNUSED amxd_function_t* func,
-                                     UNUSED amxc_var_t* args,
-                                     UNUSED amxc_var_t* ret) {
-    amxc_var_t* cfg_pop = NULL;
-    amxo_parser_t* parser = cwmp_plugin_get_parser();
-    amxc_var_t* config = cwmp_plugin_get_config();
-    const char* filename = GET_CHAR(config, "save_file");
-    amxd_object_t* root = amxd_object_get_root(object);
-
-    amxo_parser_parse_file(parser, filename, root);
-    cfg_pop = GET_ARG(config, "populate-behavior");
-    amxc_var_delete(&cfg_pop);
-
-    return amxd_status_ok;
-}

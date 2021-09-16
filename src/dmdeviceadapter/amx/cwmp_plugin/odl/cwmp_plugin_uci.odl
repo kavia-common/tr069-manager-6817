@@ -7,6 +7,8 @@
         import-params = "strict",
         load = "ManagementServer.load",
         save = "ManagementServer.save",
+        updateConnectionRequestURL = "ManagementServer.updateConnectionRequestURL"
+        updateACSIP = "ManagementServer.updateACSIP"
     };
 }
 
