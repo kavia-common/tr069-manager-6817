@@ -22,7 +22,7 @@ STAGING_LIBDIR = $(if $(STAGINGDIR), -L$(STAGINGDIR)/lib) \
 else
 #staging dir is not defined ( on docker we need this otherwise build will fail)
 INCDIRS = $(INCDIR_PRIV) -I/usr/include -I/usr/local/include
-STAGING_LIBDIR =-L/usr/local/lib/ -L/usr/lib -L/lib -L/usr/lib/$(MACHINE)/ -L$(OUTPUT_DIR)/$(MACHINE)/libhttpparser/
+STAGING_LIBDIR =-L/usr/local/lib/ -L/usr/lib -L/lib -L/usr/lib/$(MACHINE)/
 endif
 
 
@@ -43,7 +43,9 @@ else
 	CFLAGS += -std=c11
 endif
 
-LDFLAGS += $(STAGING_LIBDIR) -lwebsockets -levent -ldl \
+LOCAL_LIBS = -L$(OUTPUT_DIR)/$(MACHINE)/libhttpparser
+
+LDFLAGS += -ldl $(LOCAL_LIBS) $(STAGING_LIBDIR) -lwebsockets -levent \
 		  -lamxc -lamxd -lamxo -lamxb -lamxp -lsahtrace \
 		  -ldmcom -ldmcommon -ldmengine -ldmxml_ixml -lhttpparser
 # helper functions - used in multiple targets
