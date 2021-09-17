@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.0.2 - 2021-09-17(12:05:47 +0000)
+
+### Fixes
+
+- Fix linking issue with libhttpparser
+
+### Other
+
+- Correct URL in baf.yml
+
 ## Release v1.0.1 - 2021-09-16(08:44:34 +0000)
 
 ### Other
