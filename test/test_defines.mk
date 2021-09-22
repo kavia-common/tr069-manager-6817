@@ -2,12 +2,10 @@ MACHINE = $(shell $(CC) -dumpmachine)
 
 SRCDIR = $(realpath ../../src)
 OBJDIR = $(realpath ../../output/$(MACHINE)/coverage)
-INCDIR = $(realpath ../../include ../../include_priv ../../libs/include_priv ../../libs/include)
-MOCK_SRCDIR = $(realpath ../common/)
+INCDIR = $(realpath ../../include ../../include_priv ../../libs/include_priv)
 
 HEADERS = $(wildcard $(INCDIR)/*.h)
 SOURCES = $(wildcard $(SRCDIR)/*.c) 
-SOURCES += $(wildcard $(MOCK_SRCDIR)/*.c)
 
 CFLAGS += -Werror -Wall -Wextra -Wno-attributes\
           --std=gnu99 -g3 -Wmissing-declarations \

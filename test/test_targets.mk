@@ -16,9 +16,17 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.c | $(OBJDIR)/
 	$(CC) $(CFLAGS) -fprofile-arcs -ftest-coverage -c -o $@ $<
 	@$(CC) $(CFLAGS) -MM -MP -MT '$(@) $(@:.o=.d)' -MF $(@:.o=.d) $(<)
 
+ifdef MOCK_SRCDIR
 $(OBJDIR)/%.o: $(MOCK_SRCDIR)/%.c | $(OBJDIR)/
 	$(CC) $(CFLAGS) -fprofile-arcs -ftest-coverage -c -o $@ $<
 	@$(CC) $(CFLAGS) -MM -MP -MT '$(@) $(@:.o=.d)' -MF $(@:.o=.d) $(<)
+endif
+
+ifdef PLUGIN_SRCDIR
+$(OBJDIR)/%.o: $(PLUGIN_SRCDIR)/%.c | $(OBJDIR)/
+	$(CC) $(CFLAGS) -fprofile-arcs -ftest-coverage -c -o $@ $<
+	@$(CC) $(CFLAGS) -MM -MP -MT '$(@) $(@:.o=.d)' -MF $(@:.o=.d) $(<)
+endif
 
 $(OBJDIR)/:
 	mkdir -p $@

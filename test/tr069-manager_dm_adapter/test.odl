@@ -57,61 +57,112 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 **
 ****************************************************************************/
-#if !defined(_CWMPD_H_)
-#define _CWMPD_H_
 
-#include <libwebsockets.h>
-//#include<libwebsockets/lws-dll2.h>
-#include "dmengine/DM_ENG_NotificationInterface.h"
-#include "httpparser/picohttpparser.h"
+#!/usr/bin/amxrt
 
-#define COPY_BUFFER_SIZE 4 * 1024
+%config {
+    // Application name
+    name = "test_dm";
 
-typedef enum server_state {INIT = 0, RUN, EXIT, ERROR } server_state_t;
-typedef enum cwmp_status {cwmp_status_ok=0, cwmp_status_ko} cwmp_status_t;
+    uris = ["pcb:/tmp/test.sock"];
+    backends = ["/usr/bin/mods/amxb/mod-amxb-pcb.so"];
 
-struct application {
-    char* name;
-    int daemonize;
-    int traceLevel;
-    int traceType;
-    server_state_t state;
-    char* trustedCA;
-    char* pidFile;
-    char* da_path;
-};
+    // amxrt config-options
+    auto-detect = false;
+    auto-connect = true;
+    daemon = false;
+    priority = 0;
+}
 
-typedef struct application application_t;
+%define {
+    object ManagementServer {
+        bool EnableCWMP =1;
+        string Username = "cdrouter";
+        uint32 PeriodicInformInterval=10000;
+        bool InstanceWildcardsSupported=1;
+        bool ReturnEmptyListOnPartialPath=1;
+        string ParameterKey = "randomkey";
+        bool VerifyParameterType =1;
+        object InternalSettings {
+            string Datamodel = "TR181";
+            uint32 ReturnEmptyListOnPartialPath = 1;
+            read-only string RootDataModelVersion="2.0";
+            read-only uint32 InterfaceStackNumberOfEntries=0;
+        }
+        object ConnRequest {
+            string ConnRequestHost="0.0.0.0";
+            read-only string ConnectionRequestURL="http://test-readonly-url";
+        }
+        object State {
+            string SessionStatus="test";
+            bool RebootByACS =0;
+            bool FactoryResetOccurred = 0;
+            string RebootCommandKey = "reboot";
+            bool BootstrapSent = 1;
+        }
+        object Stats {
+            uint32 GetParameterValuesRequests = 0;
+        }
+    }
+}
 
-cwmp_status_t cwmp_server_init(struct lws_context_creation_info* lws_ctx_info);
+%define {
+    object GetParameterNames_Parameter {
+        string writablestring="test";
+        read-only string readonlystring ="test-read-only";
+    }
+}
 
-cwmp_status_t cwmp_server_start(struct lws_context_creation_info* lws_ctx_info,
-                                void** evlp, struct lws_context* lws_ctx);
+%define {
+    object GetParameterNames_Object_NextLevel_True {
+        string writablestring ="test";
+        read-only string readonlystring ="test-read-only";
+        object GetParameterNames_Object1_NextLevel_True {
+            string Username = "cdrouter";
+        }
+        object GetParameterNames_Object2_NextLevel_True {
+            string Username = "cdrouter";
+        }
+    }
+}
 
-cwmp_status_t cwmp_server_stop(struct lws_context* lws_ctx);
+%define {
+    object GetParameterNames_Object_NextLevel_False {
+        int32 writableInteger =9999;
+        string writablestring ="writable-string";
+        read-only string readonlystring ="test-read-only";
+        object GetParameterNames_Object1{
+            string test1 = "test";
+        }
+        object GetParameterNames_Object2{
+            string test1 = "test";
+        }
+    }
+}
 
+%define {
+    object SetParameterValues_Test_Object{
+        int32 writableInteger =9999;
+        string writablestring ="writable-string";
+        read-only string readonlystring ="test-read-only";
+    }
+}
 
-cwmp_status_t cwmp_client_init(struct lws_context_creation_info* lws_ctx_info);
+%define {
+    object Hosts {
+        uint32 nbHosts=0;
+        object Host[] {
+            string MACAddress;
+            string IPAddress;
+        }
+    }
+}
 
-cwmp_status_t cwmp_client_start_session(struct lws_context_creation_info* lws_ctx_info,
-                                        void** evlp, struct lws_context* lws_ctx);
+%define {
+    object DeviceInfo {
+        string SerialNumber = "000000123";
+        string DeviceStatus = "Up";
+        uint32 testInt = 10;
+    }
+}
 
-cwmp_status_t cwmp_client_stop(struct lws_context* lws_ctx);
-
-int timer_stop(const char* name);
-
-int timer_start(const char* name, int waitTime, int intervalTime, timerHandler handler);
-
-void timer_cleanup();
-
-unsigned int timer_remainingTime(const char* name);
-
-int get_content_length(struct phr_header* values, int len);
-int append_read_buffer(char** msg, int* len);
-int create_read_buffer(char* raw, int len);
-void reset_read_buffer();
-int process_body(char* body, int len);
-
-
-
-#endif // !_CWMPD_H_

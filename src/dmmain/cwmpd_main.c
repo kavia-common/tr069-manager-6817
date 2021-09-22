@@ -94,7 +94,7 @@ static struct event_base* main_loop;
 static struct event* timer_outer_event;
 static struct event* sighandler_event;
 
-static void app_handleSignal(int signal __attribute__ ((unused))) {
+static void cwmp_main_handleSignal(int signal __attribute__ ((unused))) {
     if(signal == SIGINT) {
         cwmp_app.state = EXIT;
         event_base_loopbreak(main_loop);
@@ -107,10 +107,6 @@ static void app_usage() {
            "  -h        --help           this help screen\n"
            "  -o        --public-port    the port to listen on (public)\n"
            "  -f        --foreground     do not daemonize, log to stdout\n"
-#if CWMPD_DEBUG
-           "  -l        --local          connect to localhost fake server\n"
-           "  -p        --local-port     local connection port\n"
-#endif // CWMPD_DEBUG
            "  -T        --trustedCA      Trusted CA certificates\n"
            "  -v        --verbose        be more verbose, can be used multiple times\n"
            "  -d        --da_path        device adapter path\n");
@@ -125,16 +121,9 @@ static void app_configureDefaults() {
     if(cwmp_app.pidFile == NULL) {
         cwmp_app.pidFile = (char*) CFG_PID_FILE;
     }
-#if CWMPD_DEBUG
-    cwmp_app.runlocal = 0;       /* by default we don't run in debug mode*/
-    cwmp_app.localPort = "8080"; /* Where is the local server*/
-#endif
     /* defaults for sahtrace */
     cwmp_app.traceLevel = 0;
     cwmp_app.traceType = TRACE_TYPE_SYSLOG;
-
-
-
     /* ssl default */
 #ifdef CONFIG_SAH_SERVICES_TR069_CERTIFICATE_NO_PEM
     cwmp_app.trustedCA = NULL;
@@ -212,7 +201,7 @@ int main(int argc, char* argv[]) {
     amxb_bus_ctx_t* sys_bus_ctx = NULL;
     amxb_bus_ctx_t* acs_bus_ctx = NULL;
 
-    signal(SIGINT, app_handleSignal);
+    signal(SIGINT, cwmp_main_handleSignal);
     /* Configure APP*/
     app_configureDefaults();
     app_configureOptions(argc, argv);
@@ -249,7 +238,6 @@ int main(int argc, char* argv[]) {
     }
 
     /* Init http Server */
-
     if(cwmp_server_init(&server_info) != cwmp_status_ok) {
         SAH_TRACE_ERROR("Start initialization failed : exit here");
         return 0;
@@ -275,7 +263,7 @@ int main(int argc, char* argv[]) {
 
 
     /* Start the main loop */
-    SAH_TRACE_NOTICE("starting the main loop \n");
+    SAH_TRACE_NOTICE("starting cwmpd");
 
 
     /* Start the main event loop and wait for events*/

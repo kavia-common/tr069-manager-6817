@@ -57,61 +57,77 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 **
 ****************************************************************************/
-#if !defined(_CWMPD_H_)
-#define _CWMPD_H_
 
-#include <libwebsockets.h>
-//#include<libwebsockets/lws-dll2.h>
-#include "dmengine/DM_ENG_NotificationInterface.h"
-#include "httpparser/picohttpparser.h"
+#define _GNU_SOURCE
+#include <assert.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <setjmp.h>
+#include <stdarg.h>
+#include <ctype.h>
+#include <cmocka.h>
+#include <amxc/amxc.h>
+#include <amxp/amxp.h>
+#include <amxd/amxd_dm.h>
+#include <amxd/amxd_object.h>
+#include <amxd/amxd_transaction.h>
+#include <unistd.h>
+#include <amxd/amxd_dm.h>
+#include <amxo/amxo.h>
+#include <amxb/amxb.h>
+#include <amxb/amxb_register.h>
+#include "test_cwmp_plugin.h"
+#include <amxc/amxc_macros.h>
+#include "cwmp_plugin.h"
 
-#define COPY_BUFFER_SIZE 4 * 1024
+static const char* odl_defs = "test.odl";
 
-typedef enum server_state {INIT = 0, RUN, EXIT, ERROR } server_state_t;
-typedef enum cwmp_status {cwmp_status_ok=0, cwmp_status_ko} cwmp_status_t;
-
-struct application {
-    char* name;
-    int daemonize;
-    int traceLevel;
-    int traceType;
-    server_state_t state;
-    char* trustedCA;
-    char* pidFile;
-    char* da_path;
-};
-
-typedef struct application application_t;
-
-cwmp_status_t cwmp_server_init(struct lws_context_creation_info* lws_ctx_info);
-
-cwmp_status_t cwmp_server_start(struct lws_context_creation_info* lws_ctx_info,
-                                void** evlp, struct lws_context* lws_ctx);
-
-cwmp_status_t cwmp_server_stop(struct lws_context* lws_ctx);
+static amxd_dm_t dm;
+static amxo_parser_t parser;
 
 
-cwmp_status_t cwmp_client_init(struct lws_context_creation_info* lws_ctx_info);
+static void handle_events(void) {
+    printf("Handling events ");
+    while(amxp_signal_read() == 0) {
+        printf(".");
+    }
+    printf("\n");
+}
 
-cwmp_status_t cwmp_client_start_session(struct lws_context_creation_info* lws_ctx_info,
-                                        void** evlp, struct lws_context* lws_ctx);
+int test_cwmp_plugin_setup(UNUSED void** state) {
+    amxd_object_t* root_obj = NULL;
 
-cwmp_status_t cwmp_client_stop(struct lws_context* lws_ctx);
+    assert_int_equal(amxd_dm_init(&dm), amxd_status_ok);
+    assert_int_equal(amxo_parser_init(&parser), 0);
 
-int timer_stop(const char* name);
+    root_obj = amxd_dm_get_root(&dm);
+    assert_non_null(root_obj);
 
-int timer_start(const char* name, int waitTime, int intervalTime, timerHandler handler);
+    assert_int_equal(amxo_parser_parse_file(&parser, odl_defs, root_obj), 0);
 
-void timer_cleanup();
+    handle_events();
 
-unsigned int timer_remainingTime(const char* name);
+    return 0;
 
-int get_content_length(struct phr_header* values, int len);
-int append_read_buffer(char** msg, int* len);
-int create_read_buffer(char* raw, int len);
-void reset_read_buffer();
-int process_body(char* body, int len);
+}
 
+int test_cwmp_plugin_teardown(UNUSED void** state) {
+    amxo_parser_clean(&parser);
+    amxd_dm_clean(&dm);
+    return 0;
+}
 
+void test_cwmp_plugin_start(UNUSED void** state) {
+    assert_int_equal(_cwmp_plugin_main(0, &dm, &parser), 0);
 
-#endif // !_CWMPD_H_
+    assert_non_null(cwmp_plugin_get_parser());
+    assert_ptr_equal(cwmp_plugin_get_parser(), &parser);
+
+    assert_non_null(cwmp_plugin_get_config());
+    assert_ptr_equal(cwmp_plugin_get_config(), &parser.config);
+
+}
+
+void test_cwmp_plugin_stop(UNUSED void** state) {
+    assert_int_equal(_cwmp_plugin_main(1, &dm, &parser), 0);
+}

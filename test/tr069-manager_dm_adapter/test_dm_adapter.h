@@ -57,61 +57,80 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 **
 ****************************************************************************/
-#if !defined(_CWMPD_H_)
-#define _CWMPD_H_
 
-#include <libwebsockets.h>
-//#include<libwebsockets/lws-dll2.h>
-#include "dmengine/DM_ENG_NotificationInterface.h"
-#include "httpparser/picohttpparser.h"
+#ifndef __TEST_DM_ADAPTER_H__
+#define __TEST_DM_ADAPTER_H__
 
-#define COPY_BUFFER_SIZE 4 * 1024
+#include <dmengine/DM_ENG_Common.h>
+#include <dmengine/DM_ENG_Device.h>
 
-typedef enum server_state {INIT = 0, RUN, EXIT, ERROR } server_state_t;
-typedef enum cwmp_status {cwmp_status_ok=0, cwmp_status_ko} cwmp_status_t;
+/* define a few callbacks functions used just as templates not really needed for test */
+int inform(DM_ENG_DeviceIdStruct* id,
+           DM_ENG_EventStruct* events[],
+           DM_ENG_ParameterValueStruct* parameterList[],
+           time_t currentTime,
+           unsigned int retryCount);
 
-struct application {
-    char* name;
-    int daemonize;
-    int traceLevel;
-    int traceType;
-    server_state_t state;
-    char* trustedCA;
-    char* pidFile;
-    char* da_path;
-};
+int transferComplete(DM_ENG_TransferCompleteStruct* tcs);
 
-typedef struct application application_t;
+int requestDownload(const char* fileType, DM_ENG_ArgStruct* args[]);
 
-cwmp_status_t cwmp_server_init(struct lws_context_creation_info* lws_ctx_info);
+int getRPCMethods();
 
-cwmp_status_t cwmp_server_start(struct lws_context_creation_info* lws_ctx_info,
-                                void** evlp, struct lws_context* lws_ctx);
+int timerStart(const char* name, int waitTime, int intervalTime, timerHandler handler);
 
-cwmp_status_t cwmp_server_stop(struct lws_context* lws_ctx);
+int timerStop(const char* name);
 
+unsigned int timerTimeRemaining(const char* name);
 
-cwmp_status_t cwmp_client_init(struct lws_context_creation_info* lws_ctx_info);
+int engineEvent(const char* eventType);
 
-cwmp_status_t cwmp_client_start_session(struct lws_context_creation_info* lws_ctx_info,
-                                        void** evlp, struct lws_context* lws_ctx);
+int DM_SendHttpMessage(const char* msgToSendStr);
 
-cwmp_status_t cwmp_client_stop(struct lws_context* lws_ctx);
+int client_startSession();
 
-int timer_stop(const char* name);
+int DM_CloseHttpSession(int closeMode);
 
-int timer_start(const char* name, int waitTime, int intervalTime, timerHandler handler);
+/*setup test*/
+int test_dmadapter_setup(void** state);
 
-void timer_cleanup();
+int test_dmadapter_teardown(void** state);
 
-unsigned int timer_remainingTime(const char* name);
+/* test func */
+void test_dmadapter_load(void** state);
 
-int get_content_length(struct phr_header* values, int len);
-int append_read_buffer(char** msg, int* len);
-int create_read_buffer(char* raw, int len);
-void reset_read_buffer();
-int process_body(char* body, int len);
+void test_dmadapter_connection(void** state);
 
+void test_dmadapter_ManagementServer_GetParameterValue(void** state);
 
+void test_dmadapter_ManagementServer_SetParameterValue(void** state);
 
-#endif // !_CWMPD_H_
+void test_dmadapter_GetParameterNames_Parameter(void** state);
+
+void test_dmadapter_GetParameterNames_EmptyPath_NextLevel_True(void** state);
+
+void test_dmadapter_GetParameterNames_Object_AllDataModel(void** state);
+
+void test_dmadapter_GetParameterNames_Object_NextLevel_False(void** state);
+
+void test_dmadapter_GetParameterNames_Object_NextLevel_True(void** state);
+
+void test_dmadapter_GetParameterNames_Object_NextLevel_False_searchPath(void** state);
+
+void test_dmadapter_GetParameterNames_Object_NextLevel_True_searchPath(void** state);
+
+void test_dmadapter_GetParametersValues_Parameters(void** state);
+
+void test_dmadapter_GetParametersValues_Object(void** state);
+
+void test_dmadapter_GetParametersValues_searchPath_Parameter(void** state);
+
+void test_dmadapter_GetParametersValues_searchPath_Object(void** state);
+
+void test_dmadapter_SetParameterValues(void** state);
+
+void test_dmadapter_SetParameterValues_Faults(void** state);
+
+void test_dmadapter_AddDeleteObject(void** state);
+
+#endif // __TEST_LIB_DMENGINE_H__

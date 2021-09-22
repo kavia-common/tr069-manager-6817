@@ -57,6 +57,7 @@ changelog:
 	$(call create_changelog)
 
 test:
+	$(MAKE) -C src/dmdeviceadapter/amx/adapter test
 	$(MAKE) -C test run
 	$(MAKE) -C test coverage
 

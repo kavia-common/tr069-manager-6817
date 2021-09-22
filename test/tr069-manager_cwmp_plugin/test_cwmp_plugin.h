@@ -1,3 +1,4 @@
+
 /****************************************************************************
 **
 ** Copyright (c) 2021 SoftAtHome
@@ -57,61 +58,17 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 **
 ****************************************************************************/
-#if !defined(_CWMPD_H_)
-#define _CWMPD_H_
 
-#include <libwebsockets.h>
-//#include<libwebsockets/lws-dll2.h>
-#include "dmengine/DM_ENG_NotificationInterface.h"
-#include "httpparser/picohttpparser.h"
+#ifndef __TEST_CWMP_PLUGIN_H__
+#define __TEST_CWMP_PLUGIN_H__
 
-#define COPY_BUFFER_SIZE 4 * 1024
+/*setup test*/
+int test_cwmp_plugin_setup(void** state);
 
-typedef enum server_state {INIT = 0, RUN, EXIT, ERROR } server_state_t;
-typedef enum cwmp_status {cwmp_status_ok=0, cwmp_status_ko} cwmp_status_t;
+int test_cwmp_plugin_teardown(void** state);
 
-struct application {
-    char* name;
-    int daemonize;
-    int traceLevel;
-    int traceType;
-    server_state_t state;
-    char* trustedCA;
-    char* pidFile;
-    char* da_path;
-};
+/* test func */
+void test_cwmp_plugin_start(void** state);
+void test_cwmp_plugin_stop(void** state);
 
-typedef struct application application_t;
-
-cwmp_status_t cwmp_server_init(struct lws_context_creation_info* lws_ctx_info);
-
-cwmp_status_t cwmp_server_start(struct lws_context_creation_info* lws_ctx_info,
-                                void** evlp, struct lws_context* lws_ctx);
-
-cwmp_status_t cwmp_server_stop(struct lws_context* lws_ctx);
-
-
-cwmp_status_t cwmp_client_init(struct lws_context_creation_info* lws_ctx_info);
-
-cwmp_status_t cwmp_client_start_session(struct lws_context_creation_info* lws_ctx_info,
-                                        void** evlp, struct lws_context* lws_ctx);
-
-cwmp_status_t cwmp_client_stop(struct lws_context* lws_ctx);
-
-int timer_stop(const char* name);
-
-int timer_start(const char* name, int waitTime, int intervalTime, timerHandler handler);
-
-void timer_cleanup();
-
-unsigned int timer_remainingTime(const char* name);
-
-int get_content_length(struct phr_header* values, int len);
-int append_read_buffer(char** msg, int* len);
-int create_read_buffer(char* raw, int len);
-void reset_read_buffer();
-int process_body(char* body, int len);
-
-
-
-#endif // !_CWMPD_H_
+#endif //__TEST_CWMP_PLUGIN_H__

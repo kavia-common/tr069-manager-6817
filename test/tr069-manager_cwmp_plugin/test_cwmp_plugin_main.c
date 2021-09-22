@@ -57,61 +57,31 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 **
 ****************************************************************************/
-#if !defined(_CWMPD_H_)
-#define _CWMPD_H_
 
-#include <libwebsockets.h>
-//#include<libwebsockets/lws-dll2.h>
-#include "dmengine/DM_ENG_NotificationInterface.h"
-#include "httpparser/picohttpparser.h"
+#define _GNU_SOURCE
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <setjmp.h>
+#include <stdarg.h>
+#include <string.h>
+#include <cmocka.h>
+#include <unistd.h>
+#include <dirent.h>
+#include <sys/types.h>
 
-#define COPY_BUFFER_SIZE 4 * 1024
+#include "test_cwmp_plugin.h"
 
-typedef enum server_state {INIT = 0, RUN, EXIT, ERROR } server_state_t;
-typedef enum cwmp_status {cwmp_status_ok=0, cwmp_status_ko} cwmp_status_t;
+int main(void) {
 
-struct application {
-    char* name;
-    int daemonize;
-    int traceLevel;
-    int traceType;
-    server_state_t state;
-    char* trustedCA;
-    char* pidFile;
-    char* da_path;
-};
+    int ret = 0;
 
-typedef struct application application_t;
+    const struct CMUnitTest tests[] = {
+        cmocka_unit_test(test_cwmp_plugin_start),
+        cmocka_unit_test(test_cwmp_plugin_stop)
+    };
 
-cwmp_status_t cwmp_server_init(struct lws_context_creation_info* lws_ctx_info);
+    ret = cmocka_run_group_tests(tests, test_cwmp_plugin_setup, test_cwmp_plugin_teardown);
 
-cwmp_status_t cwmp_server_start(struct lws_context_creation_info* lws_ctx_info,
-                                void** evlp, struct lws_context* lws_ctx);
-
-cwmp_status_t cwmp_server_stop(struct lws_context* lws_ctx);
-
-
-cwmp_status_t cwmp_client_init(struct lws_context_creation_info* lws_ctx_info);
-
-cwmp_status_t cwmp_client_start_session(struct lws_context_creation_info* lws_ctx_info,
-                                        void** evlp, struct lws_context* lws_ctx);
-
-cwmp_status_t cwmp_client_stop(struct lws_context* lws_ctx);
-
-int timer_stop(const char* name);
-
-int timer_start(const char* name, int waitTime, int intervalTime, timerHandler handler);
-
-void timer_cleanup();
-
-unsigned int timer_remainingTime(const char* name);
-
-int get_content_length(struct phr_header* values, int len);
-int append_read_buffer(char** msg, int* len);
-int create_read_buffer(char* raw, int len);
-void reset_read_buffer();
-int process_body(char* body, int len);
-
-
-
-#endif // !_CWMPD_H_
+    return ret;
+}

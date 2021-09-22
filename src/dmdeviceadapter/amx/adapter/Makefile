@@ -41,8 +41,9 @@ define install_to
 	$(STRIP) $(1)/usr/lib/cwmp/$(COMPONENT).so
 endef
 
-all: banner $(TARGET_SO)
+test: all
 
+all: banner $(TARGET_SO)
 
 banner:
 	@echo "*********************** Building $(COMPONENT).so *********************************"
