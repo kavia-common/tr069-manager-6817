@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.0.3 - 2021-09-23(09:40:00 +0000)
+
+### Fixes
+
+- Fix warnings cwmpd
+
+### Other
+
+- unit test for dmadapter, cwmp_plugin
+
 ## Release v1.0.2 - 2021-09-17(12:05:47 +0000)
 
 ### Fixes
