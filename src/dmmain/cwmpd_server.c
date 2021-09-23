@@ -91,8 +91,8 @@ extern dm_com_struct g_DmComData;
 
 amxc_string_t buffer;
 
-static const int DEFAULT_SESSION_TIMEOUT = 45;
-static const int MAX_CONTENT_LENGTH = 33554432;
+// static const int DEFAULT_SESSION_TIMEOUT = 45;
+// static const int MAX_CONTENT_LENGTH = 33554432;
 
 #define CPE_REALM     "sahrealm"
 char* g_randomCpeUrl = NULL;
@@ -317,7 +317,8 @@ static void server_maxConnectionsAdd(void) {
     amxc_llist_append(&connection_timestamp_list, &item->it);
 }
 
-static void server_maxConnectionsCleanup(void) {
+// TODO : Fix the Max Connection Request.
+UNUSED static void server_maxConnectionsCleanup(void) {
     amxc_llist_it_t* cur = amxc_llist_get_first(&connection_timestamp_list);
     amxc_llist_it_t* next = NULL;
     while(cur != NULL) {
@@ -514,9 +515,6 @@ int server_handleRequest(struct lws* wsi, char* in, int len) {
 static int cwmp_server_http_callback(struct lws* wsi, enum lws_callback_reasons reason,
                                      void* user, void* in, size_t len) {
 
-    struct per_session_data__http* pss = (struct per_session_data__http*) user;
-    char buf[256];
-
     /* protocol logic goes here */
     switch(reason) {
     case LWS_CALLBACK_ESTABLISHED:
@@ -542,8 +540,8 @@ static int cwmp_server_http_callback(struct lws* wsi, enum lws_callback_reasons 
 
 /* websocket configuration struct , protocol : http */
 static const struct lws_protocols protocols[] = {
-    {"http-only", cwmp_server_http_callback, 0, 0, },
-    { NULL, NULL, 0, 0 } /* needed by lws */
+    {"http-only", cwmp_server_http_callback, 0, 0, 0, NULL, 0},
+    { NULL, NULL, 0, 0, 0, NULL, 0} /* needed by lws */
 };
 
 /* fetch all server info from data model and feed them to server info struct*/

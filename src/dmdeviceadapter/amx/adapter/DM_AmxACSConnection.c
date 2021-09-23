@@ -135,7 +135,7 @@ bool DM_ENG_Device_ACSConnectionInitialize(dm_amx_env_t* amx) {
 
     if(!DM_ENG_Device_Common_AmxConnect(amx, AMXB_BACKEND, AMXB_BACKEND_DEFAULT,
                                         AMXB_URI, AMXB_URI_DEFAULT)) {
-        return false;  // Connection failed
+        return false; // Connection failed
 
     }
     SAH_TRACEZ_OUT("DM_DA");

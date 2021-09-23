@@ -246,7 +246,7 @@ amxd_status_t _ManagementServer_updateConnectionRequestURL(amxd_object_t* object
         port = GET_UINT32(args, "port");
         amxc_string_new(&url, 0);
 
-        if(!host || !*host || !port || !assembleConnectionRequestURL(object, url, host, port)) {  // We might need to split the expression for more precise logging
+        if(!host || !*host || !port || !assembleConnectionRequestURL(object, url, host, port)) { // We might need to split the expression for more precise logging
             retval = amxd_status_invalid_value;
             goto error;
         }

@@ -112,10 +112,10 @@ int _cwmp_plugin_main(int reason, amxd_dm_t* dm, amxo_parser_t* parser) {
 
     //SAH_TRACEZ_INFO(ME, "cwmp_plugin_main, reason: %i", reason);
     switch(reason) {
-    case 0:     // START
+    case 0: // START
         cwmp_plugin_init(dm, parser);
         break;
-    case 1:     // STOP
+    case 1: // STOP
         app.dm = NULL;
         app.parser = NULL;
         app.dns_resolv_invoke = NULL;

@@ -90,18 +90,18 @@ int last_used = 0;
 #define USER_AGENT      "prpl_user_agent"
 
 static struct lws* client_wsi = NULL;
-static const char* ba_user, * ba_password; // TO DO move to client struct
+UNUSED static const char* ba_user, * ba_password; // TO DO move to client struct
 
 
 /* needed by link state notifier */
-static const lws_retry_bo_t retry = {
-    .secs_since_valid_ping = 3,
-    .secs_since_valid_hangup = 10,
-};
+// UNUSED static const lws_retry_bo_t retry = {
+//     .secs_since_valid_ping = 3,
+//     .secs_since_valid_hangup = 10,
+// };
 
 struct lws_context* g_lws_ctx;
 
-int get_content_length(struct phr_header* values, int len) {
+int get_content_length(struct phr_header* values, unsigned int len) {
     for(unsigned int i = 0; i < len; ++i) {
         if(strncasecmp("content-length:", values[i].name, 15) == 0) {
             return (atoi(values[i].value));
@@ -169,7 +169,8 @@ int process_body(char* body, int len) {
 int handle_raw_reply(char* raw, int len) {
     char* msg = raw;
     char* body = NULL;
-    size_t header_len = 100, msg_len = 0, last_len = 0;
+    size_t header_len = 100, msg_len = 0;
+    int last_len = 0;
     int minor, status;
     struct phr_header values[100];
     int content_length;
@@ -210,7 +211,7 @@ int handle_raw_reply(char* raw, int len) {
 
 /* http callback */
 static int cwmp_client_http_callback(struct lws* wsi, enum lws_callback_reasons reason,
-                                     void* user, void* in, size_t len) {
+                                     UNUSED void* user, void* in, size_t len) {
     int status = 0;
 
     /* protocol logic goes here */
@@ -243,6 +244,9 @@ static int cwmp_client_http_callback(struct lws* wsi, enum lws_callback_reasons 
     case LWS_CALLBACK_RAW_RX:
         handle_raw_reply((char*) in, len);
         break;
+
+    default:
+        break;
     }
     return 0;
 }
@@ -251,11 +255,11 @@ static int cwmp_client_http_callback(struct lws* wsi, enum lws_callback_reasons 
 static const struct lws_protocols protocols[] =
 {
     {"http-only", cwmp_client_http_callback, 0, 0, 0, NULL, 0},
-    { NULL, NULL, 0, 0 } /* mark protocol end  needed by lws */
+    { NULL, NULL, 0, 0, 0, NULL, 0} /* mark protocol end  needed by lws */
 };
 
 static int connect_to_acs() {
-    struct lws_client_connect_info cnx_info = {0};
+    struct lws_client_connect_info cnx_info;
     char* acs_url_local = NULL;
     const char* uriHost = NULL;
     const char* uriScheme = NULL;
@@ -266,7 +270,7 @@ static int connect_to_acs() {
     char* acsip_ttl = NULL;
     char* acsip = NULL;
 
-    memset(&cnx_info, sizeof(cnx_info), 0);
+    memset(&cnx_info, 0, sizeof(cnx_info));
     cnx_info.context = g_lws_ctx;
     cnx_info.method = "RAW";
     cnx_info.protocol = protocols[0].name;
@@ -355,7 +359,7 @@ exit_error:
 
 /* fetch all server info from data model and feed them to server info struct*/
 cwmp_status_t cwmp_client_init(struct lws_context_creation_info* lws_ctx_info) {
-    cwmp_status_t ret = cwmp_status_ko;
+    // cwmp_status_t ret = cwmp_status_ko;
 
     lws_ctx_info->protocols = protocols;
     lws_ctx_info->ssl_cert_filepath = NULL;
@@ -390,7 +394,7 @@ cwmp_status_t cwmp_client_stop(struct lws_context* lws_ctx) {
 }
 
 int DM_CloseHttpSession(bool closeMode) {
-    if(connect_to_acs) {
+    if(connectedToServer) {
         unexpected_close = false;
         if((closeMode != NORMAL_CLOSE) && client_wsi) {
             lws_set_timeout(client_wsi, PENDING_TIMEOUT_KILLED_BY_PROXY_CLIENT_CLOSE, LWS_TO_KILL_SYNC);
@@ -415,7 +419,7 @@ static void client_sessionTimedOut(UNUSED char* name) {
 }
 
 static void send_header(int msgLength) {
-    char msgLengthStr[10] = "";
+    // char msgLengthStr[10] = "";
     unsigned char* p = (unsigned char*) http_header;
     int ret;
 
@@ -490,7 +494,7 @@ int client_startSession() {
     free(acs_url);
     return 0;
 
-error:
-    free(acs_url);
-    return -1;
+// error:
+//     free(acs_url);
+//     return -1;
 }

@@ -106,7 +106,7 @@ void timer_cleanup();
 
 unsigned int timer_remainingTime(const char* name);
 
-int get_content_length(struct phr_header* values, int len);
+int get_content_length(struct phr_header* values, unsigned int len);
 int append_read_buffer(char** msg, int* len);
 int create_read_buffer(char* raw, int len);
 void reset_read_buffer();

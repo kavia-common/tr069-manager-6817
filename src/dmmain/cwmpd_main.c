@@ -91,8 +91,8 @@
 application_t cwmp_app;// app instance
 
 static struct event_base* main_loop;
-static struct event* timer_outer_event;
-static struct event* sighandler_event;
+// static struct event* timer_outer_event;
+// static struct event* sighandler_event;
 
 static void cwmp_main_handleSignal(int signal __attribute__ ((unused))) {
     if(signal == SIGINT) {
@@ -194,7 +194,7 @@ int main(int argc, char* argv[]) {
     int rc = 1;
     struct lws_context_creation_info server_info;
     struct lws_context_creation_info client_info;
-    struct lws_client_connect_info connect_info;
+    // struct lws_client_connect_info connect_info;
     struct lws_context* server_ctx = NULL;
     struct lws_context* client_ctx = NULL;
     struct event* sig_alarm;

@@ -134,9 +134,9 @@ static const char* get_token_to_eol(const char* buf, const char* buf_end, const 
     const char* token_start = buf;
 
 #ifdef __SSE4_2__
-    static const char ALIGNED(16) ranges1[16] = "\0\010"    /* allow HT */
-        "\012\037"                                          /* allow SP and up to but not including DEL */
-        "\177\177";                                         /* allow chars w. MSB set */
+    static const char ALIGNED(16) ranges1[16] = "\0\010" /* allow HT */
+        "\012\037"                                       /* allow SP and up to but not including DEL */
+        "\177\177";                                      /* allow chars w. MSB set */
     int found;
     buf = findchar_fast(buf, buf_end, ranges1, 6, &found);
     if(found) {
@@ -245,14 +245,14 @@ static const char* parse_token(const char* buf, const char* buf_end, const char*
                                int* ret) {
     /* We use pcmpestri to detect non-token characters. This instruction can take no more than eight character ranges (8*2*8=128
     * bits that is the size of a SSE register). Due to this restriction, characters `|` and `~` are handled in the slow loop. */
-    static const char ALIGNED(16) ranges[] = "\x00 "  /* control chars and up to SP */
-        "\"\""                                        /* 0x22 */
-        "()"                                          /* 0x28,0x29 */
-        ",,"                                          /* 0x2c */
-        "//"                                          /* 0x2f */
-        ":@"                                          /* 0x3a-0x40 */
-        "[]"                                          /* 0x5b-0x5d */
-        "{\xff";                                      /* 0x7b-0xff */
+    static const char ALIGNED(16) ranges[] = "\x00 " /* control chars and up to SP */
+        "\"\""                                       /* 0x22 */
+        "()"                                         /* 0x28,0x29 */
+        ",,"                                         /* 0x2c */
+        "//"                                         /* 0x2f */
+        ":@"                                         /* 0x3a-0x40 */
+        "[]"                                         /* 0x5b-0x5d */
+        "{\xff";                                     /* 0x7b-0xff */
     const char* buf_start = buf;
     int found;
     buf = findchar_fast(buf, buf_end, ranges, sizeof(ranges) - 1, &found);
