@@ -151,28 +151,29 @@ static bool DM_ENG_Device_GetParameterNames_GetParameters(const char* path, bool
     amxc_string_t objPath;
     amxc_string_init(&objPath, 0);
 
+    // 2 = template , 3 = instance
+    int type_id = GET_INT32(object, "type_id");
+
     if(incObject) {
-        // 2 = template , 3 = instance
-        int type_id = GET_INT32(object, "type_id");
         amxc_string_setf(&objPath, "%s%s", DM_ENG_getDatamodelPrefix(), path);
         // add the object to the list
         dmis = DM_ENG_newParameterInfoStruct(amxc_string_get(&objPath, 0), (type_id == 2) || (type_id == 3));
         DM_ENG_addParameterInfoStruct(pnsList, dmis);
+    }
 
-        /*
-         * Response exemple : only template object Name is included not its parameters
-         * parameters are included only in case of a instance
-         * Device.LANDevice.1.Hosts.
-         * Device.LANDevice.1.Hosts.HostNumberOfEntries
-         * Device.LANDevice.1.Hosts.Host.
-         * Device.LANDevice.1.Hosts.Host.1.
-         * Device.LANDevice.1.Hosts.Host.1.IPAddress
-         * Device.LANDevice.1.Hosts.Host.1.AddressSource
-         */
-        if(type_id == 2) {//template
-            ret = true;
-            goto stop;
-        }
+    /*
+     * Response exemple : only template object Name is included not its parameters
+     * parameters are included only in case of a instance
+     * Device.LANDevice.1.Hosts.
+     * Device.LANDevice.1.Hosts.HostNumberOfEntries
+     * Device.LANDevice.1.Hosts.Host.
+     * Device.LANDevice.1.Hosts.Host.1.
+     * Device.LANDevice.1.Hosts.Host.1.IPAddress
+     * Device.LANDevice.1.Hosts.Host.1.AddressSource
+     */
+    if(type_id == 2) {//template
+        ret = true;
+        goto stop;
     }
 
     parameters = GETP_ARG(object, "parameters");
