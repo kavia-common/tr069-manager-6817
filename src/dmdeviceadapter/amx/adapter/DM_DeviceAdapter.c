@@ -367,7 +367,7 @@ int DM_ENG_Device_GetParameterNames(char* path, bool nextLevel, DM_ENG_Parameter
         pathLength = strlen(path);
     }
 
-    if(((pathLength == 0) || (strcmp(da.acs.prefix, path) == 0)) && ( nextLevel == true)) {
+    if((pathLength == 0) && ( nextLevel == true)) {
         /* A.3.2.3: Or, if ParameterPath were empty, with NextLevel equal true, the response would list
                      only “InternetGatewayDevice.” (if the CPE is an Internet Gateway Device). */
         DM_ENG_ParameterInfoStruct* dmis = NULL;
