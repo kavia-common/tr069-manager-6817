@@ -36,5 +36,6 @@ LIBDIR ?= $(PREFIX)lib/$(MACHINE)
 BINDIR ?= $(PREFIX)bin
 INCLUDEDIR ?= $(PREFIX)include
 INITDIR ?= /etc/init.d
+ACLDIR ?= /etc/acl
 DOCDIR ?= $(PREFIX)share/doc/tr069-manager
 PROCMONDIR ?= $(PREFIX)lib/processmonitor/scripts
