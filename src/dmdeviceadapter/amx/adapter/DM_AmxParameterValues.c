@@ -143,7 +143,6 @@ static int DM_ENG_Device_GetParameterValues_ParseValues(amxc_var_t* object, void
 
             DM_ENG_addParameterValueStruct(pvsList, dmvs);
             error = 0;
-            SAH_TRACE_INFO("DM_DA", "GPV [%s] = %s - (type = %d)\n", amxc_string_get(&param_name, 0), param_val, DM_ENG_Device_Common_ConvertParameterType(type));
             amxc_string_clean(&param_name);
             free(param_val);
         }

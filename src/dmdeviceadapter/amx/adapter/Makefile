@@ -22,10 +22,17 @@ STAGING_LIBDIR = $(if $(STAGINGDIR), -L$(STAGINGDIR)/lib) \
 				 $(if $(STAGINGDIR), -L$(STAGINGDIR)/usr/lib) \
 				 $(if $(STAGINGDIR), -L$(STAGINGDIR)/usr/local/lib)
 
-CFLAGS += -DSAHTRACES_ENABLED -DSAHTRACES_LEVEL_DEFAULT=700 \
+CFLAGS += -D_GNU_SOURCE -DSAHTRACES_ENABLED -DSAHTRACES_LEVEL_DEFAULT=700 \
 		  -trigraphs -fPIC -g -Wall -Wextra -Werror \
 		  -I$(INCDIR_PRIV) -I$(ROOT)/include -I$(STAGINGDIR)/include \
 		  -I$(STAGINGDIR)/usr/include
+
+ifeq ($(CC_NAME),g++)
+	CFLAGS += -std=c++2a
+else
+	CFLAGS += -std=c11
+endif
+
 LDFLAGS += $(STAGING_LIBDIR) -ldl -lsahtrace \
 		  -lamxc -lamxd -lamxo -lamxb -lamxp 
 

@@ -115,7 +115,7 @@ int append_read_buffer(char** msg, int* len) {
     if(read_buffer) {
         read_buffer = (char*) realloc(read_buffer, (read_buffer_len + *len + 1) * sizeof(char));
         if(!read_buffer) {
-            SAH_TRACE_ERROR("Couldn't realloc %d", (read_buffer_len + *len + 1) * sizeof(char));
+            SAH_TRACE_ERROR("Couldn't realloc");
             return 0;
         }
         memcpy(read_buffer + read_buffer_len, raw, *len);

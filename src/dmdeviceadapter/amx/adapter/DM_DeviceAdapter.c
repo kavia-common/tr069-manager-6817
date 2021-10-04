@@ -887,7 +887,8 @@ int DM_ENG_Device_SaveConfig(DM_ENG_ParameterAttributesStruct* acacheArray[], DM
  * @ return 0 if succesfull, -1 if an error occurred
  */
 int DM_ENG_Device_AddNotification(const char* subscriptionPath, int* subscriptionID) {
-    SAH_TRACEZ_INFO("DM_DA", "DM_ENG_Device_AddNotification path=%s id=%d", subscriptionPath, subscriptionID);
+    SAH_TRACEZ_INFO("DM_DA", "DM_ENG_Device_AddNotification path=%s", subscriptionPath);
+    (void) subscriptionID;
     return -1;//Not yet implemented
 }
 
