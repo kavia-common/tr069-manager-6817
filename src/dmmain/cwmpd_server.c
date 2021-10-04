@@ -85,28 +85,16 @@
 
 extern dm_com_struct g_DmComData;
 
-#define MAXCONNECTIONSPERIOD 3600
-#define MAXCONNECTIONSINPERIOD 50
 #define RESTART_TIMER_TIMEOUT 60000 //ms = 1 min
 
 amxc_string_t buffer;
 
-// static const int DEFAULT_SESSION_TIMEOUT = 45;
-// static const int MAX_CONTENT_LENGTH = 33554432;
-
-#define CPE_REALM     "sahrealm"
 char* g_randomCpeUrl = NULL;
 static int httpCode = 0;
 
 struct lws_context_creation_info* g_lws_ctx_info;
 
 static bool connection_timestamp_list_initialized = false;
-static amxc_llist_t connection_timestamp_list;
-
-typedef struct _time_list_item {
-    time_t t;
-    amxc_llist_it_t it;
-} time_list_item_t;
 
 static int server_getHWAddressFromIp(const char* ip, char* macbuf, size_t buflen) {
     char ifbuf[1024];
@@ -255,83 +243,6 @@ static int server_createURL() {
     return 0;
 }
 
-static bool server_maxConnectionsReached(void) {
-    time_t now;
-    time(&now);
-
-    // get the DM_ENG_MAXCONNECTIONREQUEST
-    char* maxconnectionrequest = NULL;
-    unsigned int mc = MAXCONNECTIONSINPERIOD;
-    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_MAXCONNECTIONREQUEST, &maxconnectionrequest) != 0) {
-        SAH_TRACE_ERROR("Cannot fetch the MaxConnectionRequest");
-    }
-    if(maxconnectionrequest != NULL) {
-        mc = atoi(maxconnectionrequest);
-    }
-
-    free(maxconnectionrequest);
-
-    // get the DM_ENG_FREQCONNECTIONREQUEST
-    char* freqconnectionrequest = NULL;
-    unsigned int fc = MAXCONNECTIONSPERIOD;
-    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_FREQCONNECTIONREQUEST, &freqconnectionrequest) != 0) {
-        SAH_TRACE_ERROR("Cannot fetch the FreqConnectionRequest");
-    }
-    if(freqconnectionrequest != NULL) {
-        fc = atoi(freqconnectionrequest);
-    }
-
-    free(freqconnectionrequest);
-
-    // remove all outdated and invalid timestamps (in case the system clock has been changed)
-    amxc_llist_it_t* cur = amxc_llist_get_first(&connection_timestamp_list);
-    amxc_llist_it_t* next = NULL;
-    while(cur != NULL) {
-        next = amxc_llist_it_get_next(cur);
-        time_list_item_t* value = amxc_llist_it_get_data(cur, time_list_item_t, it);
-        if(((now > value->t) && (now - value->t > (int) fc)) || (value->t > now)) {
-            amxc_llist_it_take(cur);
-            free(value);
-        }
-        cur = next;
-    }
-    // 2*mc: due to the basic/digest authentication, 2 "physical"  connection requests are send per "logical" connection request
-    if(amxc_llist_size(&connection_timestamp_list) > 2 * mc) {
-        /* update RejectedConnectionRequests */
-        // update_rejectedConnectionRequests();
-        return true;
-    }
-
-    return false;
-}
-
-static void server_maxConnectionsAdd(void) {
-    // add a new timestamp to the linked list
-    time_list_item_t* item = (time_list_item_t*) calloc(1, sizeof(time_list_item_t));
-    if(!item) {
-        SAH_TRACE_ERROR("Cannot allocate memory");
-        return;
-    }
-    amxc_llist_it_init(&item->it);
-    time(&item->t);
-    amxc_llist_append(&connection_timestamp_list, &item->it);
-}
-
-// TODO : Fix the Max Connection Request.
-UNUSED static void server_maxConnectionsCleanup(void) {
-    amxc_llist_it_t* cur = amxc_llist_get_first(&connection_timestamp_list);
-    amxc_llist_it_t* next = NULL;
-    while(cur != NULL) {
-        next = amxc_llist_it_get_next(cur);
-        time_list_item_t* value = amxc_llist_it_get_data(cur, time_list_item_t, it);
-        amxc_llist_it_take(cur);
-        free(value);
-        cur = next;
-    }
-
-    amxc_llist_clean(&connection_timestamp_list, NULL);
-}
-
 int server_handleRequestBody(char* body, int len) {
     printf("<--------------------------\n%s\n-------------------------->\n", body);
     process_body(body, len);
@@ -356,11 +267,11 @@ int server_handleRequest(struct lws* wsi, char* in, int len) {
     //        a Connection Request for this reason, the CPE MUST respond to that Connection Request with an
     //        HTTP 503 status code (Service Unavailable). In this case, the CPE SHOULD NOT include the HTTP
     //        Retry-After header in the response.
-    if(server_maxConnectionsReached()) {
-        SAH_TRACE_WARNING("Maximum number of connections , return HTTP 503");
+    if(cwmp_server_maxConnectionsReached()) {
+        SAH_TRACE_WARNING("Maximum number of connections reached return HTTP 503");
         lws_return_http_status(wsi, HTTP_STATUS_SERVICE_UNAVAILABLE, NULL);
     }
-    server_maxConnectionsAdd(); // add a new entry in the list
+    cwmp_server_maxConnectionsAdd(); // add a new entry in the list
 
     // 3.2.2: If the CPE is already in a session with the ACS when it receives one or more Connection Requests, it
     //        MUST NOT terminate that session prematurely as a result. The CPE MUST instead take one of the
@@ -462,7 +373,6 @@ int server_handleRequest(struct lws* wsi, char* in, int len) {
         // As to analyse and valid the content received
         // TODO : check the content received.
         if(DM_ENG_RequestConnection(DM_ENG_EntityType_ACS) == 0) {
-            // TODO : Update the Request Connection Array
             httpCode = HTTP_OK;
         } else {
             httpCode = HTTP_SERVICE_UNAVAILABLE;
@@ -583,7 +493,8 @@ cwmp_status_t cwmp_server_init(struct lws_context_creation_info* lws_ctx_info) {
     lws_ctx_info->port = atoi(server_port);
 
     if(connection_timestamp_list_initialized == false) {
-        amxc_llist_init(&connection_timestamp_list);
+        // init connection timestamp list.
+        cwmp_server_initConnectionTimestampList();
         connection_timestamp_list_initialized = true;
     }
 
@@ -670,5 +581,8 @@ cwmp_status_t cwmp_server_stop(struct lws_context* lws_ctx) {
     //TODO! lws Docs says we should destroy vhost only
     // for now I will destroy the whole server context
     lws_context_destroy(lws_ctx);
+
+    // clean up maxconnections.
+    cwmp_server_maxConnectionsCleanup();
     return cwmp_status_ok;
 }

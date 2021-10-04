@@ -98,6 +98,12 @@ cwmp_status_t cwmp_client_start_session(struct lws_context_creation_info* lws_ct
 
 cwmp_status_t cwmp_client_stop(struct lws_context* lws_ctx);
 
+// This routine is used to check the connection acceptance policy
+void cwmp_server_initConnectionTimestampList(void);
+void cwmp_server_maxConnectionsCleanup(void);
+void cwmp_server_maxConnectionsAdd(void);
+bool cwmp_server_maxConnectionsReached(void);
+
 int timer_stop(const char* name);
 
 int timer_start(const char* name, int waitTime, int intervalTime, timerHandler handler);
