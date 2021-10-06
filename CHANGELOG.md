@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.1.0 - 2021-10-06(11:43:40 +0000)
+
+### New
+
+- [CWMPD] Add connection security
+
+### Fixes
+
+- FIX GPN with Device. and nextlevel true
+- GPN on empty template should return empty
+- gitlab CI build componenet error
+
 ## Release v1.0.3 - 2021-09-23(09:40:00 +0000)
 
 ### Fixes
