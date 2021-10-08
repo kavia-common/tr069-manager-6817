@@ -65,9 +65,10 @@
 #include <dmengine/DM_ENG_Error.h>
 #include "DM_AmxCommon.h"
 
-#define OBJECTPATH "NMC"
-#define REBOOT_FUNCTION "reboot"
-#define RESET_FUNCTION "reset"
+//Path to (tr181-device) on the bus
+#define OBJNAME "Device."
+#define REBOOT "Reboot"
+#define FACTORY_RESET "FactoryReset"
 
 //---------------------------------------------------------------------------------------------
 /**
@@ -87,10 +88,11 @@
  */
 void DM_ENG_Device_Reboot_DoReboot(dm_amx_env_t* amx) {
     SAH_TRACEZ_IN("DM_DA");
-    (void) amx;
-
-    fprintf(stderr, "DM_ENG_Device_Reboot_DoReboot Not yet Implemented \n");
-
+    int rv = 0;
+    rv = amxb_call(amx->bus_ctx, OBJNAME, REBOOT, NULL, NULL, 5);
+    if(rv != 0) {
+        SAH_TRACE_ERROR("DM_DA Invoke failed Device.Reboot - retval = %d", rv);
+    }
     SAH_TRACEZ_OUT("DM_DA");
 }
 //---------------------------------------------------------------------------------------------
@@ -105,8 +107,11 @@ void DM_ENG_Device_Reboot_DoReboot(dm_amx_env_t* amx) {
  */
 void DM_ENG_Device_FactoryReset_DoReset(dm_amx_env_t* amx) {
     SAH_TRACEZ_IN("DM_DA");
-    (void) amx;
-    fprintf(stderr, "DM_ENG_Device_FactoryReset_DoReset Not yet Implemented \n");
+    int rv = 0;
+    rv = amxb_call(amx->bus_ctx, OBJNAME, FACTORY_RESET, NULL, NULL, 5);
+    if(rv != 0) {
+        SAH_TRACE_ERROR("DM_DA Invoke failed Device.FactoryReset - retval = %d", rv);
+    }
     SAH_TRACEZ_OUT("DM_DA");
 }
 

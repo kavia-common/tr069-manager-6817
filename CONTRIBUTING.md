@@ -1,20 +1,20 @@
 # Introduction
 
-First off, thank you for considering contributing to tr069-manager and the [Ambiorix](https://gitlab.com/soft.at.home/ambiorix) project. It's people like you that makes [Ambiorix](https://gitlab.com/soft.at.home/ambiorix) such a great set of tools and libraries.
+First off, thank you for considering contributing to tr069-manager and the [Ambiorix](https://gitlab.com/prpl-foundation/components/ambiorix) project. It's people like you that makes [Ambiorix](https://gitlab.com/prpl-foundation/components) such a great set of tools and libraries.
 
 Following these guidelines helps to communicate that you respect the time of the developers managing and developing this open source project. In return, they should reciprocate that respect in addressing your issue, assessing changes, and helping you finalize your merge requests.
 
-All members of our community are expected to follow our [Code of Conduct](https://gitlab.com/soft.at.home/ambiorix/ambiorix/-/blob/main/doc/CODE_OF_CONDUCT.md). Please make sure you are welcoming and friendly in all of our spaces.
+All members of our community are expected to follow our [Code of Conduct](https://gitlab.com/prpl-foundation/components/ambiorix/ambiorix/-/blob/main/doc/CODE_OF_CONDUCT.md). Please make sure you are welcoming and friendly in all of our spaces.
 
 # What can I contribute?
 
-tr069-manager is a part of the [Ambiorix](https://gitlab.com/soft.at.home/ambiorix) project. All parts of [Ambiorix](https://gitlab.com/soft.at.home/ambiorix) are open source projects and we love to receive contributions from our community — you!
+tr069-manager is a part of the [Ambiorix](https://gitlab.com/prpl-foundation/components/ambiorix) project. All parts of [Ambiorix](https://gitlab.com/prpl-foundation/components/ambiorix) are open source projects and we love to receive contributions from our community — you!
 
-There are many ways to contribute, from writing tutorials or blog posts, improving the documentation, submitting bug reports and feature requests or writing code which can be incorporated into tr069-manager or the [Ambiorix](https://gitlab.com/soft.at.home/ambiorix) project itself.
+There are many ways to contribute, from writing tutorials or blog posts, improving the documentation, submitting bug reports and feature requests or writing code which can be incorporated into tr069-manager or the [Ambiorix](https://gitlab.com/prpl-foundation/components/ambiorix) project itself.
 
 For `support questions`, please create an issue with the label ```support```.
 
-Contributing to the repositories can be done, make sure an issue is created in the [issue tracker](https://gitlab.com/groups/soft.at.home/ambiorix/-/issues)
+Contributing to the repositories can be done, make sure an issue is created in the [issue tracker](https://gitlab.com/groups/prpl-foundation/components/ambiorix/-/issues)
 
 # Your First Contribution
 
@@ -80,9 +80,9 @@ Otherwise, you can update your branch (in your forked project), the MR will be u
 ## Contribution Rules
 
 - Code changes should be tested - the README.md explains how to run tests
-- Always start from an issue, check the [issue tracker](https://gitlab.com/groups/soft.at.home/ambiorix/-/issues). If no issue exists for your new feature/bug fix, just create one.
+- Always start from an issue, check the [issue tracker](https://gitlab.com/groups/prpl-foundation/components/ambiorix/-/issues). If no issue exists for your new feature/bug fix, just create one.
 - Always document public API
-- Make sure new code is following the [coding guidelines](https://gitlab.com/soft.at.home/ambiorix/ambiorix/-/blob/main/doc/CODING_GUIDELINES.md)
+- Make sure new code is following the [coding guidelines](https://gitlab.com/prpl-foundation/components/ambiorix/ambiorix/-/blob/main/doc/CODING_GUIDELINES.md)
 
 ## No issue tracking needed for small contributions
 
