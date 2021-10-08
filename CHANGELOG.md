@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.2.0 - 2021-10-08(07:56:43 +0000)
+
+### New
+
+- Impl ACS/RPCs Reboot/FactoryReset
+
 ## Release v1.1.0 - 2021-10-06(11:43:40 +0000)
 
 ### New
