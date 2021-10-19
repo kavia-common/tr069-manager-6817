@@ -182,7 +182,7 @@ static void timer_append(timer_list_item* item_to_add) {
     }
 }
 
-int timer_start(const char* name, int waitTime, int intervalTime, timerHandler handler) {
+int cwmp_timer_start(const char* name, int waitTime, int intervalTime, timerHandler handler) {
     timer_list_item* timer = timer_find(name);
 
     if(!timer) {
@@ -208,7 +208,7 @@ int timer_start(const char* name, int waitTime, int intervalTime, timerHandler h
     return cwmp_status_ok;
 }
 
-int timer_stop(const char* name) {
+int cwmp_timer_stop(const char* name) {
     timer_list_item* item = timer_find(name);
 
     if(item) {
@@ -221,7 +221,7 @@ int timer_stop(const char* name) {
     return cwmp_status_ok;
 }
 
-unsigned int timer_remainingTime(const char* name) {
+unsigned int cwmp_timer_remainingTime(const char* name) {
     timer_list_item* item = timer_find(name);
 
     return (item) ? amxp_timer_remaining_time(item->timer) : 0;

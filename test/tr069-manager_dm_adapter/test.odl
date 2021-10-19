@@ -166,3 +166,11 @@
     }
 }
 
+%define {
+    object Time {
+        bool Enable = 1;
+        string Status = "Unsynchronized";
+    }
+}
+
+

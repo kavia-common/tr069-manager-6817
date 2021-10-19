@@ -64,15 +64,39 @@
 #include <amxd/amxd_path.h>
 #include <amxd/amxd_object.h>
 #include <amxb/amxb.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <dmengine/DM_ENG_ParameterType.h>
 #include "DM_DeviceAdapter.h"
+
+#define EVENT_DM_OBJECT_CHANGED         "dm:object-changed"
+#define EVENT_DM_INSTANCE_ADDED         "dm:instance-added"
+#define EVENT_DM_INSTANCE_DELETED       "dm:instance-removed"
+#define EVENT_DM_FILTER_OBJECT_CHANGED  "notification in ['dm:object-changed']"
+#define EVENT_DM_FILTER_TEMPLATE        "notification in ['%s'] && parameters.%s == '%s'"
+
+#define EVENT_ENG_SRV_RESTART      "HTTP_SERVER_RESTART"
+#define EVENT_ENG_SRV_STOP         "HTTP_SERVER_STOP"
+#define EVENT_ENG_SRV_START        "HTTP_SERVER_START"
+#define EVENT_ENG_CLEAR_ACS_IP     "CLIENT_CLEAR_ACS_IP"
 
 #define SetErrorGotoStop(errorNumber, message) \
     { error = errorNumber; SAH_TRACEZ_ERROR("DM_DA", message); goto stop; }
 
 #define GotoStop(message) \
     { SAH_TRACEZ_ERROR("DM_DA", message); goto stop; }
+
+typedef void (* notification_cb_t)(const char* path, const amxc_var_t* const data);
+
+typedef struct DM_Subscription {
+    int uniqueID;         // unique id
+    char* path;           // path to object
+    notification_cb_t cb; // callback used when create subscription
+    amxc_llist_it_t it;
+} DM_Subscription_t;
+
+amxc_llist_it_t subscription_list;
+
 
 char* DM_ENG_Device_Common_ACSToAMXPath_noalloc(const char* acsPath);
 char* DM_ENG_Device_Common_ACSToAMXPath(const char* acsPath);
@@ -85,4 +109,7 @@ DM_ENG_ParameterType DM_ENG_Device_Common_ConvertParameterType(u_int32_t type);
 char* DM_ENG_Device_Common_GetRootParameterInternalPath(char* path);
 char* DM_ENG_Device_Common_GetRootParameterAcsPath(char* path);
 bool DM_ENG_Device_Common_IsRootParameter(char* path);
+int DM_ENG_Device_Common_AddSubscription(dm_amx_env_t* amx, const char* path, const char* filter, notification_cb_t cb, int* subscriptionID);
+int DM_ENG_Device_Common_DeleteSubscription(dm_amx_env_t* amx, int id);
+void DM_ENG_Device_Common_Cleanup();
 

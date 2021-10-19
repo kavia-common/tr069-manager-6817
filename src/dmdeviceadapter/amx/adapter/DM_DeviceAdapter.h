@@ -84,10 +84,12 @@ typedef struct dm_deviceadapter_t_ {
 dm_amx_env_t* DM_ENG_Device_GetACSInfo();
 dm_amx_env_t* DM_ENG_Device_GetSystemInfo();
 
-#define MANAGEMENTSERVER_TRANSFERS_NODE "ManagementServer.QueuedTransfers.Entry"
-#define MANAGEMENTSERVER_PATH           "ManagementServer"
-#define DEVICEINFO_PATH                 "DeviceInfo"
-#define TIME_PATH                       "Time"
+#define MANAGEMENTSERVER_TRANSFERS_NODE "ManagementServer.QueuedTransfers.Entry."
+#define MANAGEMENTSERVER_PATH           "ManagementServer."
+#define MGMT_SRV_CONNREQUEST            "ManagementServer.ConnRequest."
+#define MGMT_SRV_INTERNALSETTINGS       "ManagementServer.InternalSettings."
+#define DEVICEINFO_PATH                 "DeviceInfo."
+#define TIME_PATH                       "Time."
 #define AMXB_BACKEND                    "AMXB_BACKEND"
 #define AMXB_URI                        "AMXB_URI"
 /* ubus specefic values*/

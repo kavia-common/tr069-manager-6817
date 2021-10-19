@@ -140,6 +140,11 @@ amxd_status_t _getACSIPTTL(amxd_object_t* object,
                            const amxc_var_t* const args,
                            amxc_var_t* const retval,
                            void* priv);
+
+void start_cwmpd(void);
+
+void stop_cwmpd(void);
+
 #ifdef __cplusplus
 }
 #endif

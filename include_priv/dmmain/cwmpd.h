@@ -61,11 +61,21 @@
 #define _CWMPD_H_
 
 #include <libwebsockets.h>
-//#include<libwebsockets/lws-dll2.h>
-#include "dmengine/DM_ENG_NotificationInterface.h"
+#include <event2/event.h>
+#include <debug/sahtrace.h>
+#include <amxc/amxc.h>
+#include <amxp/amxp.h>
+#include <amxd/amxd_dm.h>
+#include <amxb/amxb.h>
+#include <dmengine/DM_ENG_NotificationInterface.h>
 #include "httpparser/picohttpparser.h"
 
 #define COPY_BUFFER_SIZE 4 * 1024
+
+#define EVENT_ENG_SRV_RESTART      "HTTP_SERVER_RESTART"
+#define EVENT_ENG_SRV_STOP         "HTTP_SERVER_STOP"
+#define EVENT_ENG_SRV_START        "HTTP_SERVER_START"
+#define EVENT_ENG_CLEAR_ACS_IP     "CLIENT_CLEAR_ACS_IP"
 
 typedef enum server_state {INIT = 0, RUN, EXIT, ERROR } server_state_t;
 typedef enum cwmp_status {cwmp_status_ok=0, cwmp_status_ko} cwmp_status_t;
@@ -83,6 +93,7 @@ struct application {
 
 typedef struct application application_t;
 
+//Server
 cwmp_status_t cwmp_server_init(struct lws_context_creation_info* lws_ctx_info);
 
 cwmp_status_t cwmp_server_start(struct lws_context_creation_info* lws_ctx_info,
@@ -90,7 +101,7 @@ cwmp_status_t cwmp_server_start(struct lws_context_creation_info* lws_ctx_info,
 
 cwmp_status_t cwmp_server_stop(struct lws_context* lws_ctx);
 
-
+//Client
 cwmp_status_t cwmp_client_init(struct lws_context_creation_info* lws_ctx_info);
 
 cwmp_status_t cwmp_client_start_session(struct lws_context_creation_info* lws_ctx_info,
@@ -98,24 +109,44 @@ cwmp_status_t cwmp_client_start_session(struct lws_context_creation_info* lws_ct
 
 cwmp_status_t cwmp_client_stop(struct lws_context* lws_ctx);
 
+void cwmp_client_clear_ACSIP();
+
 // This routine is used to check the connection acceptance policy
 void cwmp_server_initConnectionTimestampList(void);
+
 void cwmp_server_maxConnectionsCleanup(void);
+
 void cwmp_server_maxConnectionsAdd(void);
+
 bool cwmp_server_maxConnectionsReached(void);
 
-int timer_stop(const char* name);
+//Eventloop
+cwmp_status_t cwmp_evlp_create(amxb_bus_ctx_t* acs_bus_ctx, amxb_bus_ctx_t* sys_bus_ctx);
 
-int timer_start(const char* name, int waitTime, int intervalTime, timerHandler handler);
+cwmp_status_t cwmp_evlp_start(void);
 
-void timer_cleanup();
+cwmp_status_t cwmp_evlp_stop(void);
 
-unsigned int timer_remainingTime(const char* name);
+cwmp_status_t cwmp_evlp_clean(void);
 
+struct event_base* cwmp_evlp_get(void);
+
+//Timer Interface
+int cwmp_timer_stop(const char* name);
+
+int cwmp_timer_start(const char* name, int waitTime, int intervalTime, timerHandler handler);
+
+unsigned int cwmp_timer_remainingTime(const char* name);
+
+//API
 int get_content_length(struct phr_header* values, unsigned int len);
+
 int append_read_buffer(char** msg, int* len);
+
 int create_read_buffer(char* raw, int len);
-void reset_read_buffer();
+
+void reset_read_buffer(void);
+
 int process_body(char* body, int len);
 
 

@@ -74,7 +74,6 @@
 
 #include <tr069key/tr069key.h>
 #endif
-#include <debug/sahtrace.h>
 #include <event2/event.h>
 #include <amxc/amxc.h>
 #include <amxp/amxp.h>
@@ -89,15 +88,18 @@
 #endif
 
 application_t cwmp_app;// app instance
+static struct lws_context_creation_info server_info;
+static struct lws_context_creation_info client_info;
+static struct lws_context* server_ctx = NULL;
+static struct lws_context* client_ctx = NULL;
+amxb_bus_ctx_t* sys_bus_ctx = NULL;
+amxb_bus_ctx_t* acs_bus_ctx = NULL;
 
-static struct event_base* main_loop;
-// static struct event* timer_outer_event;
-// static struct event* sighandler_event;
 
-static void cwmp_main_handleSignal(int signal __attribute__ ((unused))) {
-    if(signal == SIGINT) {
+static void cwmp_app_handleSignal(int signal __attribute__ ((unused))) {
+    if((signal == SIGINT) || (signal == SIGTERM)) {
         cwmp_app.state = EXIT;
-        event_base_loopbreak(main_loop);
+        cwmp_evlp_stop();
     }
 }
 
@@ -113,7 +115,7 @@ static void app_usage() {
     exit(0);
 }
 
-static void app_configureDefaults() {
+static void cwmp_app_configureDefaults() {
     cwmp_app.name = (char*) "cwmpd";
     cwmp_app.daemonize = 1;
 
@@ -132,19 +134,8 @@ static void app_configureDefaults() {
 #endif
 }
 
-static void evlp_signal_cb(evutil_socket_t fd,
-                           short event,
-                           void* arg) {
-    (void) fd;
-    (void) event;
-    (void) arg;
-    amxp_timers_calculate();
-    amxp_timers_check();
-}
 
-//TODO : add debug options
-
-static void app_configureOptions(int argc, char* argv[]) {
+static void cwmp_app_configureOptions(int argc, char* argv[]) {
     while(1) {
         int option_index = 0;
         static struct option long_options[] = {
@@ -184,105 +175,173 @@ static void app_configureOptions(int argc, char* argv[]) {
     }
 }
 
+static cwmp_status_t cwmp_app_http_server_restart() {
+    // Since lws dosen't support dynamic vhost creation/deletion so we
+    // need to destroy the whole server context and then create a new one
 
-int app_engineEventHandler(const char* eventType) {
-    SAH_TRACE_WARNING("CWMPD Event: %s (To be implemented)", eventType);
+    /* Stop http Server */
+    if(cwmp_server_stop(server_ctx) != cwmp_status_ok) {
+        SAH_TRACE_WARNING("CWMPD failed to stop HTTP server");
+    }
+    // configuration maybe updatet, reinitialize
+    memset(&server_info, 0, sizeof server_info);
+    /* Init http Server */
+    if(cwmp_server_init(&server_info) != cwmp_status_ok) {
+        SAH_TRACE_ERROR("CWMPD failed to initialize HTTP server");
+        return cwmp_status_ko;
+    }
+
+    void* foreign_loops[1] = { cwmp_evlp_get() };
+    /* Start http Server */
+    if(cwmp_server_start(&server_info, foreign_loops, server_ctx) != cwmp_status_ok) {
+        SAH_TRACE_ERROR("CWMPD failed to start HTTP server");
+        return cwmp_status_ko;
+    }
+
+    return cwmp_status_ok;
+}
+
+static cwmp_status_t cwmp_app_clean() {
+    cwmp_status_t status = cwmp_status_ok;
+    if(cwmp_client_stop(client_ctx) != cwmp_status_ok) {
+        SAH_TRACE_ERROR("CWMPD failed to stop HTTP client");
+        status = cwmp_status_ko;
+    }
+    if(cwmp_server_stop(server_ctx) != cwmp_status_ok) {
+        SAH_TRACE_ERROR("CWMPD failed to stop HTTP server");
+        status = cwmp_status_ko;
+    }
+    if(cwmp_evlp_clean() != cwmp_status_ok) {
+        SAH_TRACE_ERROR("CWMPD eventloop cleanup failed");
+        status = cwmp_status_ko;
+    }
+    // return no value ?
+    DM_ENG_Device_Unload();
+    return status;
+}
+
+int cwmp_app_engineEventHandler(const char* eventType) {
+    if(strcmp(eventType, EVENT_ENG_SRV_RESTART) == 0) {
+        if(cwmp_app_http_server_restart() != cwmp_status_ok) {
+            SAH_TRACE_ERROR("CWMPD Restarting HTTP server failed");
+            //DIE HERE
+            raise(SIGTERM);
+        }
+    } else if(strcmp(eventType, EVENT_ENG_SRV_STOP) == 0) {
+        if(cwmp_server_stop(server_ctx) != cwmp_status_ok) {
+            SAH_TRACE_ERROR("CWMPD Stopping HTTP server failed");
+        }
+    } else if(strcmp(eventType, EVENT_ENG_SRV_START) == 0) {
+        if(server_ctx != NULL) {
+            SAH_TRACE_WARNING("CWMPD Attemp to Start a new HTTP server while another is running");
+            // Stop the other first , otherwise we will fail to bind to ip:port
+            if(cwmp_server_stop(server_ctx) != cwmp_status_ok) {
+                SAH_TRACE_ERROR("CWMPD Stopping HTTP server failed");
+            }
+        }
+        // Configuration maybe changed, reinitialize
+        memset(&server_info, 0, sizeof server_info);
+        if(cwmp_server_init(&server_info) != cwmp_status_ok) {
+            SAH_TRACE_WARNING("CWMPD HTTP server initialization failed");
+        }
+        void* foreign_loops[1] = { cwmp_evlp_get() };
+        /* Start http Server */
+        if(cwmp_server_start(&server_info, foreign_loops, server_ctx) != cwmp_status_ok) {
+            SAH_TRACE_ERROR("CWMPD Starting HTTP server failed");
+            // if we reach this point propably cwmpd need a restart exit
+            // the app as it's already dead and can't answer to ACS requests
+            raise(SIGTERM);
+        }
+    } else if(strcmp(eventType, EVENT_ENG_CLEAR_ACS_IP) == 0) {
+        cwmp_client_clear_ACSIP();// clear acs ip
+    } else {
+        SAH_TRACE_INFO("CWMPD unhandled engine event [%s]", eventType);
+    }
     return DM_ENG_COMPLETED;
 }
 
 int main(int argc, char* argv[]) {
     int rc = 1;
-    struct lws_context_creation_info server_info;
-    struct lws_context_creation_info client_info;
-    // struct lws_client_connect_info connect_info;
-    struct lws_context* server_ctx = NULL;
-    struct lws_context* client_ctx = NULL;
-    struct event* sig_alarm;
-    amxb_bus_ctx_t* sys_bus_ctx = NULL;
-    amxb_bus_ctx_t* acs_bus_ctx = NULL;
 
-    signal(SIGINT, cwmp_main_handleSignal);
+    signal(SIGINT, cwmp_app_handleSignal);
+    signal(SIGTERM, cwmp_app_handleSignal);
+
     /* Configure APP*/
-    app_configureDefaults();
-    app_configureOptions(argc, argv);
+    cwmp_app_configureDefaults();
+    cwmp_app_configureOptions(argc, argv);
 
 
     if(!DM_ENG_Device_Load(cwmp_app.da_path)) {
-        SAH_TRACE_ERROR("Failed to load dm adaptor");
-        return 0;
+        SAH_TRACE_ERROR("CWMPD Failed to load adapter plugin");
+        return rc;
     }
 
-    if(DM_COM_INIT(timer_start, timer_stop, timer_remainingTime, app_engineEventHandler, (void**) &sys_bus_ctx, (void**) &acs_bus_ctx) != 0) {
-        SAH_TRACE_ERROR("Failed to init DM COM");
-        return 0;
+    if(DM_COM_INIT(cwmp_timer_start, cwmp_timer_stop,
+                   cwmp_timer_remainingTime, cwmp_app_engineEventHandler,
+                   (void**) &sys_bus_ctx, (void**) &acs_bus_ctx) != 0) {
+        SAH_TRACE_ERROR("CWMPD Failed to initialize DM_COM");
+        return rc;
     }
 
-    main_loop = event_base_new();
+    //Init evlp
+    if(cwmp_evlp_create(acs_bus_ctx, sys_bus_ctx) != cwmp_status_ok) {
+        SAH_TRACE_ERROR("CWMPD Failed to initialize evlp");
+        return rc;
+    }
 
-    sig_alarm = evsignal_new(main_loop,
-                             SIGALRM,
-                             evlp_signal_cb,
-                             NULL);
-    event_add(sig_alarm, NULL);
-
-    void* foreign_loops[1] = { main_loop };
+    void* foreign_loops[1] = { cwmp_evlp_get() };
     memset(&server_info, 0, sizeof server_info);
     memset(&client_info, 0, sizeof client_info);
 
     /* Daemonize if needed */
     if(cwmp_app.daemonize) {
         if(daemon(0, 0) < 0) {
-            SAH_TRACE_ERROR("unable to daemonize: %s", strerror(errno));
+            SAH_TRACE_ERROR("CWMPD unable to daemonize: %s", strerror(errno));
             goto error;
         }
     }
 
     /* Init http Server */
     if(cwmp_server_init(&server_info) != cwmp_status_ok) {
-        SAH_TRACE_ERROR("Start initialization failed : exit here");
-        return 0;
+        SAH_TRACE_ERROR("CWMPD Failed to initialize HTTP server");
+        goto error;
     }
 
     /* Start http Server */
     if(cwmp_server_start(&server_info, foreign_loops, server_ctx) != cwmp_status_ok) {
-        SAH_TRACE_ERROR("Start server failed exit from here");
-        return 0;
+        SAH_TRACE_ERROR("CWMPD Failed to start HTTP server");
+        goto error;
     }
 
     /* Init http Client */
     if(cwmp_client_init(&client_info) != cwmp_status_ok) {
-        SAH_TRACE_ERROR("Client Start initialization failed : exit here");
-        return 0;
+        SAH_TRACE_ERROR("CWMDP HTTP client initialization failed");
+        goto error;
     }
 
     /* Start http Server */
     if(cwmp_client_start_session(&client_info, foreign_loops, client_ctx) != cwmp_status_ok) {
-        SAH_TRACE_ERROR("Client Start failed exit from here");
-        return 0;
+        SAH_TRACE_ERROR("CWMPD failed to start HTTP client");
+        goto error;
     }
-
 
     /* Start the main loop */
-    SAH_TRACE_NOTICE("starting cwmpd");
-
+    SAH_TRACE_NOTICE("CWMPD starting cwmpd");
 
     /* Start the main event loop and wait for events*/
-    event_base_dispatch(main_loop);
-
-    /* CleanUP before exit*/
-    if(server_ctx) {
-        lws_context_destroy(server_ctx);
+    if(cwmp_evlp_start() != cwmp_status_ok) {
+        SAH_TRACE_ERROR("CWMPD eventloop start failed going to exit");
+        goto error;
     }
-    if(client_ctx) {
-        lws_context_destroy(client_ctx);
-    }
-
-    /* exit the app*/
-    rc = (cwmp_app.state == ERROR);
-    SAH_TRACE_APP_INFO("exiting with code %d", rc);
 
 error:
-    SAH_TRACE_NOTICE("CWMPD (TR069) IS EXITING");
+
+    if(cwmp_app_clean() != cwmp_status_ok) {
+        cwmp_app.state = ERROR;
+    }
+    /* exit the app*/
+    rc = (cwmp_app.state == ERROR);
+    SAH_TRACE_APP_INFO("CWMPD is exiting with code [%d]", rc);
     return rc;
 }
 

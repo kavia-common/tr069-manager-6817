@@ -85,14 +85,12 @@
 
 extern dm_com_struct g_DmComData;
 
-#define RESTART_TIMER_TIMEOUT 60000 //ms = 1 min
-
 amxc_string_t buffer;
 
 char* g_randomCpeUrl = NULL;
 static int httpCode = 0;
+static struct lws_vhost* server_vhost = NULL;
 
-struct lws_context_creation_info* g_lws_ctx_info;
 
 static bool connection_timestamp_list_initialized = false;
 
@@ -445,7 +443,6 @@ static int cwmp_server_http_callback(struct lws* wsi, enum lws_callback_reasons 
         break;
     }
     return lws_callback_http_dummy(wsi, reason, user, in, len);
-    // return 0;
 }
 
 /* websocket configuration struct , protocol : http */
@@ -456,6 +453,7 @@ static const struct lws_protocols protocols[] = {
 
 /* fetch all server info from data model and feed them to server info struct*/
 cwmp_status_t cwmp_server_init(struct lws_context_creation_info* lws_ctx_info) {
+    cwmp_status_t ret = cwmp_status_ko;
     char* server_host = NULL;
     char* server_port = NULL;
     char* acsip = NULL;
@@ -464,7 +462,8 @@ cwmp_status_t cwmp_server_init(struct lws_context_creation_info* lws_ctx_info) {
     SAH_TRACE_INFO("lws init server\n");
     lws_ctx_info->options = LWS_SERVER_OPTION_VALIDATE_UTF8
         | LWS_SERVER_OPTION_LIBEVENT
-        | LWS_SERVER_OPTION_EXPLICIT_VHOSTS;
+        | LWS_SERVER_OPTION_EXPLICIT_VHOSTS
+        | LWS_SERVER_OPTION_ALLOW_LISTEN_SHARE;
 
     lws_ctx_info->protocols = protocols;
 
@@ -478,13 +477,13 @@ cwmp_status_t cwmp_server_init(struct lws_context_creation_info* lws_ctx_info) {
 
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_LOCALIPADDRESS, &server_host) != 0) {
         SAH_TRACE_ERROR("Cannot fetch the local ip address");
-        return cwmp_status_ko;
+        return ret;
     }
     SAH_TRACE_INFO("Connection request host = %s\n", server_host);
 
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_CONNECTIONREQUESTPORT, &server_port) != 0) {
         SAH_TRACE_ERROR("Cannot fetch the local connection request port #");
-        return cwmp_status_ko;
+        return ret;
     }
     SAH_TRACE_INFO("Connection request port # = %s", server_port);
 
@@ -515,23 +514,21 @@ cwmp_status_t cwmp_server_init(struct lws_context_creation_info* lws_ctx_info) {
         goto error;
     }
 
-    free(server_host);
-    free(server_port);
-    free(acsip);
-    free(sourceprefix);
-
-    return cwmp_status_ok;
-
+    ret = cwmp_status_ok;
 error:
-    free(server_host);
-    free(server_port);
-    free(acsip);
-    free(sourceprefix);
-    // TODO : fix restart timer with amxp.
-    amxp_timer_t* restart_timer = NULL;
-    amxp_timer_start(restart_timer, RESTART_TIMER_TIMEOUT);
-    SAH_TRACE_INFO("Http server failed to start, we will retry in %d ms", RESTART_TIMER_TIMEOUT);
-    return cwmp_status_ko;
+    if(server_host) {
+        free(server_host);
+    }
+    if(server_port) {
+        free(server_port);
+    }
+    if(acsip) {
+        free(acsip);
+    }
+    if(sourceprefix) {
+        free(sourceprefix);
+    }
+    return ret;
 }
 
 /* Initialize and Start the main server */
@@ -562,7 +559,7 @@ cwmp_status_t cwmp_server_start(struct lws_context_creation_info* lws_ctx_info,
 
     if(cpe_enabled_b) {
         /* create the vhost */
-        struct lws_vhost* server_vhost = lws_create_vhost(lws_ctx, lws_ctx_info);
+        server_vhost = lws_create_vhost(lws_ctx, lws_ctx_info);
 
         if(server_vhost == NULL) {
             SAH_TRACE_ERROR("lws vhost creation failed failed\n");
@@ -580,7 +577,13 @@ cwmp_status_t cwmp_server_start(struct lws_context_creation_info* lws_ctx_info,
 cwmp_status_t cwmp_server_stop(struct lws_context* lws_ctx) {
     //TODO! lws Docs says we should destroy vhost only
     // for now I will destroy the whole server context
+    if(server_vhost) {
+        lws_vhost_destroy(server_vhost);
+    }
+
+    server_vhost = NULL;
     lws_context_destroy(lws_ctx);
+    lws_ctx = NULL;
 
     // clean up maxconnections.
     cwmp_server_maxConnectionsCleanup();

@@ -123,6 +123,18 @@ static int amxb_dummy_register(UNUSED void* const ctx,
     return 0;
 }
 
+static int dummy_subscribe(UNUSED void* const ctx,
+                           UNUSED const char* object) {
+    //Do nothing for now
+    return 0;
+}
+
+static int dummy_unsubscribe(UNUSED void* const ctx,
+                             UNUSED const char* object) {
+    //Do nothing for now
+    return 0;
+}
+
 static amxb_be_funcs_t amxb_dummy_impl = {
     .connect = amxb_dummy_connect,
     .disconnect = amxb_dummy_disconnect,
@@ -132,8 +144,8 @@ static amxb_be_funcs_t amxb_dummy_impl = {
     .async_invoke = NULL,
     .wait_request = NULL,
     .close_request = NULL,
-    .subscribe = NULL,
-    .unsubscribe = NULL,
+    .subscribe = dummy_subscribe,
+    .unsubscribe = dummy_unsubscribe,
     .free = amxb_dummy_free,
     .register_dm = amxb_dummy_register,
     .name = "dummy",

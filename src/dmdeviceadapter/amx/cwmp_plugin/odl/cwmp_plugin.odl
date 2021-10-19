@@ -26,6 +26,4 @@ include "${defaults_file}";
         filter 'path == "ManagementServer.ConnRequest." && (contains("parameters.ConnRequestHost") || contains("parameters.ConnRequestPort") || contains("parameters.ConnRequestPath"))';
     on event "dm:object-changed" call writeInterface
         filter 'path == "ManagementServer." && contains("parameters.Interface")';
-    on event "dm:object-changed" call manageCwmpd
-        filter 'path == "ManagementServer." && contains("parameters.EnableCWMP")';
 }

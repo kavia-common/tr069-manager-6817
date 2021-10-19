@@ -166,6 +166,8 @@ bool DM_ENG_Device_Init(void** systemCtx, void** acsCtx) {
     *systemCtx = (void*) (da.system.bus_ctx);
     *acsCtx = (void*) (da.acs.bus_ctx);
 
+    //Init the subscription list
+    amxc_llist_init((amxc_llist_t* const) &subscription_list);
 
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_PERSISTENTRPCPATH, &persistentRPCPath) != 0) {
         SAH_TRACE_ERROR("Cannot fetch the DM_ENG_PERSISTENTRPCPATH param");
@@ -199,6 +201,7 @@ bool DM_ENG_Device_Release() {
 
     DM_ENG_Device_ACSConnectionCleanup(&da.acs);
     DM_ENG_Device_SystemConnectionCleanup(&da.system);
+    DM_ENG_Device_Common_Cleanup();
     free(da.system.instance_mode);
     free(da.acs.instance_mode);
     free(persistentRPCPath);

@@ -100,9 +100,6 @@ static void acsDNScb(const amxb_bus_ctx_t* bus_ctx, amxb_request_t* req, int sta
 static bool assembleConnectionRequestURL(amxd_object_t* object, amxc_string_t* url, const char* host, uint16_t port);
 static void findAndUpdateLocalIP(const char* interface);
 static void updateACSIPAddressParameter(void);
-static void start_cwmpd(void);
-static void stop_cwmpd(void);
-static void restart_cwmpd(void);
 
 // Static variables
 static amxc_string_t ipv4address; // CPE WAN IPv4
@@ -119,18 +116,6 @@ void _writeURL(UNUSED const char* const sig_name,
                UNUSED const amxc_var_t* const data,
                UNUSED void* const priv) {
     updateACSIP(false);
-}
-
-void _manageCwmpd(UNUSED const char* const sig_name,
-                  UNUSED const amxc_var_t* const data,
-                  UNUSED void* const priv) {
-    /* Enable/Disable cwmpd service */
-    bool enable_cwmp = GETP_BOOL(data, "parameters.EnableCWMP.to");
-    if(enable_cwmp) {
-        start_cwmpd();
-    } else {
-        stop_cwmpd();
-    }
 }
 
 static void updateLocalIP(void) {
@@ -178,7 +163,6 @@ static void updateLocalIP(void) {
         amxc_string_delete(&crh_value);
     }
     _updateConnectionRequestURL(NULL, NULL, NULL);
-    restart_cwmpd();
 }
 
 static void updateACSIPAddressParameter(void) {
@@ -357,7 +341,6 @@ static void findAndUpdateLocalIP(const char* interface) {
                 amxd_trans_set_cstring_t(&trans, "ConnRequestHost", host);
                 amxd_trans_apply(&trans, cwmp_plugin_get_dm());
             }
-            restart_cwmpd();
             goto stop;
         }
     }
@@ -477,29 +460,23 @@ static int build_cwmpd_proc_args(amxc_array_t* cmd, UNUSED amxc_var_t* settings)
     return 0;
 }
 
-static void start_cwmpd(void) {
-    amxd_object_t* mgmt_server = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer");
-    amxd_object_t* conn_request = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer.ConnRequest");
-    amxd_status_t status;
-    char* localip = amxd_object_get_cstring_t(conn_request, "LocalIPAddress", &status);
-    if(amxd_object_get_bool(mgmt_server, "EnableCWMP", &status) && (strcmp(localip, "0.0.0.0") != 0)) {
-        int logfd = 1;
-        amxp_proc_ctrl_new(&cwmpd_proc, build_cwmpd_proc_args);
+void start_cwmpd(void) {
+    int logfd = 1;
+    amxp_proc_ctrl_new(&cwmpd_proc, build_cwmpd_proc_args);
 
-        log_file = fopen("/tmp/cwmpd_log.txt", "w+");
+    log_file = fopen("/tmp/cwmpd_log.txt", "w+");
 
-        if(log_file) {
-            logfd = fileno(log_file);
-        }
-        //temp redirect logs to tmp file
-        //TODO! use syslog
-        cwmpd_proc->proc->fd[STDOUT_FILENO][1] = logfd;
-        cwmpd_proc->proc->fd[STDERR_FILENO][1] = logfd;
-        amxp_proc_ctrl_start(cwmpd_proc, 0, NULL);
+    if(log_file) {
+        logfd = fileno(log_file);
     }
+    //temp redirect logs to tmp file
+    //TODO! use syslog PCF-362
+    cwmpd_proc->proc->fd[STDOUT_FILENO][1] = logfd;
+    cwmpd_proc->proc->fd[STDERR_FILENO][1] = logfd;
+    amxp_proc_ctrl_start(cwmpd_proc, 0, NULL);
 }
 
-static void stop_cwmpd(void) {
+void stop_cwmpd(void) {
     if(cwmpd_proc) {
         amxp_proc_ctrl_stop(cwmpd_proc);
         amxp_proc_ctrl_delete(&cwmpd_proc);
@@ -507,9 +484,5 @@ static void stop_cwmpd(void) {
     if(log_file) {
         fclose(log_file);
     }
-}
-static void restart_cwmpd(void) {
-    stop_cwmpd();
-    start_cwmpd();
 }
 

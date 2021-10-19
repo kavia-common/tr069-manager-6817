@@ -64,6 +64,7 @@
 #include "dmmain/cwmpd.h"
 #include "httpparser/picohttpparser.h"
 #include <dmengine/DM_ENG_RPCInterface.h>
+#include <stdlib.h>
 
 static int connect_to_acs();
 
@@ -497,4 +498,11 @@ int client_startSession() {
 // error:
 //     free(acs_url);
 //     return -1;
+}
+
+void cwmp_client_clear_ACSIP() {
+    if(acs_server_ip) {
+        free(acs_server_ip);
+        acs_server_ip = NULL;
+    }
 }

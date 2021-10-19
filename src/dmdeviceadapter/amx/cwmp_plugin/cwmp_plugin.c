@@ -114,12 +114,14 @@ int _cwmp_plugin_main(int reason, amxd_dm_t* dm, amxo_parser_t* parser) {
     switch(reason) {
     case 0: // START
         cwmp_plugin_init(dm, parser);
+        start_cwmpd();
         break;
     case 1: // STOP
         app.dm = NULL;
         app.parser = NULL;
         app.dns_resolv_invoke = NULL;
         app.amxb_bus_ctx = NULL;
+        stop_cwmpd();
         break;
     default:
         retval = -1;

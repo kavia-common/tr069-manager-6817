@@ -38,7 +38,7 @@ Configure and build the lib
 ```
 mkdir build
 cd build
-cmake ../ -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DLWS_WITH_LIBEVENT=ON -DLWS_WITH_SYS_FAULT_INJECTION=ON -DLWS_WITH_SECURE_STREAMS=ON -DLWS_WITH_SYS_ASYNC_DNS=ON 
+cmake ../ -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DLWS_WITH_LIBEVENT=ON -DLWS_WITH_SYS_FAULT_INJECTION=ON -DLWS_WITH_SECURE_STREAMS=ON -DLWS_WITH_SYS_ASYNC_DNS=ON DLWS_MAX_SMP=10
 make
 sudo make install
 ```
@@ -50,7 +50,6 @@ Download libtr69-engine
 ```
 git clone git@gitlab.com:soft.at.home/libraries/libtr69-engine.git
 cd libtr69-engine
-git checkout dev_init
 ```
 Configure and build the lib
 
@@ -66,7 +65,7 @@ You can build and install TR069 Manager
 make && sudo make install
 ```
 ## UNIT Tests
-Unit tests require ubusd and they should be executed with root access
+Unit tests
 ```
-sudo -E make test
+make test
 ```

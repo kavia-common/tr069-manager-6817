@@ -76,7 +76,7 @@
 #include <amxd/amxd_dm.h>
 #include <amxb/amxb.h>
 
-
+#include <dmengine/DM_ENG_ParameterValueStruct.h>
 #include <dmengine/DM_ENG_NotificationInterface.h>
 #include <dmengine/DM_ENG_RPCInterface.h>
 #include <dmengine/DM_ENG_InformMessageScheduler.h>
@@ -108,10 +108,112 @@ static char* time_path = NULL;
    - If the event is coming from the ManagementServer.QueuedTransfers.* objects.
    - if a "status" parameter changes to "Finished", trigger a transfer complete message
 
-   @param notify The individual notification
+   @param path parameter path
+   @param data notification data
  */
-void DM_ENG_Device_SystemConnectionHandleParameterChanged(/*notification_t* notify*/) {
+void DM_ENG_Device_SystemConnectionHandleParameterChanged(const char* path, const amxc_var_t* const data) {
     SAH_TRACEZ_INFO("DM_DA", "DM_ENG_Device_SystemConnectionHandleParameterChanged");
+    const amxc_htable_t* htable = NULL;
+
+    if((path == NULL) || (data == NULL)) { //DIE HERE
+        SAH_TRACEZ_ERROR("DM_DA", "Received notification with NULL path/data ?");
+        return;
+    }
+    const char* objpath = GETP_CHAR(data, "path");
+    const amxc_var_t* parameters = GETP_ARG(data, "parameters");
+
+    //Handle ManagementServer Events
+    if(strcmp(path, MANAGEMENTSERVER_PATH) == 0) {
+        htable = amxc_var_constcast(amxc_htable_t, parameters);
+
+        amxc_htable_iterate(hit, htable) {
+            const char* key = amxc_htable_it_get_key(hit);
+            if(key == NULL) {
+                break;
+            }
+            // re-initialize the periodic inform timer with the new values
+            if((strcmp("PeriodicInformInterval", key) == 0) ||
+               (strcmp("PeriodicInformTime", key) == 0) ||
+               (strcmp("PeriodicInformEnable", key) == 0)) {
+                DM_ENG_InformMessageScheduler_initializePeriodicInform();
+            } else if(strcmp("URL", key) == 0) {
+                /* 3.7.1.5 :
+                   The specific conditions that MUST result in the BOOTSTRAP EventCode are:
+                   ...
+                   - First time connection of the CPE to the ACS after the ACS URL has been modified in any way. */
+                DM_ENG_InformMessageScheduler_bootstrapInform();
+            } else if(strcmp("ACSIP", key) == 0) {
+                DM_ENG_NotificationInterface_engineEvent(EVENT_ENG_SRV_RESTART);
+                DM_ENG_NotificationInterface_engineEvent(EVENT_ENG_CLEAR_ACS_IP);
+            } else if(strcmp("AllowConnectionRequestFromUnknownHost", key) == 0) {
+                DM_ENG_NotificationInterface_engineEvent(EVENT_ENG_SRV_RESTART);
+            } else if(strcmp("AllowConnectionRequestFromAddress", key) == 0) {
+                DM_ENG_NotificationInterface_engineEvent(EVENT_ENG_SRV_RESTART);
+            } else if(strcmp("EnableCWMP", key) == 0) {
+                amxc_var_t* parameter = amxc_var_from_htable_it(hit);
+                bool enable_cwmp = GETP_BOOL(parameter, "to");
+                if(enable_cwmp) {
+                    DM_ENG_NotificationInterface_engineEvent(EVENT_ENG_SRV_START);
+                } else {
+                    DM_ENG_NotificationInterface_engineEvent(EVENT_ENG_SRV_STOP);
+                }
+                DM_ENG_NotificationInterface_timerStart("send_inform_message", 0, 0, DM_ENG_InformMessageScheduler_sendMessage);
+            } else if(strcmp("BlockedEvents", key) == 0) {
+                DM_ENG_InformMessageScheduler_blockedEventsChanged();
+            } else if((strcmp(key, "ConnRequestHost") == 0) ||
+                      (strcmp(key, "ConnRequestPort") == 0)) {
+                amxc_var_t* parameter = amxc_var_from_htable_it(hit);
+                char* value = NULL;
+                DM_ENG_ParameterValueStruct* param = NULL;
+                amxc_string_t parameterName;
+                amxc_string_init(&parameterName, 0);
+
+                DM_ENG_NotificationInterface_engineEvent(EVENT_ENG_SRV_RESTART);
+                // remove the forced parameters from the session queue
+                DM_ENG_InformMessageScheduler_removeForcedParametersFromSession();
+                value = amxc_var_dyncast(cstring_t, GETP_ARG(parameter, "to"));
+
+                // send out an inform with parameter update
+                DM_ENG_NotificationMode mode = DM_ENG_NotificationMode_FORCED;
+                // create a fake param structure: forced parameters are added anyway when composing the inform
+                amxc_string_setf(&parameterName, "%s%s", objpath, key);
+                param = DM_ENG_newParameterValueStruct(amxc_string_get(&parameterName, 0),
+                                                       DM_ENG_ParameterType_STRING,
+                                                       value);
+                if(param == NULL) {
+                    SAH_TRACEZ_ERROR("DM_DA", "Could not create ParameterValueStruct");
+                } else {
+                    // Update the inform message scheduler
+                    DM_ENG_InformMessageScheduler_parameterValueChanged(param, mode);
+                }
+                amxc_string_clean(&parameterName);
+                if(value) {
+                    free(value);
+                }
+            } else if(strcmp("ACSIPTTL", key) == 0) {
+                // at the moment libtr69-engine open-source has no support for DNS affinity jira ticket PCF-403
+                SAH_TRACEZ_ERROR("DM_DA", "libtr69-engine has no support for ttl DNS ?");
+            }
+        }
+    }
+    //Handle Time plugin Events
+    else if(strcmp(path, time_path) == 0) {
+        // here we look only for the Status parameters , ignore others
+        const char* syncronized = GETP_CHAR(parameters, "Status.to");
+        if(syncronized && (strcmp("Synchronized", syncronized) == 0)) {
+            char* periodicInformTime = NULL;
+            if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM,
+                                               DM_ENG_PERIODICINFORMTIME,
+                                               &periodicInformTime) == 0) {
+                if(periodicInformTime != NULL) {
+                    if(strcmp(periodicInformTime, "0001-01-01T00:00:00Z") != 0) {
+                        DM_ENG_InformMessageScheduler_initializePeriodicInform();
+                    }
+                    free(periodicInformTime);
+                }
+            }
+        }
+    }
 }
 
 //---------------------------------------------------------------------------------------------
@@ -684,15 +786,18 @@ static void DM_ENG_Device_SystemConnectionSleepBeforeStarting() {
 bool DM_ENG_Device_SystemConnectionInitialize(dm_amx_env_t* amx) {
     int cnt = 0;
     int retcode = 0;
+    int id = 0;
     bool ret = false;
     const char* devstatus = NULL;
     // check the device status
     amxc_var_t value;
+    amxc_string_t filter;
     amxc_string_t path;
     amxc_string_t valpath;
     amxc_var_init(&value);
     amxc_string_init(&path, 0);
     amxc_string_init(&valpath, 0);
+    amxc_string_init(&filter, 0);
 
     if(!DM_ENG_Device_Common_AmxConnect(amx, AMXB_BACKEND, AMXB_BACKEND_DEFAULT,
                                         AMXB_URI, AMXB_URI_DEFAULT)) {
@@ -705,13 +810,12 @@ bool DM_ENG_Device_SystemConnectionInitialize(dm_amx_env_t* amx) {
 
     DM_ENG_Device_SystemConnectionSleepBeforeStarting();
 
-    amxc_string_setf(&path, "%s.%s", DEVICEINFO_PATH, "DeviceStatus");
-    amxc_string_setf(&valpath, "0.'%s.'.%s", DEVICEINFO_PATH, "DeviceStatus");
+    amxc_string_setf(&path, "%s%s", DEVICEINFO_PATH, "DeviceStatus");
+    amxc_string_setf(&valpath, "0.'%s'.%s", DEVICEINFO_PATH, "DeviceStatus");
 
     do {
         retcode = amxb_get(amx->bus_ctx, amxc_string_get(&path, 0), 0, &value, 1);
         if((retcode < 0) || amxc_var_is_null(&value)) {
-            fprintf(stderr, "Failed to fetch parameter value (%s\n", amxc_string_get(&path, 0));
             break;// giveUP
         }
 
@@ -730,6 +834,14 @@ bool DM_ENG_Device_SystemConnectionInitialize(dm_amx_env_t* amx) {
 
     } while(devstatus && strcmp(devstatus, "Up") != 0);
 
+    /* Create the notifications */
+    if(DM_ENG_Device_Common_AddSubscription(amx, MANAGEMENTSERVER_PATH,
+                                            EVENT_DM_FILTER_OBJECT_CHANGED,
+                                            &DM_ENG_Device_SystemConnectionHandleParameterChanged,
+                                            &id) != 0) {
+        SAH_TRACEZ_ERROR("DM_DA", "Could not create notification for %s", MANAGEMENTSERVER_PATH);
+        goto stop;
+    }
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_TIMEPLUGINPATH, &time_path) != 0) {
         SAH_TRACEZ_ERROR("DM_ENGINE", "Could not get time plugin path");
     }
@@ -737,7 +849,14 @@ bool DM_ENG_Device_SystemConnectionInitialize(dm_amx_env_t* amx) {
         SAH_TRACEZ_NOTICE("DM_ENGINE", "Defaulting time path to Time");
         time_path = strdup(TIME_PATH);
     }
-
+    /* Create the notifications */
+    if(DM_ENG_Device_Common_AddSubscription(amx, time_path,
+                                            EVENT_DM_FILTER_OBJECT_CHANGED,
+                                            &DM_ENG_Device_SystemConnectionHandleParameterChanged,
+                                            &id) != 0) {
+        SAH_TRACEZ_ERROR("DM_DA", "Could not create notification for %s", time_path);
+        goto stop;
+    }
     if(DM_ENG_SetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_SESSIONSTATUS, (char*) "Idle") != 0) {
         SAH_TRACE_ERROR("Could not set Session Status in the datamodel");
     }
@@ -748,6 +867,7 @@ stop:
     amxc_var_clean(&value);
     amxc_string_clean(&path);
     amxc_string_clean(&valpath);
+    amxc_string_clean(&filter);
     return ret;
 }
 
@@ -771,7 +891,6 @@ void DM_ENG_Device_SystemConnectionCleanup(dm_amx_env_t* amx) {
     // amx bus connection cleanup
     amxb_free(&amx->bus_ctx);
     amx->bus_ctx = NULL;
-    //TODO! we should also clean all subscriptions,...
 }
 
 /** @} */
