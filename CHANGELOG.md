@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.3.1 - 2021-10-20(10:57:54 +0000)
+
+### Fixes
+
+- Fix SAHTRACE for cwmp-plugin
+
 ## Release v1.3.0 - 2021-10-19(13:38:14 +0000)
 
 ### New
