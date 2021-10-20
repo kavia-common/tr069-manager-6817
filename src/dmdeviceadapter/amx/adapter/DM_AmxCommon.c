@@ -524,7 +524,7 @@ int DM_ENG_Device_Common_AddSubscription(dm_amx_env_t* amx,
         SetErrorGotoStop(9000, "Failed to Create a new subscription");
     }
     // add to list
-    amxc_llist_append((amxc_llist_t* const) &subscription_list, &sub->it);
+    amxc_llist_append(&subscription_list, &sub->it);
     error = 0;
 stop:
     if((error != 0) && sub) {
@@ -553,8 +553,9 @@ int DM_ENG_Device_Common_DeleteSubscription(dm_amx_env_t* amx, int id) {
     int rv = 0;
     DM_Subscription_t* sub = NULL;
     int index = 0;
+    amxc_llist_it_t* item = NULL;
     // search for notification
-    amxc_llist_for_each(it, ((amxc_llist_t* const) &subscription_list)) {
+    amxc_llist_for_each(it, (&subscription_list)) {
         sub = amxc_container_of(it, DM_Subscription_t, it);
         if(sub->uniqueID == id) {
             break;
@@ -576,8 +577,8 @@ int DM_ENG_Device_Common_DeleteSubscription(dm_amx_env_t* amx, int id) {
     if(rv != 0) {
         SetErrorGotoStop(9000, "Failed to Create a new subscription");
     }
-    amxc_llist_it_t* todel = amxc_llist_take_at((amxc_llist_t* const) &subscription_list, index);
-    DM_list_removeSub(todel);// free memory
+    item = amxc_llist_take_at(&subscription_list, index);
+    DM_list_removeSub(item);// free memory
 stop:
     return error;
 }
@@ -592,7 +593,7 @@ void DM_ENG_Device_Common_Cleanup() {
         goto stop;
     }
     // Delete All subscription when exit
-    amxc_llist_for_each(it, ((amxc_llist_t* const) &subscription_list)) {
+    amxc_llist_for_each(it, (&subscription_list)) {
         sub = amxc_container_of(it, DM_Subscription_t, it);
         // calling DM_ENG_Device_Common_DeleteSubscription while accessing
         // the list may cause a crash ? not clear from documentation ?
@@ -607,6 +608,6 @@ void DM_ENG_Device_Common_Cleanup() {
     }
 stop:
     // Cleanup the list
-    amxc_llist_clean((amxc_llist_t* const) &subscription_list, DM_list_removeSub);
+    amxc_llist_clean(&subscription_list, DM_list_removeSub);
 }
 /** @} */

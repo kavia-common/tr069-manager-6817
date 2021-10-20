@@ -95,7 +95,7 @@ typedef struct DM_Subscription {
     amxc_llist_it_t it;
 } DM_Subscription_t;
 
-amxc_llist_it_t subscription_list;
+amxc_llist_t subscription_list;
 
 
 char* DM_ENG_Device_Common_ACSToAMXPath_noalloc(const char* acsPath);
