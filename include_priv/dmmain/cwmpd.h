@@ -69,6 +69,7 @@
 #include <amxb/amxb.h>
 #include <dmengine/DM_ENG_NotificationInterface.h>
 #include "httpparser/picohttpparser.h"
+#include <debug/sahtrace.h>
 
 #define COPY_BUFFER_SIZE 4 * 1024
 
@@ -84,7 +85,7 @@ struct application {
     char* name;
     int daemonize;
     int traceLevel;
-    int traceType;
+    sah_trace_type traceType;
     server_state_t state;
     char* trustedCA;
     char* pidFile;

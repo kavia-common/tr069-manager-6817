@@ -104,14 +104,14 @@ static void cwmp_app_handleSignal(int signal __attribute__ ((unused))) {
 }
 
 static void app_usage() {
-    printf("cwmpd [-h] [-f] [-v] [-d]\n"
+    printf("cwmpd [-h] [-f] [-v] [-d] [-s]\n"
            "options:\n"
            "  -h        --help           this help screen\n"
            "  -o        --public-port    the port to listen on (public)\n"
            "  -f        --foreground     do not daemonize, log to stdout\n"
            "  -T        --trustedCA      Trusted CA certificates\n"
-           "  -v        --verbose        be more verbose, can be used multiple times\n"
-           "  -d        --da_path        device adapter path\n");
+           "  -d        --da_path        device adapter path\n"
+           "  -s        --sahtracelvl    set sahtrace level of log\n");
     exit(0);
 }
 
@@ -124,7 +124,7 @@ static void cwmp_app_configureDefaults() {
         cwmp_app.pidFile = (char*) CFG_PID_FILE;
     }
     /* defaults for sahtrace */
-    cwmp_app.traceLevel = 0;
+    cwmp_app.traceLevel = 200;
     cwmp_app.traceType = TRACE_TYPE_SYSLOG;
     /* ssl default */
 #ifdef CONFIG_SAH_SERVICES_TR069_CERTIFICATE_NO_PEM
@@ -141,15 +141,14 @@ static void cwmp_app_configureOptions(int argc, char* argv[]) {
         static struct option long_options[] = {
             {"", 1, 0, 0},
             {"foreground", 1, 0, 'f'},
-            {"verbose", 1, 0, 'v'},
             {"help", 1, 0, 'h'},
-            {"trustedCA", 1, 0, 'T' },
-            {"da_path", 1, 0, 'd' },
-
+            {"trustedCA", 1, 0, 'T'},
+            {"da_path", 1, 0, 'd'},
+            {"sahtracelvl", 1, 0, 's'},
             {0, 0, 0, 0}
         };
 
-        int c = getopt_long(argc, argv, "hvfiDT:d:", long_options, &option_index);
+        int c = getopt_long(argc, argv, "hfiDT:d:s:", long_options, &option_index);
         if(c == -1) {
             break;
         }
@@ -159,9 +158,6 @@ static void cwmp_app_configureOptions(int argc, char* argv[]) {
             cwmp_app.traceType = TRACE_TYPE_STDOUT;
             cwmp_app.daemonize = 0;
             break;
-        case 'v':
-            cwmp_app.traceLevel += 100;
-            break;
         case 'h':
             app_usage();
             break;
@@ -170,6 +166,9 @@ static void cwmp_app_configureOptions(int argc, char* argv[]) {
             break;
         case 'd':
             cwmp_app.da_path = optarg;
+            break;
+        case 's':
+            cwmp_app.traceLevel = atoi(optarg);
             break;
         }
     }
@@ -260,6 +259,11 @@ int cwmp_app_engineEventHandler(const char* eventType) {
     return DM_ENG_COMPLETED;
 }
 
+void init_sahtrace() {
+    sahTraceOpen("cwmpd", cwmp_app.traceType);
+    sahTraceSetLevel(cwmp_app.traceLevel);
+}
+
 int main(int argc, char* argv[]) {
     int rc = 1;
 
@@ -270,6 +274,7 @@ int main(int argc, char* argv[]) {
     cwmp_app_configureDefaults();
     cwmp_app_configureOptions(argc, argv);
 
+    init_sahtrace();
 
     if(!DM_ENG_Device_Load(cwmp_app.da_path)) {
         SAH_TRACE_ERROR("CWMPD Failed to load adapter plugin");

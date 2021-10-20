@@ -56,9 +56,18 @@ package: all
 changelog:
 	$(call create_changelog)
 
+doc:
+	$(eval ODLFILES += src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin.odl)
+	$(eval ODLFILES += src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-defaults.odl)
+
+	mkdir -p output/xml
+	mkdir -p output/html
+	amxo-cg -Gxml,output/xml/$(COMPONENT).xml $(or $(ODLFILES), "")
+	amxo-xml-to -x html -o output-dir=output/html -o title="$(COMPONENT)" -o version=$(VERSION) -o sub-title="Datamodel reference" output/xml/*.xml
+
 test:
 	$(MAKE) -C src/dmdeviceadapter/amx/adapter test
 	$(MAKE) -C test run
 	$(MAKE) -C test coverage
 
-.PHONY: all clean changelog install package test
+.PHONY: all clean changelog install package doc test

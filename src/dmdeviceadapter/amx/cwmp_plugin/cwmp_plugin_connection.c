@@ -68,6 +68,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <debug/sahtrace.h>
+#include <amxc/amxc.h>
+#include <amxp/amxp.h>
 #include "cwmp_plugin.h"
 
 // NI_MAXHOST normally defined in netdb.h but if it's not defined we redefine here
@@ -451,29 +453,29 @@ static bool assembleConnectionRequestURL(amxd_object_t* object, amxc_string_t* u
 }
 
 static int build_cwmpd_proc_args(amxc_array_t* cmd, UNUSED amxc_var_t* settings) {
-    amxc_array_init(cmd, 1);
+    char log_level[16] = {0};
+
+    amxc_array_init(cmd, 4);
     amxc_array_append_data(cmd, strdup("cwmpd"));
     //daemonize by default
     amxc_array_append_data(cmd, strdup("-f"));
     //TODO! manage app settings
     amxc_array_append_data(cmd, strdup("-d/usr/lib/libdmda_amx.so"));
+    amxc_var_t* trace = amxc_var_get_key(cwmp_plugin_get_config(), "sahtrace", AMXC_VAR_FLAG_DEFAULT);
+    sprintf(log_level, "-s%d", GET_UINT32(trace, "level"));
+    amxc_array_append_data(cmd, strdup(log_level));
     return 0;
 }
 
 void start_cwmpd(void) {
-    int logfd = 1;
-    amxp_proc_ctrl_new(&cwmpd_proc, build_cwmpd_proc_args);
-
-    log_file = fopen("/tmp/cwmpd_log.txt", "w+");
-
-    if(log_file) {
-        logfd = fileno(log_file);
+    amxd_object_t* mgmt_server = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer");
+    amxd_object_t* conn_request = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer.ConnRequest");
+    amxd_status_t status;
+    char* localip = amxd_object_get_cstring_t(conn_request, "LocalIPAddress", &status);
+    if(amxd_object_get_bool(mgmt_server, "EnableCWMP", &status) && (strcmp(localip, "0.0.0.0") != 0)) {
+        amxp_proc_ctrl_new(&cwmpd_proc, build_cwmpd_proc_args);
+        amxp_proc_ctrl_start(cwmpd_proc, 0, NULL);
     }
-    //temp redirect logs to tmp file
-    //TODO! use syslog PCF-362
-    cwmpd_proc->proc->fd[STDOUT_FILENO][1] = logfd;
-    cwmpd_proc->proc->fd[STDERR_FILENO][1] = logfd;
-    amxp_proc_ctrl_start(cwmpd_proc, 0, NULL);
 }
 
 void stop_cwmpd(void) {
