@@ -57,7 +57,15 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 **
 ****************************************************************************/
-#include "DM_DeviceAdapter.h"
+#ifndef __DM_ADAPTER_AMXACSCONNECTION_H__
+#define __DM_ADAPTER_AMXACSCONNECTION_H__
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+#include "DM_AmxCommon.h"
 
 bool DM_ENG_Device_ACSConnectionInitialize(dm_amx_env_t* amx);
 void DM_ENG_Device_ACSConnectionCleanup(dm_amx_env_t* amx);
@@ -67,3 +75,9 @@ bool DM_ENG_Device_ACSConnectionAddSubscription(dm_amx_env_t* amx, const char* s
 bool DM_ENG_Device_ACSConnectionRemoveSubscription(dm_amx_env_t* amx, const char* subscriptionPath, int subscriptionID);
 char* DM_ENG_Device_ACSConnectionHandleGetwandevice(dm_amx_env_t* amx, const char* ipaddress, char** addressFound);
 char* DM_ENG_Device_ACSConnectionHandleGetwaninterface(dm_amx_env_t* amx, const char* ipaddress, char** addressFound);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // __DM_ADAPTER_AMXACSCONNECTION_H__

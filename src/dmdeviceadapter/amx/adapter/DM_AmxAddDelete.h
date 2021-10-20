@@ -58,8 +58,22 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 **
 ****************************************************************************/
-#include "DM_DeviceAdapter.h"
+#ifndef __DM_ADAPTER_AMXADDDELETE_H__
+#define __DM_ADAPTER_AMXADDDELETE_H__
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+#include "DM_AmxCommon.h"
 
 
 int DM_ENG_Device_AddDeleteObject_Add(dm_amx_env_t* amx, char* objectName, unsigned int* pInstanceNumber, DM_ENG_ParameterStatus* pStatus);
 int DM_ENG_Device_AddDeleteObject_Delete(dm_amx_env_t* amx, char* objectName, DM_ENG_ParameterStatus* pStatus);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // __DM_ADAPTER_AMXADDDELETE_H__

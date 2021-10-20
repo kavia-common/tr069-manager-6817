@@ -58,6 +58,14 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 **
 ****************************************************************************/
+#ifndef __DM_ADAPTER_AMXCOMMON_H__
+#define __DM_ADAPTER_AMXCOMMON_H__
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <amxc/amxc.h>
 #include <amxp/amxp.h>
 #include <amxd/amxd_dm.h>
@@ -95,9 +103,6 @@ typedef struct DM_Subscription {
     amxc_llist_it_t it;
 } DM_Subscription_t;
 
-amxc_llist_t subscription_list;
-
-
 char* DM_ENG_Device_Common_ACSToAMXPath_noalloc(const char* acsPath);
 char* DM_ENG_Device_Common_ACSToAMXPath(const char* acsPath);
 bool DM_ENG_Device_Common_CheckSystem(dm_amx_env_t* amx);
@@ -112,4 +117,10 @@ bool DM_ENG_Device_Common_IsRootParameter(char* path);
 int DM_ENG_Device_Common_AddSubscription(dm_amx_env_t* amx, const char* path, const char* filter, notification_cb_t cb, int* subscriptionID);
 int DM_ENG_Device_Common_DeleteSubscription(dm_amx_env_t* amx, int id);
 void DM_ENG_Device_Common_Cleanup();
+void DM_ENG_Device_Common_Init();
 
+#ifdef __cplusplus
+}
+#endif
+
+#endif // __DM_ADAPTER_AMXCOMMON_H__

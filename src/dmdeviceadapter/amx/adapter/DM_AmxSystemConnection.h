@@ -57,13 +57,16 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 **
 ****************************************************************************/
-#include <amxc/amxc.h>
-#include <amxp/amxp.h>
-#include <amxd/amxd_dm.h>
-#include <amxb/amxb.h>
+#ifndef __DM_ADAPTER_AMXSYSTEMCONNECTION_H__
+#define __DM_ADAPTER_AMXSYSTEMCONNECTION_H__
 
-#include "DM_DeviceAdapter.h"
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <dmengine/DM_ENG_RPCInterface.h>
+#include "DM_AmxCommon.h"
 
 bool DM_ENG_Device_SystemConnectionInitialize(dm_amx_env_t* amx);
 void DM_ENG_Device_SystemConnectionCleanup(dm_amx_env_t* amx);
@@ -71,3 +74,9 @@ char* DM_ENG_Device_SystemConnectionGetParameter(dm_amx_env_t* amx, DM_ENG_Syste
 bool DM_ENG_Device_SystemConnectionSetParameter(dm_amx_env_t* amx, DM_ENG_SystemParameter_t parameter, char* pValue);
 void DM_ENG_Device_SystemConnectionHandleFinishedTransferObject(char* objectName);
 bool DM_ENG_Device_SystemConnectionExecuteFunction(dm_amx_env_t* amx, DM_ENG_SystemFunction_t function);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // __DM_ADAPTER_AMXSYSTEMCONNECTION_H__

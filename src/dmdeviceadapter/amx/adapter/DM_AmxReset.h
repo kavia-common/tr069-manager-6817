@@ -58,5 +58,21 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 **
 ****************************************************************************/
+#ifndef __DM_ADAPTER_AMXRESET_H__
+#define __DM_ADAPTER_AMXRESET_H__
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+#include "DM_AmxCommon.h"
+
 void DM_ENG_Device_Reboot_DoReboot(dm_amx_env_t* amx);
 void DM_ENG_Device_FactoryReset_DoReset(dm_amx_env_t* amx);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // __DM_ADAPTER_AMXRESET_H__

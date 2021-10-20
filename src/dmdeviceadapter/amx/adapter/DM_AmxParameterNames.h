@@ -58,7 +58,21 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 **
 ****************************************************************************/
-#include "DM_DeviceAdapter.h"
+#ifndef __DM_ADAPTER_AMXPARAMETERNAMES_H__
+#define __DM_ADAPTER_AMXPARAMETERNAMES_H__
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+#include "DM_AmxCommon.h"
 
 int DM_ENG_Device_GetParameterNames_PartialPath(dm_amx_env_t* amx_env, char* path, bool nextLevel, DM_ENG_ParameterInfoStruct** infoList);
 int DM_ENG_Device_GetParameterNames_Parameter(dm_amx_env_t* amx_env, char* path, DM_ENG_ParameterInfoStruct** infoList);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // __DM_ADAPTER_AMXPARAMETERNAMES_H__

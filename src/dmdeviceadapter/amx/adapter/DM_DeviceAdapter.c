@@ -166,8 +166,7 @@ bool DM_ENG_Device_Init(void** systemCtx, void** acsCtx) {
     *systemCtx = (void*) (da.system.bus_ctx);
     *acsCtx = (void*) (da.acs.bus_ctx);
 
-    //Init the subscription list
-    amxc_llist_init(&subscription_list);
+    DM_ENG_Device_Common_Init();
 
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_PERSISTENTRPCPATH, &persistentRPCPath) != 0) {
         SAH_TRACE_ERROR("Cannot fetch the DM_ENG_PERSISTENTRPCPATH param");

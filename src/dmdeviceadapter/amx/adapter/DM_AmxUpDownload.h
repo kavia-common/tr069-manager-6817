@@ -58,11 +58,25 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 **
 ****************************************************************************/
+#ifndef __DM_ADAPTER_AMXUPDOWNLOAD_H__
+#define __DM_ADAPTER_AMXUPDOWNLOAD_H__
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <dmengine/DM_ENG_AllQueuedTransferStruct.h>
-#include "DM_DeviceAdapter.h"
+#include "DM_AmxCommon.h"
 
 int DM_ENG_Device_DoDownload(dm_amx_env_t* amx, char* commandkey, char* fileType, char* url, char* username, char* password, unsigned int fileSize, char* targetFileName,
                              unsigned int delayseconds, char* successURL, char* failureURL);
 int DM_ENG_Device_DoUpload(dm_amx_env_t* amx, char* commandkey, char* fileType, char* url, char* username, char* password, unsigned int delayseconds);
 int DM_ENG_Device_GetQueuedTransfers(dm_amx_env_t* amx, DM_ENG_AllQueuedTransferStruct** pResult[]);
 bool DM_ENG_Device_UpDownloadInitialize(dm_amx_env_t* amx);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // __DM_ADAPTER_AMXUPDOWNLOAD_H__

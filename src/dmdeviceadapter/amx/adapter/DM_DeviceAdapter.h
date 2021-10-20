@@ -58,8 +58,13 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 **
 ****************************************************************************/
-#ifndef _DM_DEVICEADAPTER_H_
-#define _DM_DEVICEADAPTER_H_
+#ifndef __DM_DEVICE_ADAPTER_H__
+#define __DM_DEVICE_ADAPTER_H__
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 #include <amxc/amxc.h>
 #include <amxp/amxp.h>
@@ -98,4 +103,8 @@ dm_amx_env_t* DM_ENG_Device_GetSystemInfo();
 
 int DM_ENG_Device_GetConfigValue(DM_ENG_SystemParameter_t parameter, char** pResult);
 
+#ifdef __cplusplus
+}
 #endif
+
+#endif // __DM_DEVICE_ADAPTER_H__

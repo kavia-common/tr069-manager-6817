@@ -67,6 +67,9 @@
 #include <string.h>
 
 #include "DM_AmxCommon.h"
+
+// Subscription list
+amxc_llist_t subscription_list;
 // Root data model parameters ACS path
 const char* ROOT_DM_ACS_PARAMETER_PATH[3] = {
     "Device.RootDataModelVersion",
@@ -609,5 +612,10 @@ void DM_ENG_Device_Common_Cleanup() {
 stop:
     // Cleanup the list
     amxc_llist_clean(&subscription_list, DM_list_removeSub);
+}
+
+void DM_ENG_Device_Common_Init() {
+    //Init the subscription list
+    amxc_llist_init(&subscription_list);
 }
 /** @} */
