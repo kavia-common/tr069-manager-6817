@@ -51,7 +51,7 @@ LOCAL_LIBS = -L$(OUTPUT_DIR)/$(MACHINE)/libhttpparser
 
 LDFLAGS += -ldl $(LOCAL_LIBS) $(STAGING_LIBDIR) -lwebsockets -levent \
 		  -lamxc -lamxd -lamxo -lamxb -lamxp -lsahtrace \
-		  -ldmcom -ldmcommon -ldmengine -ldmxml_ixml -lhttpparser
+		  -ldmcom -ldmcommon -ldmengine -ldmxml_ixml -lhttpparser -lcares
 # helper functions - used in multiple targets
 define install_to
 	$(INSTALL) -d $(1)/usr/bin/

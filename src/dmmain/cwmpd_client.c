@@ -57,6 +57,10 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 **
 ****************************************************************************/
+
+/**********************************************************
+* Include files
+**********************************************************/
 #include <stdio.h>
 #include <fcntl.h>
 #include <debug/sahtrace.h>
@@ -66,12 +70,50 @@
 #include <dmengine/DM_ENG_RPCInterface.h>
 #include <stdlib.h>
 
-static int connect_to_acs();
+#include <amxc/amxc.h>
+#include <amxp/amxp.h>
+#include <amxd/amxd_types.h>
+#include <amxb/amxb.h>
 
-static char* acs_server;
+#include <ares.h>
+#include <arpa/inet.h>
+#include <event2/event.h>
+
+/**********************************************************
+* Macro definitions
+**********************************************************/
+#define HTTP_HEADER_SIZE        4096
+#define DEFAULT_SESSION_TIMEOUT 45
+#define MAX_CONTENT_LENGTH      33554432
+#define USER_AGENT              "prpl_user_agent"
+#define addrFamilyPath          "Device.ManagementServer.InternalSettings.ACSAddrFamily"
+
+/**********************************************************
+* Type definitions
+**********************************************************/
+struct dnsresolve_context {
+    struct event_base* base;
+    struct event* fd_event_cb;
+    ares_channel channel;
+    struct ares_options ares_opts;
+};
+
+typedef struct AddrInfo {
+    char* addrStr;
+    unsigned int ttl;
+    amxc_llist_it_t it;
+} AddrInfo_t;
+
+/**********************************************************
+* Variable declarations
+**********************************************************/
+static char* acs_server_host;
 static char* acs_server_ip;
-int acs_server_port;
+static int acs_server_port;
 static char* acs_server_path;
+static char* acsip_affinity = NULL;
+static bool new_session = true;
+
 static bool connectedToServer = false;
 static bool retransmitLastMessage = false;
 static int session_timeout = 0;
@@ -80,27 +122,216 @@ static char* pending_message = NULL;
 static bool unexpected_close = true;
 static char* read_buffer = NULL;
 static int read_buffer_len = 0;
-
-static const int DEFAULT_SESSION_TIMEOUT = 45;
-static const int MAX_CONTENT_LENGTH = 33554432;
-
-
-#define HTTP_HEADER_SIZE 4096
 char http_header[HTTP_HEADER_SIZE] = {0};
 int last_used = 0;
-#define USER_AGENT      "prpl_user_agent"
 
 static struct lws* client_wsi = NULL;
 UNUSED static const char* ba_user, * ba_password; // TO DO move to client struct
-
-
-/* needed by link state notifier */
-// UNUSED static const lws_retry_bo_t retry = {
-//     .secs_since_valid_ping = 3,
-//     .secs_since_valid_hangup = 10,
-// };
-
 struct lws_context* g_lws_ctx;
+
+struct dnsresolve_context dns_ctx;
+
+static amxp_timer_t* dns_ttl_timer = NULL;
+static unsigned int dns_ttl_timer_value = 0;
+static bool ttl_timer_started = false;
+
+// list of ACS addresses with ttl.
+amxc_llist_t addrInfo_list;
+
+/**********************************************************
+* Function Prototypes
+**********************************************************/
+static int cwmp_client_connect_to_acs();
+static void cwmp_client_sessionTimedOut(UNUSED char* name);
+static void cwmp_client_send_header(int msgLength);
+static int cwmp_client_getACSAddrFamily();
+static bool cwmp_client_dns_resolve();
+int cwmp_client_initialize_connection(const char* acs_url);
+int cwmp_client_handle_raw_reply(char* raw, int len);
+
+/**********************************************************
+* Functions
+**********************************************************/
+static int isIPAddress(const char* ip) {
+    struct in6_addr result;
+    int res = inet_pton(AF_INET, ip, &result);
+    if(res) {
+        return 1;
+    }
+    res = inet_pton(AF_INET6, ip, &result);
+    if(res) {
+        return 1;
+    }
+    return 0;
+}
+
+static int cwmp_client_getACSAddrFamily() {
+    uint8_t addrFamily = 0;
+    DM_ENG_ParameterValueStruct** pResult = NULL;
+    char* paramsArray[2];
+    paramsArray[0] = (char*) addrFamilyPath;
+    paramsArray[1] = NULL;
+
+    if(DM_ENG_GetParameterValues(DM_ENG_EntityType_SYSTEM, (char**) paramsArray, &pResult) == 0) {
+        addrFamily = atoi(pResult[0]->value);
+        DM_ENG_deleteAllParameterValueStruct(pResult);
+        free(pResult);
+    }
+    if(addrFamily == 4) {
+        return AF_INET;
+    } else if(addrFamily == 6) {
+        return AF_INET6;
+    }
+    return AF_UNSPEC;
+}
+
+static void cwmp_client_fd_event_cb(int fd, short flags, UNUSED void* arg) {
+    int write = ARES_SOCKET_BAD;
+    int read = ARES_SOCKET_BAD;
+    if(flags & EV_READ) {
+        read = fd;
+    }
+    if(flags & EV_WRITE) {
+        write = fd;
+    }
+    ares_process_fd(dns_ctx.channel, read, write);
+}
+
+static void cwmp_client_ares_sock_state_cb(UNUSED void* data, int fd, int read, int write) {
+    if(((read + write) == 0) && (dns_ctx.fd_event_cb != NULL)) {
+        // remove registred event if any
+        event_del(dns_ctx.fd_event_cb);
+        free(dns_ctx.fd_event_cb);
+        dns_ctx.fd_event_cb = NULL;
+        return;
+    }
+    short events = 0;
+    SAH_TRACE_INFO("Change state fd %d read:%d write:%d", fd, read, write);
+    if(read) {
+        events = EV_READ;
+    }
+    if(write) {
+        events = EV_WRITE;
+    }
+    SAH_TRACE_INFO("assign event callback here");
+    dns_ctx.fd_event_cb = event_new(dns_ctx.base, fd, events, cwmp_client_fd_event_cb, NULL);
+    // Add event
+    event_add(dns_ctx.fd_event_cb, NULL);
+}
+
+static cwmp_status_t cwmp_client_dnsresolve_cleanup() {
+
+    // cleanup fd_event_cb
+    if(dns_ctx.fd_event_cb) {
+        event_del(dns_ctx.fd_event_cb);
+        free(dns_ctx.fd_event_cb);
+        dns_ctx.fd_event_cb = NULL;
+    }
+
+    if(dns_ctx.channel) {
+        ares_destroy(dns_ctx.channel);
+        ares_library_cleanup();
+        dns_ctx.channel = NULL;
+    }
+
+    SAH_TRACE_INFO("Cleaup dns resolve");
+
+    return cwmp_status_ok;
+}
+
+/*
+ * Callback that is invoked by c-ares when an asynchronous name resolution
+ * request that we have previously initiated is complete.
+ */
+static void cwmp_client_dnsresolve_cb(UNUSED void* data, int status, UNUSED int timeouts, struct ares_addrinfo* ai) {
+    SAH_TRACE_INFO("cwmp_client_dnsresolve_cb called");
+
+    if(!ai || (status != ARES_SUCCESS)) {
+        SAH_TRACE_INFO("Failed to lookup %s", ares_strerror(status));
+        return;
+    }
+
+    if(acsip_affinity && (strcmp(acsip_affinity, "0") == 0) && dns_ttl_timer) {
+        SAH_TRACE_INFO("Stop dns TTL timer");
+        amxp_timer_stop(dns_ttl_timer);
+    }
+
+    amxc_llist_clean(&addrInfo_list, NULL);
+    amxc_llist_init(&addrInfo_list);
+
+    if(ai->nodes != NULL) {
+        // pointer to current ares_addrinfo_node
+        const struct ares_addrinfo_node* ai_cur;
+        char addrstr[100] = "";
+        uint8_t* addr = NULL;
+        for(ai_cur = ai->nodes; ai_cur != NULL; ai_cur = ai_cur->ai_next) {
+            inet_ntop(ai_cur->ai_family, ai_cur->ai_addr->sa_data, addrstr, 100);
+            switch(ai_cur->ai_family) {
+            case AF_INET:
+                addr = (uint8_t*) &((struct sockaddr_in*) ai_cur->ai_addr)->sin_addr;
+                break;
+            case AF_INET6:
+                addr = (uint8_t*) &((struct sockaddr_in6*) ai_cur->ai_addr)->sin6_addr;
+                break;
+            }
+            ares_inet_ntop(ai_cur->ai_family, addr, addrstr, 100);
+
+            if((addrstr == NULL) || (strlen(addrstr) == 0)) {
+                continue;
+            }
+
+            // create a new AddrInfo (addr + ttl).
+            AddrInfo_t* new_addrinfo = (AddrInfo_t*) calloc(1, sizeof(AddrInfo_t));
+            new_addrinfo->addrStr = strndup(addrstr, strlen(addrstr));
+            new_addrinfo->ttl = ai_cur->ai_ttl;
+
+            // add the new AddrInfo to addrInfo_list.
+            amxc_llist_append(&addrInfo_list, &new_addrinfo->it);
+            SAH_TRACE_INFO("ACSIP : IPv%d address: %s, TTL = %d", ai_cur->ai_family == PF_INET6 ? 6 : 4,
+                           addrstr, ai_cur->ai_ttl);
+        }
+    }
+
+    // connect to acs.
+    cwmp_client_connect_to_acs();
+    ares_freeaddrinfo(ai);
+    if(cwmp_client_dnsresolve_cleanup() != cwmp_status_ok) {
+        SAH_TRACE_ERROR("DNS resolve cleanup failed");
+    }
+}
+
+static bool cwmp_client_dns_resolve(const char* hostname) {
+    int status, optmask = 0;
+    memset(&dns_ctx, 0, sizeof(dns_ctx));
+    dns_ctx.base = cwmp_evlp_get();
+    dns_ctx.channel = NULL;
+
+    status = ares_library_init(ARES_LIB_INIT_ALL);
+    if(status != ARES_SUCCESS) {
+        SAH_TRACE_INFO("ares_library_init: %s", ares_strerror(status));
+        return false;
+    }
+
+    dns_ctx.ares_opts.sock_state_cb = cwmp_client_ares_sock_state_cb;
+    optmask |= ARES_OPT_SOCK_STATE_CB;
+
+    status = ares_init_options(&dns_ctx.channel, &dns_ctx.ares_opts, optmask);
+    if(status != ARES_SUCCESS) {
+        SAH_TRACE_INFO("ares_init_options failed: %s", ares_strerror(status));
+        return false;
+    }
+
+    struct ares_addrinfo_hints hints;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = cwmp_client_getACSAddrFamily();
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = ARES_AI_CANONNAME | ARES_AI_ENVHOSTS | ARES_AI_NOSORT;
+
+    SAH_TRACE_INFO("Send a new dns query to resolve uriHost : %s", hostname);
+    ares_getaddrinfo(dns_ctx.channel, hostname, NULL, &hints, cwmp_client_dnsresolve_cb, NULL);
+
+    return true;
+}
 
 int get_content_length(struct phr_header* values, unsigned int len) {
     for(unsigned int i = 0; i < len; ++i) {
@@ -149,7 +380,7 @@ void reset_read_buffer() {
 int process_body(char* body, int len) {
     SAH_TRACE_INFO("Message body arrived (%zu)", strlen(body));
     if(strstr(body, DM_COM_ENV_TAG) == NULL) {
-        SAH_TRACE_WARNING("This is not a SOAP body\n");
+        SAH_TRACE_WARNING("This is not a SOAP body");
     } else {
         DM_SoapXml SoapMsg;
         DM_HttpCheckNamespace(body, len);
@@ -167,7 +398,7 @@ int process_body(char* body, int len) {
     return 0;
 }
 
-int handle_raw_reply(char* raw, int len) {
+int cwmp_client_handle_raw_reply(char* raw, int len) {
     char* msg = raw;
     char* body = NULL;
     size_t header_len = 100, msg_len = 0;
@@ -214,13 +445,37 @@ int handle_raw_reply(char* raw, int len) {
 static int cwmp_client_http_callback(struct lws* wsi, enum lws_callback_reasons reason,
                                      UNUSED void* user, void* in, size_t len) {
     int status = 0;
+    char serverip[16];
+    lws_get_peer_simple(wsi, serverip, 16);
 
     /* protocol logic goes here */
     switch(reason) {
     case LWS_CALLBACK_PROTOCOL_INIT:
         break;
     case LWS_CALLBACK_RAW_CONNECTED:
+        client_wsi = wsi;
         connectedToServer = true;
+        SAH_TRACE_NOTICE("Connected to ACS server IP : %s", serverip);
+        acs_server_ip = strdup(serverip);
+        amxc_llist_it_t* curr = amxc_llist_get_first(&addrInfo_list);
+        amxc_llist_it_t* next = NULL;
+        AddrInfo_t* connected_addr = NULL;
+        while(curr) {
+            next = amxc_llist_it_get_next(curr);
+            connected_addr = amxc_container_of(curr, AddrInfo_t, it);
+            if(acs_server_ip == connected_addr->addrStr) {
+                break;
+            }
+            curr = next;
+        }
+        // Start TTl timer when acsip_affinity = false and the ttl > 0
+        if(connected_addr && (connected_addr->ttl > 0) && (strcmp(acsip_affinity, "0") == 0)) {
+            dns_ttl_timer_value = connected_addr->ttl;
+            SAH_TRACE_INFO("Start dns TTL timer [%d]", dns_ttl_timer_value);
+            ttl_timer_started = true;
+            amxp_timer_start(dns_ttl_timer, dns_ttl_timer_value * 1000);
+        }
+
         free(read_buffer);
         read_buffer = NULL;
         read_buffer_len = 0;
@@ -240,10 +495,18 @@ static int cwmp_client_http_callback(struct lws* wsi, enum lws_callback_reasons 
         SAH_TRACE_INFO(" Client: Disconnected from ACS server");
         break;
     case LWS_CALLBACK_WSI_DESTROY:
-        client_wsi = NULL;
+        if(client_wsi && (client_wsi == wsi)) {
+            client_wsi = NULL;
+        }
         break;
     case LWS_CALLBACK_RAW_RX:
-        handle_raw_reply((char*) in, len);
+        cwmp_client_handle_raw_reply((char*) in, len);
+        break;
+    case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
+        SAH_TRACE_ERROR("Client : connection error with %s : %s", serverip, in ? (char*) in : "(null)");
+        if(client_wsi && (client_wsi == wsi)) {
+            client_wsi = NULL;
+        }
         break;
 
     default:
@@ -259,30 +522,23 @@ static const struct lws_protocols protocols[] =
     { NULL, NULL, 0, 0, 0, NULL, 0} /* mark protocol end  needed by lws */
 };
 
-static int connect_to_acs() {
-    struct lws_client_connect_info cnx_info;
+int cwmp_client_initialize_connection(const char* acs_url) {
     char* acs_url_local = NULL;
     const char* uriHost = NULL;
     const char* uriScheme = NULL;
     int uriPort = 0;
     const char* uriPath = NULL;
     char* crHost = NULL;
-    char* acsip_affinity = NULL;
-    char* acsip_ttl = NULL;
-    char* acsip = NULL;
 
-    memset(&cnx_info, 0, sizeof(cnx_info));
-    cnx_info.context = g_lws_ctx;
-    cnx_info.method = "RAW";
-    cnx_info.protocol = protocols[0].name;
-    cnx_info.ssl_connection = 0;
-    cnx_info.pwsi = &client_wsi;
-    cnx_info.fi_wsi_name = "user";
-    unexpected_close = true;
-    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_URL, &acs_url_local) != 0) {
-        SAH_TRACE_ERROR("Cannot fetch the ACS SERVER URL");
-        goto exit_error;
+    if(acs_url == NULL) {
+        if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_URL, &acs_url_local) != 0) {
+            SAH_TRACE_ERROR("Cannot fetch the ACS SERVER URL");
+            goto exit_error;
+        }
+    } else {
+        acs_url_local = strdup(acs_url);
     }
+    SAH_TRACE_INFO("ACS URL = %s", acs_url_local);
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_CONNECTIONREQUESTHOST, &crHost) != 0) {
         SAH_TRACE_ERROR("Cannot fetch the connection request host URL");
         goto exit_error;
@@ -294,74 +550,105 @@ static int connect_to_acs() {
         goto exit_error;
     }
     free(crHost);
-    free(acs_server);
-    acs_server = NULL;
+    free(acs_server_host);
+    acs_server_host = NULL;
     if(lws_parse_uri(acs_url_local, &uriScheme, &uriHost, &uriPort, &uriPath)) {
         SAH_TRACE_ERROR("Couldn't parse URL (%s)", acs_url_local);
         goto exit_error;
     }
-    SAH_TRACE_APP_INFO("Host: %s | Scheme: %s | Port: %d | Path: %s\n", uriHost, uriScheme, uriPort, uriPath);
-    acs_server = strdup(uriHost);
+    SAH_TRACE_APP_INFO("Host: %s | Scheme: %s | Port: %d | Path: %s", uriHost, uriScheme, uriPort, uriPath);
+    acs_server_host = strdup(uriHost);
     acs_server_port = uriPort;
     free(acs_server_path);
     acs_server_path = strdup(uriPath);
     if(strcmp(uriScheme, "https") == 0) {
         // Do stuff for https
     }
-    cnx_info.port = acs_server_port;
-    cnx_info.host = acs_server;
-    cnx_info.path = acs_server_path;
-    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ACSIPAFFINITY, &acsip_affinity) != 0) {
-        SAH_TRACE_ERROR("DM_ENGINE: Cannot fetch ACSIPAffinity parameter\n");
-        goto exit_error;
-    }
-    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ACSIPTTL, &acsip_ttl) != 0) {
-        SAH_TRACE_ERROR("Cannot fetch the ACSIPTTL parameter\n");
-        goto exit_error;
-    }
-    if((acsip_affinity && (strcmp(acsip_affinity, "0") == 0)) &&
-       (acsip_ttl && (atoi(acsip_ttl) <= 0))) {
-        if(DM_ENG_ExecuteManagementServerFunction(DM_ENG_EntityType_SYSTEM, DM_ENG_UPDATEACSIP) != 0) {
-            SAH_TRACE_ERROR("Cannot execute the updateACSIP function");
-            goto exit_error;
-        }
+
+    /**
+     * Check if host is IP address so we don't need to resolve it.
+     * Check if TTL has expired or initialize new session so :
+     * 1 - Send new dns query to resolve acs host
+     * 2 - If resolving OK : Try to connect to acs
+     *  cwmp_client_connect_to_acs called in dnsresolve_cb
+     */
+    if(isIPAddress(uriHost) == 1) {
+        acs_server_ip = strdup(uriHost);
+        SAH_TRACE_INFO("URI host : %s is IP address so we don't need to resolve it", uriHost);
+        cwmp_client_connect_to_acs();
     } else {
-        if(acs_server_ip) {
-            cnx_info.address = acs_server_ip;
-            if(!lws_client_connect_via_info(&cnx_info)) {
-                SAH_TRACE_ERROR("Couldn't connect to %s", acs_server_ip);
-                goto exit_error;
-            }
-        }
-        if(!client_wsi) {
-            if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ACSIP, &acsip) != 0) {
-                SAH_TRACE_ERROR("Cannot fetch the ACSIP parameter");
-                goto exit_error;
-            }
-            free(acs_server_ip);
-            acs_server_ip = strdup(acsip);
-            cnx_info.address = acs_server_ip;
-            cnx_info.origin = acs_server_ip;
-            cnx_info.host = acs_server_ip;
-            if(!lws_client_connect_via_info(&cnx_info)) {
-                SAH_TRACE_ERROR("Couldn't connect to %s", acs_server_ip);
-                goto exit_error;
-            }
+        if(new_session || (acsip_affinity && (strcmp(acsip_affinity, "0") == 0) &&
+                           dns_ttl_timer_value && (amxp_timer_remaining_time(dns_ttl_timer) <= 0))) {
+            SAH_TRACE_INFO("TTL expired, we need a new dns query to resolve acs host");
+            cwmp_client_dns_resolve(uriHost);
+        } else {
+            SAH_TRACE_INFO("ACS IP already resolved : %s", acs_server_ip);
+            cwmp_client_connect_to_acs();
         }
     }
     return 0;
+
 exit_error:
     free(acs_url_local);
-    free(acsip_affinity);
-    free(acsip_ttl);
-    free(acsip);
     return -1;
+}
+
+static int cwmp_client_connect_to_acs() {
+    struct lws_client_connect_info cnx_info;
+
+    memset(&cnx_info, 0, sizeof(cnx_info));
+    cnx_info.context = g_lws_ctx;
+    cnx_info.method = "RAW";
+    cnx_info.protocol = protocols[0].name;
+    cnx_info.ssl_connection = 0;
+    cnx_info.pwsi = &client_wsi;
+    cnx_info.fi_wsi_name = "user";
+    unexpected_close = true;
+
+    cnx_info.port = acs_server_port;
+    cnx_info.host = acs_server_host;
+    cnx_info.path = acs_server_path;
+
+    if(acs_server_ip) {
+        cnx_info.address = acs_server_ip;
+        if(!lws_client_connect_via_info(&cnx_info)) {
+            SAH_TRACE_ERROR("Couldn't connect to %s", acs_server_ip);
+            return -1;
+        }
+    }
+
+    if(!client_wsi) {
+        free(acs_server_ip);
+        SAH_TRACE_INFO("Try to connect to acs ip list");
+        amxc_llist_it_t* curr = amxc_llist_get_first(&addrInfo_list);
+        amxc_llist_it_t* next = NULL;
+        while(curr) {
+            next = amxc_llist_it_get_next(curr);
+            AddrInfo_t* curr_addrInfo = amxc_llist_it_get_data(curr, AddrInfo_t, it);
+            cnx_info.address = curr_addrInfo->addrStr;
+            cnx_info.origin = curr_addrInfo->addrStr;
+            cnx_info.host = curr_addrInfo->addrStr;
+            if(!lws_client_connect_via_info(&cnx_info)) {
+                SAH_TRACE_ERROR("Couldn't connect to ACS server IP : %s", curr_addrInfo->addrStr);
+                // try with next address.
+            } else {
+                /** Connecting to curr ACS IP and wait the connection callback :
+                 * If connected --> update acs_server_ip and start ttl timer for this address
+                 */
+                SAH_TRACE_INFO("Start Connecting to ACS server IP:%s and wait the connection callback", curr_addrInfo->addrStr);
+                if(connectedToServer) {
+                    break;
+                }
+            }
+            curr = next;
+        }
+    }
+
+    return 0;
 }
 
 /* fetch all server info from data model and feed them to server info struct*/
 cwmp_status_t cwmp_client_init(struct lws_context_creation_info* lws_ctx_info) {
-    // cwmp_status_t ret = cwmp_status_ko;
-
     lws_ctx_info->protocols = protocols;
     lws_ctx_info->ssl_cert_filepath = NULL;
     lws_ctx_info->ssl_private_key_filepath = NULL;
@@ -371,7 +658,7 @@ cwmp_status_t cwmp_client_init(struct lws_context_creation_info* lws_ctx_info) {
 /* Initialize and Start new client session */
 cwmp_status_t cwmp_client_start_session(struct lws_context_creation_info* lws_ctx_info,
                                         void** main_loop, struct lws_context* lws_ctx) {
-    SAH_TRACE_NOTICE("Client stating session");
+    SAH_TRACE_NOTICE("Client starting session");
 
     lws_ctx_info->options = LWS_SERVER_OPTION_LIBEVENT;
     lws_ctx_info->foreign_loops = main_loop;
@@ -385,12 +672,43 @@ cwmp_status_t cwmp_client_start_session(struct lws_context_creation_info* lws_ct
         return cwmp_status_ko;
     }
     g_lws_ctx = lws_ctx;
-    connect_to_acs();
+
+    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ACSIPAFFINITY, &acsip_affinity) != 0) {
+        SAH_TRACE_ERROR("DM_ENGINE: Cannot fetch ACSIPAffinity parameter");
+        goto exit_error;
+    }
+
+    amxp_timer_new(&dns_ttl_timer, NULL, NULL);
+    if(cwmp_client_initialize_connection(NULL) == -1) {
+        SAH_TRACE_NOTICE("Cannot initialize client connection");
+        goto exit_error;
+    }
+    new_session = false;
+
     return cwmp_status_ok;
+
+exit_error:
+    free(acsip_affinity);
+    return cwmp_status_ko;
 }
 
 cwmp_status_t cwmp_client_stop(struct lws_context* lws_ctx) {
     lws_context_destroy(lws_ctx);
+    if(dns_ctx.channel) {
+        ares_destroy(dns_ctx.channel);
+        ares_library_cleanup();
+    }
+
+    if(acs_server_host) {
+        free(acs_server_host);
+        acs_server_host = NULL;
+    }
+
+    if(acs_server_path) {
+        free(acs_server_path);
+        acs_server_path = NULL;
+    }
+
     return cwmp_status_ok;
 }
 
@@ -405,29 +723,28 @@ int DM_CloseHttpSession(bool closeMode) {
             lastMessage = NULL;
         }
         connectedToServer = false;
-        free(acs_server);
-        acs_server = NULL;
+        free(acs_server_host);
+        acs_server_host = NULL;
         free(acs_server_path);
         acs_server_path = NULL;
     }
     return 0;
 }
 
-static void client_sessionTimedOut(UNUSED char* name) {
+static void cwmp_client_sessionTimedOut(UNUSED char* name) {
     unexpected_close = false;
-    SAH_TRACE_WARNING("session timed out\n");
+    SAH_TRACE_WARNING("session timed out");
     _closeACSSession(false);
 }
 
-static void send_header(int msgLength) {
-    // char msgLengthStr[10] = "";
+static void cwmp_client_send_header(int msgLength) {
     unsigned char* p = (unsigned char*) http_header;
     int ret;
 
     memset(http_header, 0, HTTP_HEADER_SIZE);
     last_used = sprintf(http_header, "POST %s HTTP/1.1\r\n", acs_server_path);
     p += last_used;
-    ret = lws_add_http_header_by_name(client_wsi, (const unsigned char*) "Host:", (const unsigned char*) acs_server, strlen(acs_server), &p, (unsigned char*) (http_header + HTTP_HEADER_SIZE));
+    ret = lws_add_http_header_by_name(client_wsi, (const unsigned char*) "Host:", (const unsigned char*) acs_server_host, strlen(acs_server_host), &p, (unsigned char*) (http_header + HTTP_HEADER_SIZE));
     ret += lws_add_http_header_by_name(client_wsi, (const unsigned char*) "User-agent:", (const unsigned char*) USER_AGENT, strlen(USER_AGENT), &p, (unsigned char*) (http_header + HTTP_HEADER_SIZE));
     ret += lws_add_http_header_content_length(client_wsi, msgLength, &p, (unsigned char*) (http_header + HTTP_HEADER_SIZE));
     ret += lws_add_http_header_by_name(client_wsi, (const unsigned char*) "Content-Type:", (const unsigned char*) "text/xml; charset=ISO-8859-1", 28, &p, (unsigned char*) (http_header + HTTP_HEADER_SIZE));
@@ -435,7 +752,6 @@ static void send_header(int msgLength) {
     ret += lws_finalize_write_http_header(client_wsi, (unsigned char*) http_header, &p, (unsigned char*) (http_header + HTTP_HEADER_SIZE));
     printf("ret %d <--------------------------\n%s", ret, http_header);
 }
-
 
 int DM_SendHttpMessage(const char* msgToSendStr) {
     int msgLength = 0;
@@ -453,12 +769,12 @@ int DM_SendHttpMessage(const char* msgToSendStr) {
         msgLength = strlen(msgToSendStr);
     }
 
-    send_header(msgLength);
+    cwmp_client_send_header(msgLength);
     printf("%s\n-------------------------->\n", msgToSendStr);
     DM_UpdateRetryBuffer(msgToSendStr, msgLength);
     lws_write(client_wsi, (unsigned char*) msgToSendStr, strlen(msgToSendStr), LWS_WRITE_HTTP);
     SAH_TRACE_INFO("Message sent (%d).", msgLength);
-    DM_ENG_NotificationInterface_timerStart("Session-timer", session_timeout, 0, client_sessionTimedOut);
+    DM_ENG_NotificationInterface_timerStart("Session-timer", session_timeout, 0, cwmp_client_sessionTimedOut);
     if(msgToSendStr == pending_message) {
         free(pending_message);
         pending_message = NULL;
@@ -467,16 +783,21 @@ int DM_SendHttpMessage(const char* msgToSendStr) {
 }
 
 int client_startSession() {
-    SAH_TRACE_INFO("HTTP start session");
+    fprintf(stderr, "HTTP start session\n");
     if(connectedToServer) {
         return 0;
     }
-    char* acs_url = NULL;
     char* s_timeout = NULL;
     retransmitLastMessage = false;
     lastMessage = NULL;
 
-    connect_to_acs();
+    SAH_TRACE_INFO("The reamining time of DNS TTL timer is : %d", amxp_timer_remaining_time(dns_ttl_timer));
+
+    if(cwmp_client_initialize_connection(NULL) == -1) {
+        SAH_TRACE_NOTICE("Cannot initialize client connection");
+        return -1;
+    }
+
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_SESSIONTIMEOUT, &s_timeout) == 0) {
         if(s_timeout) {
             session_timeout = atoi(s_timeout);
@@ -490,14 +811,9 @@ int client_startSession() {
         session_timeout = DEFAULT_SESSION_TIMEOUT;
     }
     SAH_TRACE_INFO("Session timeout = %d", session_timeout);
-    DM_ENG_NotificationInterface_timerStart("Session-timer", session_timeout, 0, client_sessionTimedOut);
+    DM_ENG_NotificationInterface_timerStart("Session-timer", session_timeout, 0, cwmp_client_sessionTimedOut);
 
-    free(acs_url);
     return 0;
-
-// error:
-//     free(acs_url);
-//     return -1;
 }
 
 void cwmp_client_clear_ACSIP() {
