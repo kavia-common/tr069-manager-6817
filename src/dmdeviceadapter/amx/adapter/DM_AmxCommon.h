@@ -121,4 +121,8 @@ int DM_ENG_Device_Common_DeleteSubscription(dm_amx_env_t* amx, int id);
 void DM_ENG_Device_Common_Cleanup();
 void DM_ENG_Device_Common_Init();
 
+#ifdef __cplusplus
+}
+#endif
+
 #endif // __DM_ADAPTER_AMXCOMMON_H__
