@@ -86,8 +86,6 @@
         object InternalSettings {
             string Datamodel = "TR181";
             uint32 ReturnEmptyListOnPartialPath = 1;
-            read-only string RootDataModelVersion="2.0";
-            read-only uint32 InterfaceStackNumberOfEntries=0;
         }
         object ConnRequest {
             string ConnRequestHost="0.0.0.0";
@@ -167,10 +165,18 @@
 }
 
 %define {
+    object Device {
+        %read-only string RootDataModelVersion = "2.14";
+        %read-only object InterfaceStack[] {
+            counted with InterfaceStackNumberOfEntries;
+            string data;
+        }
+    }
+}
+
+%define {
     object Time {
         bool Enable = 1;
         string Status = "Unsynchronized";
     }
 }
-
-

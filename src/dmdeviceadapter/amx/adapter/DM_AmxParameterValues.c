@@ -70,7 +70,7 @@
 #include <string.h>
 
 #include "DM_AmxCommon.h"
-extern char* ROOT_DM_ACS_PARAMETER_PATH[];
+extern char* ROOT_DM_PARAMETERS[];
 extern char* ROOT_DM_INTERNAL_PARAMETER_PATH[];
 //---------------------------------------------------------------------------------------------
 /**
@@ -229,7 +229,7 @@ static int DM_ENG_Device_GetParameterValues_GetRootParameter(dm_amx_env_t* amx, 
     amxd_path_init(&parameterPath, 0);
     amxc_string_init(&parameterAmxPath, 0);
     amxc_var_init(&object);
-    char* internalPath = DM_ENG_Device_Common_GetRootParameterInternalPath(path);
+    const char* internalPath = DM_ENG_Device_Common_GetRootParameterInternalPath(path);
     if(internalPath == NULL) {
         SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Not a valid object path");
     }
@@ -291,8 +291,8 @@ int DM_ENG_Device_GetParameterValues_GetValues(dm_amx_env_t* amx, char* path, DM
         // When requesting All data model lets not forget the root parameters
         // Add them first
         int i = 0;
-        while(ROOT_DM_ACS_PARAMETER_PATH[i]) {
-            error = DM_ENG_Device_GetParameterValues_GetRootParameter(amx, ROOT_DM_ACS_PARAMETER_PATH[i], pvsList);
+        while(ROOT_DM_INTERNAL_PARAMETER_PATH[i]) {
+            error = DM_ENG_Device_GetParameterValues_GetRootParameter(amx, ROOT_DM_INTERNAL_PARAMETER_PATH[i], pvsList);
             if(error) {
                 SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Couldn't get Root datamodel paramete");
             }

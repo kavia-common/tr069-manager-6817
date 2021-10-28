@@ -88,6 +88,9 @@ extern "C"
 #define EVENT_ENG_SRV_START        "HTTP_SERVER_START"
 #define EVENT_ENG_CLEAR_ACS_IP     "CLIENT_CLEAR_ACS_IP"
 
+// tr181-device name on the bus
+#define TR181_DEVICE_OBJNAME "Device."
+
 #define SetErrorGotoStop(errorNumber, message) \
     { error = errorNumber; SAH_TRACEZ_ERROR("DM_DA", message); goto stop; }
 
@@ -111,16 +114,11 @@ bool DM_ENG_Device_Common_IsWildcardPath(const char* path);
 bool DM_ENG_Device_Common_IsWildcardPathValid(const char* path);
 bool DM_ENG_Device_Common_Resolve_Path(dm_amx_env_t* amx, char* path, amxc_var_t* resolved);
 DM_ENG_ParameterType DM_ENG_Device_Common_ConvertParameterType(u_int32_t type);
-char* DM_ENG_Device_Common_GetRootParameterInternalPath(char* path);
-char* DM_ENG_Device_Common_GetRootParameterAcsPath(char* path);
-bool DM_ENG_Device_Common_IsRootParameter(char* path);
+const char* DM_ENG_Device_Common_GetRootParameterInternalPath(const char* path);
+bool DM_ENG_Device_Common_IsRootParameter(const char* path);
 int DM_ENG_Device_Common_AddSubscription(dm_amx_env_t* amx, const char* path, const char* filter, notification_cb_t cb, int* subscriptionID);
 int DM_ENG_Device_Common_DeleteSubscription(dm_amx_env_t* amx, int id);
 void DM_ENG_Device_Common_Cleanup();
 void DM_ENG_Device_Common_Init();
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif // __DM_ADAPTER_AMXCOMMON_H__

@@ -71,44 +71,48 @@
 // Subscription list
 amxc_llist_t subscription_list;
 // Root data model parameters ACS path
-const char* ROOT_DM_ACS_PARAMETER_PATH[3] = {
+const char* ROOT_DM_PARAMETERS[3] = {
+    "RootDataModelVersion",
+    "InterfaceStackNumberOfEntries",
+    NULL
+};
+
+// Root data model parameters ACS path
+const char* ROOT_DM_INTERNAL_PARAMETER_PATH[3] = {
     "Device.RootDataModelVersion",
     "Device.InterfaceStackNumberOfEntries",
     NULL
 };
 
-// Root data model parameters internal path
-const char* ROOT_DM_INTERNAL_PARAMETER_PATH[3] = {
-    "ManagementServer.InternalSettings.RootDataModelVersion",
-    "ManagementServer.InternalSettings.InterfaceStackNumberOfEntries",
-    NULL
-};
-char* DM_ENG_Device_Common_GetRootParameterAcsPath(char* path) {
+const char* DM_ENG_Device_Common_GetRootParameterInternalPath(const char* path) {
+
+    char* parameterName = DM_ENG_Device_Common_ACSToAMXPath_noalloc(path);
+
+    if(parameterName == NULL) {
+        return NULL;
+    }
+
     int index = 0;
-    while(ROOT_DM_INTERNAL_PARAMETER_PATH[index]) {
-        if(strcmp(ROOT_DM_INTERNAL_PARAMETER_PATH[index], path) == 0) {
-            return (char*) ROOT_DM_ACS_PARAMETER_PATH[index];
+    while(ROOT_DM_PARAMETERS[index]) {
+        if(strcmp(ROOT_DM_PARAMETERS[index], parameterName) == 0) {
+            return ROOT_DM_INTERNAL_PARAMETER_PATH[index];
         }
         index++;
     }
     return NULL;
 }
 
-char* DM_ENG_Device_Common_GetRootParameterInternalPath(char* path) {
-    int index = 0;
-    while(ROOT_DM_ACS_PARAMETER_PATH[index]) {
-        if(strcmp(ROOT_DM_ACS_PARAMETER_PATH[index], path) == 0) {
-            return (char*) ROOT_DM_INTERNAL_PARAMETER_PATH[index];
-        }
-        index++;
-    }
-    return NULL;
-}
+bool DM_ENG_Device_Common_IsRootParameter(const char* path) {
 
-bool DM_ENG_Device_Common_IsRootParameter(char* path) {
+    char* parameterName = DM_ENG_Device_Common_ACSToAMXPath_noalloc(path);
+
+    if(parameterName == NULL) {
+        return false;
+    }
+
     int index = 0;
-    while(ROOT_DM_ACS_PARAMETER_PATH[index]) {
-        if(strcmp(ROOT_DM_ACS_PARAMETER_PATH[index], path) == 0) {
+    while(ROOT_DM_PARAMETERS[index]) {
+        if(strcmp(ROOT_DM_PARAMETERS[index], parameterName) == 0) {
             return true;
         }
         index++;
@@ -382,7 +386,9 @@ static void DM_ENG_Device_Common_Resolve_Path_cb(const amxb_bus_ctx_t* bus_ctx, 
         // only root data object are to be added
         for(i = 0; s_char[i]; s_char[i] == '.' ? i++ : *s_char++) {
         }
-        if(i == 1) {
+
+        // Device. already added dont add it twice
+        if((i == 1) && (strcmp(path, TR181_DEVICE_OBJNAME) != 0)) {
             // add path to list
             amxc_var_add(cstring_t, resolved, path);
         }

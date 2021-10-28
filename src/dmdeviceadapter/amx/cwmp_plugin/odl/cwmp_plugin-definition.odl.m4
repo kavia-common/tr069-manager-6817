@@ -12,7 +12,7 @@
         * true means that CWMP support on the CPE is enabled.
         * The subscriber can re-enable the CPE's CWMP support either by performing a factory reset or by using a LAN-side protocol to change the value of this parameter back to true.
         * The factory default value MUST be true.
-        * @version 2.0
+        * @version 1.0
         */
         persistent bool EnableCWMP=1;
 
@@ -28,7 +28,7 @@
         * The host portion of this URL is used by the CPE for validating the ACS certificate when using SSL or TLS.
         * Note that on a factory reset of the CPE, the value of this parameter might be reset to its factory value.
         * If an ACS modifies the value of this parameter, it SHOULD be prepared to accommodate the situation that the original value is restored as the result of a factory reset.
-        * @version 2.0
+        * @version 1.0
         */
         persistent string URL {
             default "http://acs-download.qacafe.com";
@@ -36,7 +36,7 @@
 
       /**
         * The ACS IP that was detected
-        * @version 4.5
+        * @version 1.0
         */
         read-only string ACSIP;
 
@@ -50,7 +50,7 @@
         * Username used to authenticate the CPE when making a connection to the ACS using the CPE WAN Management Protocol.
         * This username is used only for HTTP-based authentication of the CPE.
         * Note that on a factory reset of the CPE, the value of this parameter might be reset to its factory value. If an ACS modifies the value of this parameter, it SHOULD be prepared to accommodate the situation that the original value is restored as the result of a factory reset.
-        * @version 2.0
+        * @version 1.0
         */
         persistent string Username {
             constraint maxvalue 256;
@@ -62,7 +62,7 @@
         * This password is used only for HTTP-based authentication of the CPE.
         * Note that on a factory reset of the CPE, the value of this parameter might be reset to its factory value. If an ACS modifies the value of this parameter, it SHOULD be prepared to accommodate the situation that the original value is restored as the result of a factory reset.
         * When read, this parameter returns an empty string, regardless of the actual value.
-        * @version 2.0
+        * @version 1.0
         */
         persistent string Password {
             constraint maxvalue 256;
@@ -71,13 +71,13 @@
 
       /**
         * Whether or not the CPE MUST periodically send CPE information to the ACS using the Inform method call.
-        * @version 2.0
+        * @version 1.0
         */
         persistent bool PeriodicInformEnable=1;
 
       /**
         * The duration in seconds of the interval for which the CPE MUST attempt to connect with the ACS and call the Inform method if PeriodicInformEnable is True.
-        * @version 2.0
+        * @version 1.0
         */
         persistent uint32 PeriodicInformInterval {
             constraint minvalue 1;
@@ -90,13 +90,13 @@
         * For example, if PeriodicInformInterval is 86400 (a day) and if PeriodicInformTime is set to UTC midnight on some day (in the past, present, or future) then periodic Informs will occur every day at UTC midnight. These MUST begin on the very next midnight, even if PeriodicInformTime refers to a day in the future.
         * The Unknown Time value defined in section 2.2 indicates that no particular time reference is specified. That is, the CPE MAY locally choose the time reference, and needs only to adhere to the specified PeriodicInformInterval.
         * If absolute time is not available to the CPE, its periodic Inform behavior MUST be the same as if the PeriodicInformTime parameter was set to the Unknown Time value.
-        * @version 2.9
+        * @version 1.0
         */
         persistent string PeriodicInformTime;
 
       /**
         * Indicates support of instance wildcards to the ACS
-        * @version V9.2
+        * @version 1.0
         */
         persistent bool InstanceWildcardsSupported=1;
 
@@ -105,13 +105,13 @@
         * The CPE MUST set ParameterKey to the value specified in the corresponding method arguments if and only if the method completes successfully and no fault response is generated. If a method call does not complete successfully (implying that the changes requested in the method did not take effect), the value of ParameterKey MUST NOT be modified.
         * The CPE MUST only modify the value of ParameterKey as a result of SetParameterValues, AddObject, DeleteObject, or due to a factory reset. On factory reset, the
         * value of ParameterKey MUST be set to empty.
-        * @version 2.0
+        * @version 1.0
         */
         persistent string ParameterKey;
 
       /**
         * The name of the interface on which to listen for connection requests.
-        * @version 4.5
+        * @version 1.0
         */
         persistent string Interface;
 
@@ -121,13 +121,13 @@
         * http://host:port/path
         * The "host" portion of the URL MAY be the IP address for the management interface of the CPE in lieu of a host name.
         * Note: If the host portion of the URL is a literal IPv6 address then it MUST be enclosed in square brackets (see [Section 3.2.2/RFC3986]).
-        * @version 2.0
+        * @version 1.0
         */
         read-only string ConnectionRequestURL;
 
       /**
         * Username used to authenticate an ACS making a Connection Request to the CPE.
-        * @version 2.0
+        * @version 1.0
         */
         persistent string ConnectionRequestUsername {
             constraint maxvalue 256;
@@ -137,7 +137,7 @@
       /**
         * Password used to authenticate an ACS making a Connection Request to the CPE.
         * When read, this parameter returns an empty string, regardless of the actual value.
-        * @version 2.0
+        * @version 1.0
         */
         persistent string ConnectionRequestPassword {
             constraint maxvalue 256;
@@ -153,14 +153,14 @@
         * @param port Port number to be used for URL
         * @return void
         * @error EACCESS, errors related to getting objects, function_exec_failed, invalid_parameter
-        * @version 9.2
+        * @version 1.0
         */
         void updateConnectionRequestURL(%in mandatory bool update, %in string host, %in uint16 port);
 
       /**
         * Indicates whether or not the ACS will manage upgrades for the CPE. If True, the CPE SHOULD NOT use other means other than the ACS to seek out available upgrades. If False, the CPE MAY use other means for this purpose.
         * Note that an autonomous upgrade (reported via an "10 AUTONOMOUS TRANSFER COMPLETE" Inform Event code) SHOULD be regarded as a managed upgade if it is performed according to ACS-specified policy.
-        * @version 2.0
+        * @version 1.0
         */
         persistent bool UpgradesManaged=1;
 
@@ -169,14 +169,14 @@
         * In other words, if CPE needs to establish a new session with the ACS for the sole purpose of delivering an active notification, it MUST delay establishing such a session as needed to ensure that the minimum time since the last session completion has been met.
         * The time is counted since the last successfully completed session, regardless of whether or not it was used for active notifications or other purposes. However, if connection to the ACS is established for purposes other than just delivering active notifications, including for the purpose of retrying a failed session, such connection MUST NOT be delayed based on this parameter value, and the pending active notifications MUSTbe communicated during that connection.
         * The time of the last session completion does not need to be tracked across reboots.
-        * @version 2.0
+        * @version 1.0
         */
         persistent uint32 DefaultActiveNotificationThrottle;
 
       /**
         * Indicates whether or not the Alias-Based Addressing Mechanism is supported.
         * A true value indicates that the CPE supports the Alias-Based Addressing Mechanism, as defined in [Section 3.6.1/TR-069] and described in [Appendix II/TR-069].     * @version 6.0
-        * @version 2.3
+        * @version 1.0
         */
         read-only bool AliasBasedAddressing = true;
 
@@ -186,7 +186,7 @@
         * - InstanceAlias
         * This parameter is REQUIRED for any CPE supporting Alias-Based Addressing.
         * The factory default value MUST be InstanceNumber.
-        * @version 2.3
+        * @version 1.0
         */
         read-only string InstanceMode {
             constraint enum ["InstanceNumber","InstanceAlias"];
@@ -199,7 +199,7 @@
         * - A false value indicates that the CPE will not create new object instances. Instead, it will reject the setting of parameters in unrecognized instances and respond with a fault code.
         * This parameter is REQUIRED for any CPE supporting Alias-Based Addressing.
         * The factory default value MUST be false.
-        * @version 2.3
+        * @version 1.0
         */
         read-only bool AutoCreateInstances = true;
 
@@ -209,7 +209,7 @@
         %persistent object ConnRequest {
           /**
             * The connection request host name, may be an ip address, this parameter thould be updated by a service like NetModeConfig when a new WAN IP address is available
-            * @version 4.5
+            * @version 1.0
             */
             string ConnRequestHost {
                 default "0.0.0.0";
@@ -219,7 +219,7 @@
             * The local interface ip address.
             * For HGW this will typically contain the same value as ConnRequestHost
             * For devices on the lan this will be different from ConnRequestHost
-            * @version 6.1
+            * @version 1.0
             */
             string LocalIPAddress {
                 default "0.0.0.0";
@@ -232,7 +232,7 @@
 
           /**
             * The connection request port
-            * @version 4.5
+            * @version 1.0
             */
             persistent uint32 ConnRequestPort {
                 constraint range [0,65535];
@@ -241,7 +241,7 @@
 
           /**
             * The connection request path
-            * @version 4.5
+            * @version 1.0
             */
             persistent string ConnRequestPath {
               default "default_path";
@@ -253,7 +253,7 @@
             * - Random: At cwmpd startup, a new random path will be generated
             * - Randomize: At cwmpd startup and each time after a succesfull push, a new random path will be generated
             * - Fixed-MacBased: At cwmpd startup, a path will be constructed based on the MAC address
-            * @version 4.5
+            * @version 1.0
             */
             persistent string ConnRequestPathType {
                 constraint enum ["Fixed-Default","Random","Randomize","Fixed-MacBased"];
@@ -263,7 +263,7 @@
           /**
             * Whether to update connectionRequestURL automatically or not
             * If true the ConnRequestURL is updated automatically.
-            * @version 9.2
+            * @version 1.0
             */
             read-only bool UpdateConnRequestURL {
                 default true;
@@ -271,7 +271,7 @@
 
           /**
             * whether to update connrequesthost automatically
-            * @version 6.1
+            * @version 1.0
             */
             read-only bool UpdateConnRequestHost {
                 default true;
@@ -279,7 +279,7 @@
 
           /**
             * This parameter defines the time window in which MaxConnectionRequest may occur.
-            * @version 4.5
+            * @version 1.0
             */
             persistent uint32 FreqConnectionRequest {
                 constraint minvalue 60;
@@ -288,7 +288,7 @@
 
           /**
             * This parameter defines the maximum number of connection requests per FreqConnectionRequest.
-            * @version 4.5
+            * @version 1.0
             */
             persistent uint32 MaxConnectionRequest {
                 constraint minvalue 1;
@@ -298,35 +298,23 @@
 
       /**
         * read-only internal CWMP parameters used to customize builds
-        * @version 6.0
+        * @version 1.0
         */
         %persistent object InternalSettings {
           /**
             * Datamodel that should be used
-            * @version 6.0
+            * @version 1.0
             */
             read-only string Datamodel {
                 constraint enum ["TR098","TR106","TR181"];
                 default "TR181";
             }
 
-            /**
-            * Datamodel Version being used To be moved to a proper location under Device.
-            * @version 6.0
-            */
-            persistent read-only string RootDataModelVersion="2.0";
-
-            /**
-            * Num of interface stack To be moved to a proper location under Device.
-            * @version 6.0
-            */
-            persistent uint32 InterfaceStackNumberOfEntries=0;
-
           /**
             * True : Always use the same ACS server IP.
             * False : Before contacting ACS, if the TTL in the DNS reply has expired, a new DNS request is sent.
             * Else, we continue to use the same ACS IP without sending a new DNS request.
-            * @version V10.1
+            * @version 1.0
             */
             persistent read-only bool ACSIPAffinity=1;
 
@@ -334,7 +322,7 @@
             * The remaining time before TTL expiration.
             * 0 means that the TTL is expired.
             * -1 means that the TTL is unknown.
-            * @version V10.1
+            * @version 1.0
             */
             %read-only int32 ACSIPTTL {
               on action read call getACSIPTTL;
@@ -354,26 +342,26 @@
             * False : empty will only be return if :
             *                 - The request contains only partial and all partial paths cannot be found.
             *                 - The request contains not only partial path (but also some parameters) and at least one parameter cannot be found.
-            * @version 9.1
+            * @version 1.0
             */
             bool EmptyFullParameterList=1;
 
           /**
             * This parameter makes the behavior on partial paths configurable. True (and empty list) is according to the specifications. False (and an error) is the behavior before 8.1.
-            * @version 8.1
+            * @version 1.0
             */
             bool ReturnEmptyListOnPartialPath;
 
           /**
             * To avoid booting all boxes at the same time and overloading the ACS on a power outage, cwmp waits for a random number of seconds before starting. This number defines the maximum startup delay that a box may have.
-            * @version 4.5
+            * @version 1.0
             */
             persistent uint32 MaxStartupDelay;
 
           /**
             * The session timeout timer value in seconds.
             * When the acs stops responding during a session, this timeout is used to stop the current ACS session and accept new incoming ACS sessions
-            * @version 4.5
+            * @version 1.0
             */
             persistent uint32 SessionTimeout;
 
@@ -381,7 +369,7 @@
             * This parameter changes the behavior of certificate verification:
             * if 0, self signed certificates will NOT be allowed
             * if 1, self signed certificates will be allowed
-            * @version 4.5
+            * @version 1.0
             */
             persistent bool SSLAcceptSelfSigned;
 
@@ -389,7 +377,7 @@
             * This parameter changes the behavior of certificate verification:
             * if 0, the host name in the certificate will NOT be checked
             * if 1, the host name in the certificate will be checked
-            * @version 4.5
+            * @version 1.0
             */
             persistent bool SSLVerifyHostname;
 
@@ -398,7 +386,7 @@
             * Never: never accept certificates that are not within the valid period
             * Always: Do NOT check the valid time of a certificate
             * NTP: Do NOT check when NTP is NOT synced, otherwise check the valid time of the certificate
-            * @version 4.6
+            * @version 1.0
             */
             persistent string SSLAcceptExpired {
                 constraint enum ["Never", "Always", "NTP"];
@@ -411,45 +399,45 @@
             * if 1, a partial certificate chain verification is performed
             * A partial chain verification succeeds when at least one certificate
             * is in trusted store
-            * @version V10.0
+            * @version 1.0
             */
             persistent bool SSLVerifyPartialChain;
 
           /**
             * Number of seconds cwmpd has to wait before starting if there is an unfinished download in the message queue.
             * This parameter is used to avoid sending out 2 separate informs (one containing the boot event and the second the transfer complete)
-            * @version 4.6
+            * @version 1.0
             */
             persistent uint32 UpgradeBootDelay;
 
           /**
             * This parameter enables the GetRPCMethods RPC from CPE to ACS. This can be used to validate if the ACS supports all needed RPC's. This parameter is disabled by default.
             * If this parameter is false, the CPE will not check to see if the ACS method is supported before calling it.
-            * @version 4.5
+            * @version 1.0
             */
             persistent bool VerifySupportedACSMethods;
 
           /**
             * When this value is set, tr069 will only allow connection requests from the specified IP address (e.g. 195.186.0.5) or IP address range (e.g. 195.186.0.0/16)
             * This feature is only active when AllowConnectionRequestFromUnknownHost is set to true.
-            * @version 7.0
+            * @version 1.0
             */
             persistent string AllowConnectionRequestFromAddress;
       }
 
       /**
         * object representing CWMP subscriptions
-        * @version V10.1
+        * @version 1.0
         */
         object Subscription[] {
           /**
             * The subscription path
-            * @version V10.1
+            * @version 1.0
             */
             persistent string Path;
           /**
             * The type of subscription
-            * @version V10.1
+            * @version 1.0
             */
             persistent string Type {
                 constraint enum ["Off","Passive","Active","Forced"];
@@ -457,12 +445,12 @@
             }
           /**
             * The value last set by the ACS
-            * @version V10.1
+            * @version 1.0
             */
             persistent string Value;
           /**
             * The override flag
-            * @version V10.1
+            * @version 1.0
             */
             persistent bool Override;
         }
@@ -472,33 +460,33 @@
         object State {
           /**
             * Flag indicating that a factory reset has occurred. Once the CPE has succesfully send an inform message this flag will be set to 1. This flag will be reset to 0 when a factory reset occurs. Formerly known as FactoryResetOccurred
-            * @version 4.5
+            * @version 1.0
             */
             persistent bool BootstrapSent=0;
 
           /**
             * This parameter keeps track of the last succesfull session with the ACS
-            * @version 4.5
+            * @version 1.0
             */
             persistent datetime LastSession;
 
 
           /**
             * Parameter to indicate the reboot was caused by the ACS.
-            * @version 4.5
+            * @version 1.0
             */
             persistent bool RebootByACS=0;
 
           /**
             * Parameter to keep track of the reboot command key set by the ACS across reboots
-            * @version 4.5
+            * @version 1.0
             */
             persistent string RebootCommandKey;
 
           /**
             * This parameter displays if the CPE tr69 engine is in session (busy) or waiting for an event (idle) or still not initialized (Initializing)
             * it displays also session failure when ACS server is not reachable
-            * @version 4.5
+            * @version 1.0
             */
             string SessionStatus {
                 constraint enum ["Initializing","Idle","Busy","ServerDown"];
@@ -513,13 +501,13 @@
         object Stats {
           /**
             * Number of GetParameterValues requests that have occurred since reboot
-            * @version 4.6
+            * @version 1.0
             */
             uint32 GetParameterValuesRequests=0;
 
           /**
             * Number of succesfull sessions with ACS since reboot
-            * @version 4.6
+            * @version 1.0
             */
             uint32 SessionsSinceReboot=0;
         }
@@ -532,13 +520,13 @@
 
    /**
     * When this flag is set the tr069 http server will allow connection requests from hosts other then the ACS
-    * @version 4.5
+    * @version 1.0
 
     persistent bool AllowConnectionRequestFromUnknownHost=false;
 
    /**
     * Indicates whether or not basic authentication is allowed.
-    * @version V10.0
+    * @version 1.0
 
     persistent bool RefuseBasicAuthentication=0;
 
@@ -548,31 +536,31 @@
     * In other words, if CPE needs to establish a new session with the ACS for the sole purpose of delivering an active notification, it MUST delay establishing such a session as needed to ensure that the minimum time since the last session completion has been met.
     * The time is counted since the last successfully completed session, regardless of whether or not it was used for active notifications or other purposes. However, if connection to the ACS is established for purposes other than just delivering active notifications, including for the purpose of retrying a failed session, such connection MUST NOT be delayed based on this parameter value, and the pending active notifications MUSTbe communicated during that connection.
     * The time of the last session completion does not need to be tracked across reboots.
-    * @version 4.5
+    * @version 1.0
 
     persistent uint32 DefaultActiveNotificationThrottle;
 
    /**
     * Maximum download delay
-    * @version 4.6
+    * @version 1.0
 
     persistent uint32 MaxDownloadDelay;
 
    /**
     * Maximum upload delay
-    * @version 4.6
+    * @version 1.0
 
     persistent uint32 MaxUploadDelay;
 
    /**
     * Maximum number of simultaneous downloads,
-    * @version 4.6
+    * @version 1.0
 
     persistent uint32 MaxDownloads=100;
 
    /**
     * Maximum number of simultaneous downloads error code
-    * @version 4.6
+    * @version 1.0
 
     persistent uint32 MaxDownloadsErrorCode=9004;
 
@@ -584,7 +572,7 @@
 
     /**
      * An artificial delay of seconds between PPP or IP connection establishment and any TR-069 Inform message(s) that are sent afterwards.
-     * @version V10.0
+     * @version 1.0
 
     persistent uint32 InterfaceUpDelay=0;
 
@@ -614,7 +602,7 @@ ifdef(`CONFIG_SAH_SERVICES_TR069_ENABLE_STUN',`
     * When STUNEnable is True, the "host" and "port" portions of this parameter MUST represent the public address and port corresponding to the NAT binding through which the ACS can send UDP Connection Request messages (once this information is learned by the CPE through the use of STUN).
     * When STUNEnable is False, the "host" and "port" portions of the URL MUST represent the local IP address and port on which the CPE is listening for UDP Connection Request messages.
     * The second form of this parameter MAY be used only if the port value is equal to "80".
-    * @version 4.5
+    * @version 1.0
 
     string UDPConnectionRequestAddress {
       constraint maxvalue 256;
@@ -622,13 +610,13 @@ ifdef(`CONFIG_SAH_SERVICES_TR069_ENABLE_STUN',`
 
    /**
     * The minimum time, in seconds, between Active Notifications resulting from changes to the UDP-ConnectionRequestAddress (if Active Notification is enabled).
-    * @version 4.5
+    * @version 1.0
 
     uint32 UDPConnectionRequestAddressNotificationLimit;
 
    /**
     * Enables or disables the use of STUN by the CPE. This applies only to the use of STUN in association with the ACS to allow UDP Connection Requests.
-    * @version 4.5
+    * @version 1.0
 
     bool STUNEnable {
       //TPBwrite with writeSTUNEnable;
@@ -639,7 +627,7 @@ ifdef(`CONFIG_SAH_SERVICES_TR069_ENABLE_STUN',`
     * Host name or IP address of the STUN server for the CPE to send Binding Requests if STUN is enabled via STUNEnable.
     * If empty and STUNEnable is True, the CPE MUST use the address of the ACS extracted
     * from the host portion of the ACS URL.
-    * @version 4.5
+    * @version 1.0
 
     string STUNServerAddress {
       constraint maxvalue 256;
@@ -648,7 +636,7 @@ ifdef(`CONFIG_SAH_SERVICES_TR069_ENABLE_STUN',`
    /**
     * Port number of the STUN server for the CPE to send Binding Requests if STUN is enabled via STUNEnable.
     * By default, this SHOULD be the equal to the default STUN port, 3478.
-    * @version 4.5
+    * @version 1.0
 
     uint32 STUNServerPort {
       constraint range [0,65535];
@@ -658,7 +646,7 @@ ifdef(`CONFIG_SAH_SERVICES_TR069_ENABLE_STUN',`
    /**
     * If non-empty, the value of the STUN USERNAME attribute to be used in Binding Requests (only if message integrity has been requested by the STUN server).
     * If empty, the CPE MUST NOT send STUN Binding Requests with message integrity.
-    * @version 4.5
+    * @version 1.0
 
     string STUNUsername {
       constraint maxvalue 256;
@@ -667,7 +655,7 @@ ifdef(`CONFIG_SAH_SERVICES_TR069_ENABLE_STUN',`
    /**
     * The value of the STUN Password to be used in computing the MESSAGE-INTEGRITY attribute to be used in Binding Requests (only if message integrity has been requested by the STUN server).
     * When read, this parameter returns an empty string, regardless of the actual value.
-    * @version 4.5
+    * @version 1.0
 
     string STUNPassword {
       constraint maxvalue 256;
@@ -676,7 +664,7 @@ ifdef(`CONFIG_SAH_SERVICES_TR069_ENABLE_STUN',`
    /**
     * If STUN Is enabled, the maximum period, in seconds, that STUN Binding Requests MUST be sent by the CPE for the purpose of maintaining the binding in the Gateway. This applies specifically to Binding Requests sent from the UDP Connection Request address and port.
     * A value of -1 indicates that no maximum period is specified.
-    * @version 4.5
+    * @version 1.0
 
     int32 STUNMaximumKeepAlivePeriod {
       constraint minvalue -1;
@@ -685,7 +673,7 @@ ifdef(`CONFIG_SAH_SERVICES_TR069_ENABLE_STUN',`
 
    /**
     * If STUN Is enabled, the minimum period, in seconds, that STUN Binding Requests can be sent by the CPE for the purpose of maintaining the binding in the Gateway. This limit applies only to Binding Requests sent from the UDP Connection Request address and port, and only those that do not contain the BINDING-CHANGE attribute. This limit does not apply to retransmissions following the procedures defined in [9].
-    * @version 4.5
+    * @version 1.0
 
     uint32 STUNMinimumKeepAlivePeriod = 0;
 
@@ -695,7 +683,7 @@ ifdef(`CONFIG_SAH_SERVICES_TR069_ENABLE_STUN',`
     * When STUNEnable is False, this value MUST be False.
     *
     * Should be read-only
-    * @version 4.5
+    * @version 1.0
 
     bool NATDetected = false;
 ',`')
@@ -706,7 +694,7 @@ ifdef(`CONFIG_SAH_SERVICES_TR069_ENABLE_STUN',`
 
    /**
     * This parameter allows you to disable the boot inform event (needed for devices coming out of sleep mode)
-    * @version 6.0
+    * @version 1.0
 
     bool DisableBootInform {
        default false;
@@ -714,31 +702,31 @@ ifdef(`CONFIG_SAH_SERVICES_TR069_ENABLE_STUN',`
 
    /**
     * This parameter contains the number of QueuedTranfers that are of the type "1 Firmware upgrade image" and NOT finished
-    * @version 4.6
+    * @version 1.0
 
     uint32 UpgradesAvailable=0;
 
     /**
     * List of events send to the ACE  in the format eventtype(cmdkey),eventtype(cmdkey),eventtype(cmdkey),...
-     * @version 7.0
+     * @version 1.0
 
      string DeliveredEvents;
 
     /**
      * List of events requested by the ACS in the format eventtype(cmdkey),eventtype(cmdkey),eventtype(cmdkey),...
-     * @version 7.0
+     * @version 1.0
 
      string ACSEvents;
 
      /**
      * List of events to block in the format eventtype(cmdkey),eventtype(cmdkey),eventtype(cmdkey),...
-     * @version 7.0
+     * @version 1.0
 
      string BlockedEvents;
 
      /**
       * whether to inhibit the value change notification upon rebooting
-      * @version 8.1
+      * @version 1.0
 
      bool InhibitValueChangeUponBoot {
            default false;
@@ -747,19 +735,19 @@ ifdef(`CONFIG_SAH_SERVICES_TR069_ENABLE_STUN',`
 
    /**
     * Function to set ManagementServer values, this is needed for the configurator tool
-    * @version 7.0
+    * @version 1.0
 
     bool set(variant parameters);
 
    /**
     * Function to get ManagementServer values, this is needed for the configurator tool
-    * @version 7.0
+    * @version 1.0
 
     variant get();
 
    /**
     * This routine triggers a download request in the tr69 stack
-    * @version 4.5
+    * @version 1.0
     * @param filetype The filetype we want to download
     * @param args The filetype arguments
     *
@@ -769,7 +757,7 @@ ifdef(`CONFIG_SAH_SERVICES_TR069_ENABLE_STUN',`
 
    /**
     * This RPC triggers the CPE cwmpd to add a custom notification to the next inform message
-    * @version 4.5
+    * @version 1.0
     * @param active When true, the notification will be send immediately, if false, it will be send along in the next inform message
     * @param notificationName The notification name that will be used in the inform message
     *
@@ -779,7 +767,7 @@ ifdef(`CONFIG_SAH_SERVICES_TR069_ENABLE_STUN',`
 
    /**
     * This RPC triggers the CPE cwmpd to add a Diagnostic complete event in the next inform message
-    * @version 4.5
+    * @version 1.0
     *
     * @return true if succesfull, false if an error occurred
 
@@ -787,7 +775,7 @@ ifdef(`CONFIG_SAH_SERVICES_TR069_ENABLE_STUN',`
 
    /**
     * This RPC triggers the CPE cwmpd to send out an inform containing a connection request
-    * @version 4.5
+    * @version 1.0
     *
     * @return true if succesfull, false if an error occurred
 
@@ -796,7 +784,7 @@ ifdef(`CONFIG_SAH_SERVICES_TR069_ENABLE_STUN',`
 
    /**
     * This RPC forces the cwmp plugin to save all data. This is a blocking call untill all data has been saved
-    * @version 5.2
+    * @version 1.0
     *
     * @return true if succesfull, false if an error occurred
 
@@ -805,7 +793,7 @@ ifdef(`CONFIG_SAH_SERVICES_TR069_ENABLE_STUN',`
 ifdef(`HGWCFG_SUPPORT',`
    /**
     * This RPC is used to import user-settings
-    * @version 4.5
+    * @version 1.0
     * @param fileName The user file to import from
     *
     * @return true if succesfull, false if an error occurred
@@ -814,7 +802,7 @@ ifdef(`HGWCFG_SUPPORT',`
 
    /**
     * This RPC is used to export user-settings
-    * @version 4.5
+    * @version 1.0
     * @param fileName The user file to export to
     *
     * @return true if succesfull, false if an error occurred

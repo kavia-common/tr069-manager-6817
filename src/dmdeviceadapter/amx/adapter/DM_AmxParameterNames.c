@@ -69,7 +69,7 @@
 
 #include "DM_AmxCommon.h"
 #include "DM_DeviceAdapter.h"
-extern char* ROOT_DM_ACS_PARAMETER_PATH[];
+extern char* ROOT_DM_PARAMETERS[];
 extern char* ROOT_DM_INTERNAL_PARAMETER_PATH[];
 // //---------------------------------------------------------------------------------------------
 // /**
@@ -231,9 +231,8 @@ static int DM_ENG_Device_GetParameterNames_GetObjects(dm_amx_env_t* amx, const c
     // case of a null parameter/object
     if(((rv != 0) || amxc_var_is_null(&result)) && (rv != 3)) {
         SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "DM_ENG_Device_Common_GetObjects failed to get object");
-    } else if(rv == 3) { //object dosent support describe op
-        error = 0;       //dont send a error to ACS
-        goto stop;
+    } else if(rv == 3) { //object dosen't support describe operation
+        SetErrorGotoStop(0, "Object dosen't support describe");
     }
 
     object = GETI_ARG(&result, 0);
@@ -282,11 +281,10 @@ stop:
    @param data The resulting parameter info struct list
 
    @return
-   - false if an error occurred
-   - true if succesfull
+   Returns 0 (zero) if OK or a fault code (9002, ...) according to the TR-069.
  */
-static bool DM_ENG_Device_GetParameterNames_GetChildObjects(dm_amx_env_t* amx_env, const char* path, DM_ENG_ParameterInfoStruct** pnsList) {
-    bool ret = false;
+static int DM_ENG_Device_GetParameterNames_GetChildObjects(dm_amx_env_t* amx_env, const char* path, DM_ENG_ParameterInfoStruct** pnsList) {
+    int error = 0;
     int type_id = 0;
     amxc_var_t parent;
     amxc_string_t childPath;
@@ -304,16 +302,15 @@ static bool DM_ENG_Device_GetParameterNames_GetChildObjects(dm_amx_env_t* amx_en
     int rv = amxb_describe(amx_env->bus_ctx, path, flags, &parent, 1);
 
     if(((rv != 0) || amxc_var_is_null(&parent)) && (rv != 3)) {
-        GotoStop("Could not get the datamodel parameters");
-    } else if(rv == 3) { //object dosent support describe op
-        ret = true;      //dont send a error to ACS
-        goto stop;
+        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "failed");
+    } else if(rv == 3) { //object doesn't support describe operation
+        SetErrorGotoStop(0, "Object doesn't support describe");
     }
 
     object = GETI_ARG(&parent, 0);
-    //amxc_var_dump(object,0);
+
     if(DM_ENG_Device_GetParameterNames_GetParameters(path, false, object, pnsList) == false) {
-        GotoStop("Could not get the datamodel parameters");
+        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "failed");
     }
 
     type_id = GET_INT32(object, "type_id");
@@ -329,15 +326,15 @@ static bool DM_ENG_Device_GetParameterNames_GetChildObjects(dm_amx_env_t* amx_en
             amxc_string_clean(&childPath);
             amxc_string_setf(&childPath, "%s%s.", path, childName);
             flags = AMXB_FLAG_OBJECTS | AMXB_FLAG_INSTANCES;
+            int type_id = 0;
 
             rv = amxb_describe(amx_env->bus_ctx, amxc_string_get(&childPath, 0), flags, &childobject, 1);
 
             if((rv != 0) || amxc_var_is_null(&childobject)) {
-                ret = false;
-                GotoStop("failed to get object");
+                SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "failed");
             }
             // 2 = template , 3 = instance
-            int type_id = GET_INT32(GETI_ARG(&childobject, 0), "type_id");
+            type_id = GET_INT32(GETI_ARG(&childobject, 0), "type_id");
 
             amxc_string_prepend(&childPath, amx_env->prefix, strlen(amx_env->prefix));
             dmis = DM_ENG_newParameterInfoStruct(amxc_string_get(&childPath, 0), (type_id == 2) || (type_id == 3));
@@ -346,16 +343,45 @@ static bool DM_ENG_Device_GetParameterNames_GetChildObjects(dm_amx_env_t* amx_en
             amxc_string_clean(&childPath);
         }
     }
-    ret = true;
+    error = 0;
 
 stop:
     amxc_var_clean(&parent);
     amxc_var_clean(&childobject);
     amxc_string_clean(&childPath);
     SAH_TRACEZ_OUT("DM_DA");
-    return ret;
+    return error;
 }
 
+static void DM_ENG_Device_GetParameterNames_AddRootParameter(const char* dmprefix, const char* path, DM_ENG_ParameterInfoStruct** infoList) {
+    DM_ENG_ParameterInfoStruct* dmis = NULL;
+    amxc_string_t rootparam;
+    amxc_string_init(&rootparam, 0);
+    amxc_string_setf(&rootparam, "%s%s", dmprefix, path);
+    // All root param are readonly
+    dmis = DM_ENG_newParameterInfoStruct(amxc_string_get(&rootparam, 0), false);
+    DM_ENG_addParameterInfoStruct(infoList, dmis);
+    amxc_string_clean(&rootparam);
+}
+
+static void DM_ENG_Device_GetParameterNames_AddRootParameters(const char* dmprefix, DM_ENG_ParameterInfoStruct** infoList) {
+    int index = 0;
+    while(ROOT_DM_PARAMETERS[index]) {
+        DM_ENG_Device_GetParameterNames_AddRootParameter(dmprefix, ROOT_DM_PARAMETERS[index], infoList);
+        index++;
+    }
+}
+
+static void DM_ENG_Device_GetParameterNames_AddRootObject(const char* dmprefix, const char* path, DM_ENG_ParameterInfoStruct** infoList) {
+    DM_ENG_ParameterInfoStruct* dmis = NULL;
+    amxc_string_t acsobjPath;
+    amxc_string_init(&acsobjPath, 0);
+    amxc_string_setf(&acsobjPath, "%s%s", dmprefix, path);
+    // All root objects are readonly
+    dmis = DM_ENG_newParameterInfoStruct(amxc_string_get(&acsobjPath, 0), false);
+    DM_ENG_addParameterInfoStruct(infoList, dmis);
+    amxc_string_clean(&acsobjPath);
+}
 //---------------------------------------------------------------------------------------------
 /**
    @brief
@@ -387,9 +413,7 @@ int DM_ENG_Device_GetParameterNames_PartialPath(dm_amx_env_t* amx_env, char* pat
     if(!DM_ENG_Device_Common_IsWildcardPath(path) &&
        !(( strlen(path) == 0) || ( strcmp(amx_env->prefix, path) == 0))) {
         if(nextLevel) {
-            if(DM_ENG_Device_GetParameterNames_GetChildObjects(amx_env, internalPath, infoList) == false) {
-                SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "failed");
-            }
+            error = DM_ENG_Device_GetParameterNames_GetChildObjects(amx_env, internalPath, infoList);
         } else {
             error = DM_ENG_Device_GetParameterNames_GetObjects(amx_env, internalPath, infoList);
         }
@@ -400,10 +424,8 @@ int DM_ENG_Device_GetParameterNames_PartialPath(dm_amx_env_t* amx_env, char* pat
                 // Add Device -> ReadOnly object
                 DM_ENG_addParameterInfoStruct(infoList, DM_ENG_newParameterInfoStruct(amx_env->prefix, false));
             }
-            // RootDataModelVersion ->ReadOnly Parameter
-            DM_ENG_addParameterInfoStruct(infoList, DM_ENG_newParameterInfoStruct(ROOT_DM_ACS_PARAMETER_PATH[0], false));
-            //InterfaceStackNumberOfEntries ->ReadOnly parameter
-            DM_ENG_addParameterInfoStruct(infoList, DM_ENG_newParameterInfoStruct(ROOT_DM_ACS_PARAMETER_PATH[1], false));
+            //Add root parameter Names
+            DM_ENG_Device_GetParameterNames_AddRootParameters(amx_env->prefix, infoList);
         }
         // resolve Path
         if(DM_ENG_Device_Common_Resolve_Path(amx_env, internalPath, &objects)) {
@@ -412,15 +434,9 @@ int DM_ENG_Device_GetParameterNames_PartialPath(dm_amx_env_t* amx_env, char* pat
                 const char* objpath = amxc_var_constcast(cstring_t, amxc_var_from_llist_it(it));
                 if(nextLevel) {
                     if(strcmp(amx_env->prefix, path) == 0) {
-                        amxc_string_t acsobjPath;
-                        amxc_string_init(&acsobjPath, 0);
-                        amxc_string_setf(&acsobjPath, "%s%s", amx_env->prefix, objpath);
-                        //Only root objects are requested, All of them are readonly no need for describe
-                        DM_ENG_addParameterInfoStruct(infoList, DM_ENG_newParameterInfoStruct(amxc_string_get(&acsobjPath, 0), false));
-                        amxc_string_clean(&acsobjPath);
-
-                    } else if(!DM_ENG_Device_GetParameterNames_GetChildObjects(amx_env, objpath, infoList)) {
-                        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "failed");
+                        DM_ENG_Device_GetParameterNames_AddRootObject(amx_env->prefix, objpath, infoList);
+                    } else {
+                        error = DM_ENG_Device_GetParameterNames_GetChildObjects(amx_env, objpath, infoList);
                     }
                 } else {
                     error = DM_ENG_Device_GetParameterNames_GetObjects(amx_env, objpath, infoList);
@@ -473,7 +489,11 @@ int DM_ENG_Device_GetParameterNames_Parameter(dm_amx_env_t* amx_env, char* path,
         SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Not a valid object path");
     }
 
-    if(DM_ENG_Device_Common_Resolve_Path(amx_env, internalPath, &parameters)) {
+    if(DM_ENG_Device_Common_IsRootParameter(path)) {
+        // no need for describe
+        DM_ENG_Device_GetParameterNames_AddRootParameter(amx_env->prefix, internalPath, infoList);
+        SetErrorGotoStop(0, "OK");
+    } else if(DM_ENG_Device_Common_Resolve_Path(amx_env, internalPath, &parameters)) {
         const amxc_llist_t* path_list = amxc_var_constcast(amxc_llist_t, &parameters);
         amxc_llist_iterate(it, path_list) {
             const char* ppath = amxc_var_constcast(cstring_t, amxc_var_from_llist_it(it));

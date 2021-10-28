@@ -185,6 +185,51 @@ static void handle_events(void) {
     printf("\n");
 }
 
+static int check_parameter_value(DM_ENG_ParameterValueStruct** pv, char* path, char* val, int type) {
+    int nb_param = DM_ENG_tablen((void**) pv);
+    for(int i = 0; i < nb_param; i++) {
+        if(( strcmp(pv[i]->parameterName, path) == 0 )
+           && ( strcmp(pv[i]->value, val) == 0 )
+           && ((int) pv[i]->type == type )) {
+            return 0;
+        }
+    }
+    return -1;
+}
+
+
+static int check_parameter_name(DM_ENG_ParameterInfoStruct** pI, char* path, bool writable) {
+    int nb_param = DM_ENG_tablen((void**) pI);
+    for(int i = 0; i < nb_param; i++) {
+        if(( strcmp(pI[i]->parameterName, path) == 0 )
+           && ((int) pI[i]->writable == writable )) {
+            return 0;
+        }
+    }
+    return -1;
+}
+
+//Add Host instance
+static void add_host_instance(const char* mac, const char* ip) {
+    int rv = 0;
+    const char* object = "Hosts.Host.";
+    amxc_var_t ret;
+    amxc_var_t values;
+
+    amxc_var_init(&ret);
+    amxc_var_init(&values);
+    amxc_var_set_type(&values, AMXC_VAR_ID_HTABLE);
+    amxc_var_add_key(cstring_t, &values, "MACAddress", mac);
+    amxc_var_add_key(cstring_t, &values, "IPAddress", ip);
+    rv = amxb_add(acs_bus_ctx, object, 0, NULL, &values, &ret, 5);
+
+    if((rv != 0) || amxc_var_is_null(&ret)) {
+        fprintf(stderr, "failed to add test object [%s] error %d \n", object, rv);
+    }
+    amxc_var_clean(&ret);
+    amxc_var_clean(&values);
+}
+
 int test_dmadapter_setup(UNUSED void** state) {
     amxd_object_t* root_obj = NULL;
 
@@ -285,10 +330,15 @@ void test_dmadapter_ManagementServer_SetParameterValue(UNUSED void** state) {
 }
 
 void test_dmadapter_GetParameterNames_Parameter(UNUSED void** state) {
+    // Setup test Data
+    add_host_instance(HOST_1_MAC, HOST_1_IP);
+    add_host_instance(HOST_2_MAC, HOST_2_IP);
     // writable parameter
     char* rw_string = "InternetGatewayDevice.GetParameterNames_Parameter.writablestring";
     // read-only parameter
     char* r_only_string = "InternetGatewayDevice.GetParameterNames_Parameter.readonlystring";
+    // root parameter
+    char* root_parameter = "InternetGatewayDevice.RootDataModelVersion";
     int rv = 0;
     int num_param = 0;
     bool next_level = true;
@@ -322,6 +372,19 @@ void test_dmadapter_GetParameterNames_Parameter(UNUSED void** state) {
     num_param = DM_ENG_tablen((void**) param_info_st);
     assert_int_equal(num_param, 1);
     assert_string_equal(param_info_st[0]->parameterName, r_only_string);
+    assert_int_equal((int) param_info_st[0]->writable, 0);
+
+    if(param_info_st) {
+        DM_ENG_deleteAllParameterInfoStruct(param_info_st);
+        free(param_info_st);
+    }
+    param_info_st = NULL;
+
+    rv = DM_ENG_GetParameterNames(DM_ENG_EntityType_ACS, root_parameter, next_level, &param_info_st);
+    assert_int_equal(rv, 0);
+    num_param = DM_ENG_tablen((void**) param_info_st);
+    assert_int_equal(num_param, 1);
+    assert_string_equal(param_info_st[0]->parameterName, root_parameter);
     assert_int_equal((int) param_info_st[0]->writable, 0);
 
     if(param_info_st) {
@@ -458,28 +521,6 @@ void test_dmadapter_GetParameterNames_Object_NextLevel_False(UNUSED void** state
     param_info_st = NULL;
 }
 
-//Add Host instance
-static void add_host_instance(const char* mac, const char* ip) {
-    int rv = 0;
-    const char* object = "Hosts.Host.";
-    amxc_var_t ret;
-    amxc_var_t values;
-
-    amxc_var_init(&ret);
-    amxc_var_init(&values);
-    amxc_var_set_type(&values, AMXC_VAR_ID_HTABLE);
-    amxc_var_add_key(cstring_t, &values, "MACAddress", mac);
-    amxc_var_add_key(cstring_t, &values, "IPAddress", ip);
-    rv = amxb_add(acs_bus_ctx, object, 0, NULL, &values, &ret, 5);
-
-    if((rv != 0) || amxc_var_is_null(&ret)) {
-        fprintf(stderr, "failed to add test object [%s] error %d \n", object, rv);
-    }
-    amxc_var_clean(&ret);
-    amxc_var_clean(&values);
-}
-
-
 void test_dmadapter_GetParameterNames_Object_NextLevel_False_searchPath(UNUSED void** state) {
 
     // both notation '.*.' or '.*' at the end works the same way
@@ -487,10 +528,6 @@ void test_dmadapter_GetParameterNames_Object_NextLevel_False_searchPath(UNUSED v
     int rv = 0;
     int num_param = 0;
     DM_ENG_ParameterInfoStruct** param_info_st = NULL;
-
-    // Setup test Data
-    add_host_instance(HOST_1_MAC, HOST_1_IP);
-    add_host_instance(HOST_2_MAC, HOST_2_IP);
 
     rv = DM_ENG_GetParameterNames(DM_ENG_EntityType_ACS, (char*) objtest_path, false, &param_info_st);
     assert_int_equal(rv, 0);
@@ -570,35 +607,64 @@ void test_dmadapter_GetParameterNames_Object_NextLevel_True_searchPath(UNUSED vo
     param_info_st = NULL;
 }
 
+void test_dmadapter_GetParameterNames_Object_ListRootObjects(UNUSED void** state) {
+    char* objpath = "InternetGatewayDevice.";
+    int rv = 0;
+    int num_param = 0;
+    DM_ENG_ParameterInfoStruct** param_info_st = NULL;
+
+    rv = DM_ENG_GetParameterNames(DM_ENG_EntityType_ACS, objpath, true, &param_info_st);
+    assert_int_equal(rv, 0);
+    num_param = DM_ENG_tablen((void**) param_info_st);
+    assert_int_equal(num_param, 5);// 2 objects , 3 parameter
+
+    assert_int_equal(check_parameter_name(param_info_st, "InternetGatewayDevice.RootDataModelVersion", 0), 0);
+    assert_int_equal(check_parameter_name(param_info_st, "InternetGatewayDevice.InterfaceStackNumberOfEntries", 0), 0);
+    assert_int_equal(check_parameter_name(param_info_st, "InternetGatewayDevice.ManagementServer.", 0), 0);
+    assert_int_equal(check_parameter_name(param_info_st, "InternetGatewayDevice.DeviceInfo.", 0), 0);
+#if PRINT_RESULT
+    for(int i = 0; i < num_param; i++) {
+        printf("-> Parameter/Object [%s] , Writable= %d\n", param_info_st[i]->parameterName, param_info_st[i]->writable);
+    }
+#endif
+    if(param_info_st) {
+        DM_ENG_deleteAllParameterInfoStruct(param_info_st);
+        free(param_info_st);
+    }
+    param_info_st = NULL;
+}
+
 void test_dmadapter_GetParameterNames_Object_AllDataModel(UNUSED void** state) {
+    char* objpath = ""; // or InternetGatewayDevice. same result
+    int rv = 0;
+    int num_param = 0;
+    DM_ENG_ParameterInfoStruct** param_info_st = NULL;
 
-//TODO! : amxb_list wont work with empty path when we use mocker backend ?
+    rv = DM_ENG_GetParameterNames(DM_ENG_EntityType_ACS, (char*) objpath, false, &param_info_st);
+    assert_int_equal(rv, 0);
+    // result should at least include InternetGatewayDevice. at the very beggining
+    assert_string_equal(param_info_st[0]->parameterName, "InternetGatewayDevice.");
+    assert_int_equal(param_info_st[0]->writable, 0);
+    num_param = DM_ENG_tablen((void**) param_info_st);
+    assert_int_not_equal(num_param, 0);
+    assert_int_not_equal(num_param, 1);
 
-//     char* objpath = "InternetGatewayDevice.";
-//     int rv = 0;
-//     int num_param = 0;
-//     DM_ENG_ParameterInfoStruct** param_info_st = NULL;
-
-//     rv = DM_ENG_GetParameterNames(DM_ENG_EntityType_ACS, (char*) objpath, false, &param_info_st);
-//     assert_int_equal(rv,0);
-//     // result should at least include Device. or InternetGatewayDevice. at the very beggining
-//     assert_string_equal(param_info_st[0]->parameterName,objpath);
-//     assert_int_equal(param_info_st[0]->writable,0);
-//     num_param = DM_ENG_tablen((void**) param_info_st);
-//     assert_int_not_equal(num_param,0);
-//     assert_int_not_equal(num_param,1);
-//     // here its hard to check if the data is OK
-//     // just print them
-// #if PRINT_RESULT
-//     for(int i = 0; i < num_param; i++) {
-//         printf("-> Parameter/Object [%s] , Writable= %d\n", param_info_st[i]->parameterName, param_info_st[i]->writable);
-//     }
-// #endif
-//     if(param_info_st){
-//         DM_ENG_deleteAllParameterInfoStruct(param_info_st);
-//         free(param_info_st);
-//     }
-//     param_info_st = NULL;
+    assert_int_equal(check_parameter_name(param_info_st, "InternetGatewayDevice.RootDataModelVersion", 0), 0);
+    assert_int_equal(check_parameter_name(param_info_st, "InternetGatewayDevice.InterfaceStackNumberOfEntries", 0), 0);
+    assert_int_equal(check_parameter_name(param_info_st, "InternetGatewayDevice.ManagementServer.", 0), 0);
+    assert_int_equal(check_parameter_name(param_info_st, "InternetGatewayDevice.DeviceInfo.", 0), 0);
+    // here its hard to check all the data model
+    // just print them
+#if PRINT_RESULT
+    for(int i = 0; i < num_param; i++) {
+        printf("-> Parameter/Object [%s] , Writable= %d\n", param_info_st[i]->parameterName, param_info_st[i]->writable);
+    }
+#endif
+    if(param_info_st) {
+        DM_ENG_deleteAllParameterInfoStruct(param_info_st);
+        free(param_info_st);
+    }
+    param_info_st = NULL;
 }
 
 
@@ -654,16 +720,43 @@ void test_dmadapter_GetParametersValues_Parameters(UNUSED void** state) {
     }
 }
 
-static int check_parameter(DM_ENG_ParameterValueStruct** pv, char* path, char* val, int type) {
-    int nb_param = DM_ENG_tablen((void**) pv);
-    for(int i = 0; i < nb_param; i++) {
-        if(( strcmp(pv[i]->parameterName, path) == 0 )
-           && ( strcmp(pv[i]->value, val) == 0 )
-           && ((int) pv[i]->type == type )) {
-            return 0;
+void test_dmadapter_GetParametersValues_RootParameters(UNUSED void** state) {
+    int num_param = 2;
+    char* paramPath1 = "InternetGatewayDevice.RootDataModelVersion";
+    char* paramPath2 = "InternetGatewayDevice.InterfaceStackNumberOfEntries";
+    DM_ENG_ParameterValueStruct** params_values_st = NULL;
+    char* paramsArray[num_param + 1];
+    paramsArray[0] = paramPath1;
+    paramsArray[1] = paramPath2;
+    paramsArray[2] = NULL;
+    int rv = DM_ENG_GetParameterValues(DM_ENG_EntityType_ACS, (char**) paramsArray, &params_values_st);
+    assert_int_equal(rv, 0);
+
+    int nb_param = DM_ENG_tablen((void**) params_values_st);
+    assert_int_equal(nb_param, 2);
+
+    assert_string_equal(params_values_st[0]->parameterName, paramPath1);
+    assert_int_equal(params_values_st[0]->type, 5);// 5 -> string
+    assert_string_equal(params_values_st[0]->value, "2.14");
+
+    assert_string_equal(params_values_st[1]->parameterName, paramPath2);
+    assert_int_equal(params_values_st[1]->type, 1);// 0 -> uint
+    assert_string_equal(params_values_st[1]->value, "0");
+
+    if(rv == 0) {
+    #if PRINT_RESULT
+        printf("-----------------------------test_amx_GetParametersValues_Parameters---------------------------------\n");
+        for(int i = 0; i < nb_param; i++) {
+            printf("--> Parameter [%s] : type= %d , val= %s \n", (char*) params_values_st[i]->parameterName,
+                   params_values_st[i]->type, (char*) params_values_st[i]->value);
+        }
+        printf("-----------------------------test_amx_GetParametersValues_Parameters---------------------------------\n");
+    #endif
+        if(params_values_st) {
+            DM_ENG_deleteAllParameterValueStruct(params_values_st);
+            free(params_values_st);
         }
     }
-    return -1;
 }
 
 void test_dmadapter_GetParametersValues_Object(UNUSED void** state) {
@@ -686,11 +779,11 @@ void test_dmadapter_GetParametersValues_Object(UNUSED void** state) {
     assert_int_equal(nb_param, 3);
 
     //order is not always garanteed with GetParameterValues
-    rv = check_parameter(params_values_st, "InternetGatewayDevice.DeviceInfo.SerialNumber", "000000123", 5);
+    rv = check_parameter_value(params_values_st, "InternetGatewayDevice.DeviceInfo.SerialNumber", "000000123", 5);
     assert_int_equal(rv, 0);
-    rv = check_parameter(params_values_st, "InternetGatewayDevice.DeviceInfo.DeviceStatus", "Up", 5);
+    rv = check_parameter_value(params_values_st, "InternetGatewayDevice.DeviceInfo.DeviceStatus", "Up", 5);
     assert_int_equal(rv, 0);
-    rv = check_parameter(params_values_st, "InternetGatewayDevice.DeviceInfo.testInt", "10", 1);
+    rv = check_parameter_value(params_values_st, "InternetGatewayDevice.DeviceInfo.testInt", "10", 1);
     assert_int_equal(rv, 0);
 
     if(rv == 0) {
