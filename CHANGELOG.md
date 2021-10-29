@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.4.0 - 2021-10-29(12:47:34 +0000)
+
+### New
+
+- use DNS Service to resolve ACS Server IP
+- properly handle root parameter
+
 ## Release v1.3.2 - 2021-10-22(15:45:00 +0000)
 
 ### Fixes
