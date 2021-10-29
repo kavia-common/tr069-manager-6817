@@ -145,9 +145,9 @@ static int cwmp_client_connect_to_acs();
 static void cwmp_client_sessionTimedOut(UNUSED char* name);
 static void cwmp_client_send_header(int msgLength);
 static int cwmp_client_getACSAddrFamily();
-static bool cwmp_client_dns_resolve();
-int cwmp_client_initialize_connection(const char* acs_url);
-int cwmp_client_handle_raw_reply(char* raw, int len);
+static bool cwmp_client_dns_resolve(const char* hostname);
+static int cwmp_client_initialize_connection(const char* acs_url);
+static int cwmp_client_handle_raw_reply(char* raw, int len);
 
 /**********************************************************
 * Functions
@@ -398,7 +398,7 @@ int process_body(char* body, int len) {
     return 0;
 }
 
-int cwmp_client_handle_raw_reply(char* raw, int len) {
+static int cwmp_client_handle_raw_reply(char* raw, int len) {
     char* msg = raw;
     char* body = NULL;
     size_t header_len = 100, msg_len = 0;
@@ -453,6 +453,7 @@ static int cwmp_client_http_callback(struct lws* wsi, enum lws_callback_reasons 
     case LWS_CALLBACK_PROTOCOL_INIT:
         break;
     case LWS_CALLBACK_RAW_CONNECTED:
+    {
         client_wsi = wsi;
         connectedToServer = true;
         SAH_TRACE_NOTICE("Connected to ACS server IP : %s", serverip);
@@ -484,7 +485,8 @@ static int cwmp_client_http_callback(struct lws* wsi, enum lws_callback_reasons 
         if(pending_message) {
             DM_SendHttpMessage(pending_message);
         }
-        break;
+    }
+    break;
     case LWS_CALLBACK_RAW_CLOSE:
         connectedToServer = false;
         if(unexpected_close) {
@@ -522,7 +524,7 @@ static const struct lws_protocols protocols[] =
     { NULL, NULL, 0, 0, 0, NULL, 0} /* mark protocol end  needed by lws */
 };
 
-int cwmp_client_initialize_connection(const char* acs_url) {
+static int cwmp_client_initialize_connection(const char* acs_url) {
     char* acs_url_local = NULL;
     const char* uriHost = NULL;
     const char* uriScheme = NULL;
