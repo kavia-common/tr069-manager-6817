@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.4.1 - 2021-11-08(09:33:14 +0000)
+
+### Fixes
+
+- enable persistent settings and use ODL persistent storage
+
 ## Release v1.4.0 - 2021-10-29(12:47:34 +0000)
 
 ### New
