@@ -68,8 +68,7 @@
 
 #include "DM_AmxCommon.h"
 
-// Subscription list
-amxc_llist_t subscription_list;
+
 // Root data model parameters ACS path
 const char* ROOT_DM_PARAMETERS[3] = {
     "RootDataModelVersion",
@@ -462,11 +461,83 @@ stop:
 static void DM_list_removeSub(amxc_llist_it_t* it) {
 
     DM_Subscription_t* subscription = amxc_container_of(it, DM_Subscription_t, it);
-    if(subscription->path) {
-        free(subscription->path);
+    if(subscription->objectpath) {
+        free(subscription->objectpath);
     }
 
     free(subscription);
+}
+
+// Clean up subscription Info
+static void DM_list_removeSubInfo(amxc_llist_it_t* infoit) {
+
+    DM_Subscription_info_t* subscription_info = amxc_container_of(infoit, DM_Subscription_info_t, infoit);
+    if(subscription_info->parameter) {
+        free(subscription_info->parameter);
+    }
+    free(subscription_info);
+}
+
+DM_Subscription_t* DM_ENG_Device_Common_FindSubscriptionByID(amxc_llist_t* list, int id) {
+    amxc_llist_for_each(it, list) {
+        DM_Subscription_t* sub = amxc_container_of(it, DM_Subscription_t, it);
+        amxc_llist_for_each(infoit, &sub->subscription_info_list) {
+            DM_Subscription_info_t* info = amxc_container_of(infoit, DM_Subscription_info_t, infoit);
+            if(info && (info->uniqueID == id)) {
+                return sub;
+            }
+        }
+    }
+    return NULL;
+}
+
+DM_Subscription_t* DM_ENG_Device_Common_FindSubscription(amxc_llist_t* list, const char* path) {
+    amxc_llist_for_each(it, list) {
+        DM_Subscription_t* sub = amxc_container_of(it, DM_Subscription_t, it);
+        if(strcmp(sub->objectpath, path) == 0) {
+            return sub;
+        }
+    }
+    return NULL;
+}
+
+static void DM_ENG_Device_Common_DeleteSubscriptionInfo(amxc_llist_t* list, int id) {
+    DM_Subscription_t* sub = DM_ENG_Device_Common_FindSubscriptionByID(list, id);
+    int index = 0;
+    int todel = -1;
+    amxc_llist_it_t* item = NULL;
+    if(sub) {
+        amxc_llist_for_each(infoit, &sub->subscription_info_list) {
+            DM_Subscription_info_t* info = amxc_container_of(infoit, DM_Subscription_info_t, infoit);
+            if(info && (info->uniqueID == id)) {
+                todel = index;
+                break;
+            }
+            index++;
+        }
+        if(todel >= 0) {
+            item = amxc_llist_take_at(&sub->subscription_info_list, index);
+            DM_list_removeSubInfo(item);// free memory
+        }
+    }
+}
+
+static void DM_ENG_Device_Common_DeleteSubscriptionFromList(amxc_llist_t* list, DM_Subscription_t* sub) {
+    amxc_llist_it_t* item = NULL;
+    int index = 0;
+    int todel = -1;
+    amxc_llist_for_each(it, list) {
+        DM_Subscription_t* itsub = amxc_container_of(it, DM_Subscription_t, it);
+        if(sub == itsub) {
+            todel = index;
+            break;
+        }
+        index++;
+    }
+    if(todel >= 0) {
+        item = amxc_llist_take_at(list, index);
+        DM_list_removeSub(item);    // free memory
+    }
 }
 
 // subscription callback, dispatch events to the right handler
@@ -478,7 +549,7 @@ static void DM_ENG_Device_Common_NotificationHandler(const char* const sig_name,
         DM_Subscription_t* sub = (DM_Subscription_t*) priv;
         if(sub && sub->cb) {
             // call the the event handler
-            (*sub->cb)(sub->path, data);
+            (*sub->cb)(sub->objectpath, data);
         }
     }
 }
@@ -500,46 +571,77 @@ static void DM_ENG_Device_Common_NotificationHandler(const char* const sig_name,
     @return
     - 0 if OK , error code otherwise ...
  */
-int DM_ENG_Device_Common_AddSubscription(dm_amx_env_t* amx,
+int DM_ENG_Device_Common_AddSubscription(amxc_llist_t* slist,
+                                         dm_amx_env_t* amx,
                                          const char* path,
                                          const char* filter,
                                          notification_cb_t cb,
                                          int* subscriptionID) {
-    SAH_TRACE_INFO("DM_DA Create Subscription for [%s]", path);
+    //Wen we init a subscription we subscribe to all object
+    //then we filter on events on callback
+    SAH_TRACEZ_INFO("DM_DA", "Create New Subscription for [%s]", path);
     int error = 0;
     int rv = 0;
     amxc_string_t uidstr;
     amxc_string_init(&uidstr, 0);
+    amxd_path_t amxpath;
+    amxd_path_init(&amxpath, path);
+    DM_Subscription_info_t* subInfo = NULL;
+    int pathlen = strlen(path);
 
-    DM_Subscription_t* sub = (DM_Subscription_t*) calloc(1, sizeof(DM_Subscription_t));
+    DM_Subscription_t* sub = DM_ENG_Device_Common_FindSubscription(slist, amxd_path_get(&amxpath, AMXD_OBJECT_TERMINATE));
 
-    if(sub == NULL) {
-        SetErrorGotoStop(9000, "calloc failed");
+    if(strcmp(amxd_path_get(&amxpath, AMXD_OBJECT_TERMINATE), ".") == 0) {
+        //TODO! override path for root parameters
+        SetErrorGotoStop(9000, "Root Parameter");
     }
-    sub->cb = cb;
-    sub->path = strdup(path);
+    subInfo = (DM_Subscription_info_t*) calloc(1, sizeof(DM_Subscription_info_t));
+
+    if(subInfo == NULL) {
+        SetErrorGotoStop(9000, "Failed to allocate more memory");
+    }
+    if(path[pathlen - 1] == '.') {
+        //its an object
+        subInfo->parameter = strdup(path);
+    } else {
+        subInfo->parameter = strdup(amxd_path_get_param(&amxpath));
+    }
 
     // generate a UID for this subscription
     amxc_string_setf(&uidstr, "%s%s", path, filter);
-    sub->uniqueID = amxc_AP_hash(amxc_string_get(&uidstr, 0), amxc_string_text_length(&uidstr));
-    (*subscriptionID) = sub->uniqueID;
+    subInfo->uniqueID = amxc_AP_hash(amxc_string_get(&uidstr, 0), amxc_string_text_length(&uidstr));
+    (*subscriptionID) = subInfo->uniqueID;
 
-    rv = amxb_subscribe(amx->bus_ctx,
-                        path,
-                        filter,
-                        DM_ENG_Device_Common_NotificationHandler,
-                        (void*) sub);
-    if(rv != 0) {
-        SetErrorGotoStop(9000, "Failed to Create a new subscription");
+    if(sub == NULL) { //NO previous subscription for this object
+        //CREATE A NEW ONE
+        sub = (DM_Subscription_t*) calloc(1, sizeof(DM_Subscription_t));
+        if(sub == NULL) {
+            SetErrorGotoStop(9000, "Failed to allocate more memory");
+        }
+        //Init the subscription Info list
+        amxc_llist_init(&sub->subscription_info_list);
+        sub->cb = cb;
+        sub->objectpath = strdup(amxd_path_get(&amxpath, AMXD_OBJECT_TERMINATE));
+        rv = amxb_subscribe(amx->bus_ctx,
+                            amxd_path_get(&amxpath, AMXD_OBJECT_TERMINATE),
+                            filter,
+                            DM_ENG_Device_Common_NotificationHandler,
+                            (void*) sub);
+        if(rv != 0) {
+            SetErrorGotoStop(9000, "Failed to Create a new subscription");
+        }
+        // add to list
+        amxc_llist_append(slist, &sub->it);
     }
-    // add to list
-    amxc_llist_append(&subscription_list, &sub->it);
+    //Do not create a new subscription
+    amxc_llist_append(&sub->subscription_info_list, &subInfo->infoit);
     error = 0;
 stop:
     if((error != 0) && sub) {
         free(sub);
     }
     amxc_string_clean(&uidstr);
+    amxd_path_clean(&amxpath);
     return error;
 }
 
@@ -557,71 +659,81 @@ stop:
     @return
     - 0 if OK , error code otherwise ...
  */
-int DM_ENG_Device_Common_DeleteSubscription(dm_amx_env_t* amx, int id) {
+int DM_ENG_Device_Common_DeleteSubscription(amxc_llist_t* slist,
+                                            dm_amx_env_t* amx,
+                                            int id) {
     int error = 0;
     int rv = 0;
     DM_Subscription_t* sub = NULL;
-    int index = 0;
-    amxc_llist_it_t* item = NULL;
-    // search for notification
-    amxc_llist_for_each(it, (&subscription_list)) {
-        sub = amxc_container_of(it, DM_Subscription_t, it);
-        if(sub->uniqueID == id) {
-            break;
-        }
-        index++;
-    }
 
+    sub = DM_ENG_Device_Common_FindSubscriptionByID(slist, id);
     if(!sub) {
-        //ERROR ?
-        SetErrorGotoStop(9000, "Subscription already removed ?");
+        SetErrorGotoStop(9000, "Subscription already removed");
     }
-    SAH_TRACE_INFO("DM_DA Delete Subscription for [%s]", sub->path);
-    rv = amxb_unsubscribe(amx->bus_ctx,
-                          sub->path,
-                          DM_ENG_Device_Common_NotificationHandler,
-                          (void*) sub);
 
+    // Remove parameter from subscription
+    DM_ENG_Device_Common_DeleteSubscriptionInfo(&sub->subscription_info_list, id);
 
-    if(rv != 0) {
-        SetErrorGotoStop(9000, "Failed to Create a new subscription");
+    // Do we need a unsubscribe ?
+    if(amxc_llist_is_empty(&sub->subscription_info_list)) {
+        // subscription for this object is no longer needed
+        SAH_TRACEZ_INFO("DM_DA", "Delete Subscription for [%s]", sub->objectpath);
+        rv = amxb_unsubscribe(amx->bus_ctx,
+                              sub->objectpath,
+                              DM_ENG_Device_Common_NotificationHandler,
+                              (void*) sub);
+        if(rv != 0) {
+            SetErrorGotoStop(9000, "Failed to Create a new subscription");
+        }
+        // Delete the subscription from subscription list
+        DM_ENG_Device_Common_DeleteSubscriptionFromList(slist, sub);
     }
-    item = amxc_llist_take_at(&subscription_list, index);
-    DM_list_removeSub(item);// free memory
+
 stop:
     return error;
 }
 
-void DM_ENG_Device_Common_Cleanup() {
+//---------------------------------------------------------------------------------------------
+/**
+    @brief
+    Cleanup Subscription list
+
+    @details
+    Delete a Subscribe for notification from the system bus and
+    Cleanup the Subscription list.
+
+    @param slist Subscription list
+    @param id subscription ID for this notification that we wont to delete
+
+    @return
+    - 0 if OK , error code otherwise ...
+ */
+void DM_ENG_Device_Common_Cleanup_Subscription(amxc_llist_t* slist, dm_amx_env_t* amx) {
     DM_Subscription_t* sub = NULL;
-    dm_amx_env_t* amx = NULL;
     int rv = 0;
-    amx = DM_ENG_Device_GetSystemInfo();
 
     if(amx == NULL) {
         goto stop;
     }
     // Delete All subscription when exit
-    amxc_llist_for_each(it, (&subscription_list)) {
+    amxc_llist_for_each(it, slist) {
         sub = amxc_container_of(it, DM_Subscription_t, it);
         // calling DM_ENG_Device_Common_DeleteSubscription while accessing
         // the list may cause a crash ? not clear from documentation ?
         rv = amxb_unsubscribe(amx->bus_ctx,
-                              sub->path,
+                              sub->objectpath,
                               DM_ENG_Device_Common_NotificationHandler,
                               (void*) sub);
         if(rv != 0) {
-            SAH_TRACE_ERROR("ERROR while removing subscription %s", sub->path);
+            SAH_TRACEZ_ERROR("DM_DA", "ERROR while removing subscription [%s]", sub->objectpath);
             // proceed any way, we are going to exit?
         }
+        // Clean Subscription Info list
+        amxc_llist_clean(&sub->subscription_info_list, DM_list_removeSubInfo);
     }
 stop:
     // Cleanup the list
-    amxc_llist_clean(&subscription_list, DM_list_removeSub);
+    amxc_llist_clean(slist, DM_list_removeSub);
 }
 
-void DM_ENG_Device_Common_Init() {
-    //Init the subscription list
-    amxc_llist_init(&subscription_list);
-}
 /** @} */

@@ -135,6 +135,10 @@ void test_dmadapter_SetParameterValues(void** state);
 
 void test_dmadapter_SetParameterValues_Faults(void** state);
 
+void test_dmadapter_GetParameterAttributes(void** state);
+
+void test_dmadapter_SetParameterAttributes(void** state);
+
 void test_dmadapter_AddDeleteObject(void** state);
 
 #endif // __TEST_LIB_DMENGINE_H__

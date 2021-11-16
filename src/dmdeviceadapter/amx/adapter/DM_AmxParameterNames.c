@@ -257,6 +257,7 @@ static int DM_ENG_Device_GetParameterNames_GetObjects(dm_amx_env_t* amx, const c
             amxc_string_setf(&childPath, "%s%s.", path, childName);
             // recursively get ALL childObjects and their childs
             error = DM_ENG_Device_GetParameterNames_GetObjects(amx, amxc_string_get(&childPath, 0), pnsList);
+            amxc_string_clean(&childPath);
         }
     }
 stop:

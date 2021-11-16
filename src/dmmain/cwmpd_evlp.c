@@ -89,7 +89,7 @@ static void cwmp_evlp_amxp_sig_cb(UNUSED evutil_socket_t fd,
 
 struct event_base* cwmp_evlp_get() {
     if(!main_loop) {
-        SAH_TRACE_ERROR("CWMPD No evlp is initiaized");
+        SAH_TRACEZ_ERROR("CWMPD", "CWMPD No evlp is initiaized");
     }
 
     return main_loop;
@@ -100,7 +100,7 @@ cwmp_status_t cwmp_evlp_create(amxb_bus_ctx_t* acs_bus_ctx, amxb_bus_ctx_t* sys_
     main_loop = event_base_new();
 
     if(main_loop == NULL) {
-        SAH_TRACE_ERROR("CWMPD Creation of event base failed");
+        SAH_TRACEZ_ERROR("CWMPD", "Creation of event base failed");
         return cwmp_status_ko;
     }
 

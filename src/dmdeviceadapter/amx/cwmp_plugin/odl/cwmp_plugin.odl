@@ -24,6 +24,16 @@
         dm-defaults = "${defaults_file}",
         directory = "${storage-path}/odl"
     };
+
+    tr069-service = {
+        cwmpd_cache_file = "/tmp/cwmpd_cache.txt",
+        cwmpd_pid_file = "/var/run/cwmp.pid",
+        cwmpd_certs_file = "/usr/lib/cwmp/cwmpdcerts.pem",
+        cwmpd_adapter_path = "/usr/lib/libdmda_amx.so"
+    };
+
+    trace-zones = {CWMP_PLUGIN = 200, CWMPD = 200, DM_DA = 200, DM_ENGINE = 200,
+                   DM_COM = 200, DM_COMMON = 200, DM_HS = 200};
 }
 
 #include "${name}-${storage-type}.odl";

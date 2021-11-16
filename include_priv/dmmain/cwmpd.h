@@ -82,17 +82,21 @@ typedef enum server_state {INIT = 0, RUN, EXIT, ERROR } server_state_t;
 typedef enum cwmp_status {cwmp_status_ok=0, cwmp_status_ko} cwmp_status_t;
 
 struct application {
-    char* name;
+    const char* name;
     int daemonize;
     int traceLevel;
     sah_trace_type traceType;
     server_state_t state;
-    char* trustedCA;
-    char* pidFile;
-    char* da_path;
+    const char* trustedCA;
+    const char* ssl_priv_key;
+    const char* pidFile;
+    const char* cacheFile;
+    const char* da_path;
 };
 
 typedef struct application application_t;
+
+application_t cwmp_app_getconf(void);
 
 //Server
 cwmp_status_t cwmp_server_init(struct lws_context_creation_info* lws_ctx_info);

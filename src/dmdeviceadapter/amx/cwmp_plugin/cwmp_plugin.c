@@ -84,6 +84,9 @@ static void cwmp_plugin_init(amxd_dm_t* dm, amxo_parser_t* parser) {
     }
     // Load previous config
     amxo_parser_parse_file(parser, GET_CHAR(&parser->config, "save_file"), (amxd_object_t*) dm);
+
+    amxp_sigmngr_add_signal(NULL, "proc:stopped");
+    amxp_slot_connect(NULL, "proc:stopped", NULL, cwmpd_proc_stopped, NULL);
 }
 
 amxd_dm_t* cwmp_plugin_get_dm(void) {

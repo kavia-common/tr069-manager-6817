@@ -85,7 +85,7 @@ extern "C"
 #define when_null(x, l) if(x == NULL) { goto l; }
 #define when_failed(x, l) if(x != 0) { goto l; }
 
-#define ME "cwmp_plugin"
+#define ME "CWMP_PLUGIN"
 
 typedef struct _cwmp_plugin_app {
     amxd_dm_t* dm;
@@ -144,6 +144,10 @@ amxd_status_t _getACSIPTTL(amxd_object_t* object,
 void start_cwmpd(void);
 
 void stop_cwmpd(void);
+
+void cwmpd_proc_stopped(const char* const event_name,
+                        const amxc_var_t* const event_data,
+                        void* const priv);
 
 #ifdef __cplusplus
 }

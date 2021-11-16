@@ -6,7 +6,7 @@ SOURCES += $(wildcard $(PLUGIN_SRCDIR)/*.c)
 TARGET = run_test
 SOURCES += $(wildcard ./*.c)
 OBJECTS = $(addprefix $(OBJDIR)/,$(notdir $(SOURCES:.c=.o)))
-LDFLAGS += -lsahtrace -luriparser
+LDFLAGS += -Wl,--wrap=start_cwmpd -Wl,--wrap=stop_cwmpd -lsahtrace -luriparser
 
 
 include ../test_targets.mk

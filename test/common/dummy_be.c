@@ -93,6 +93,28 @@ static int amxb_dummy_disconnect(UNUSED void* ctx) {
     return 0;
 }
 
+static int dummy_describe(UNUSED void* const ctx,
+                          const char* object,
+                          const char* search_path,
+                          UNUSED uint32_t flags,
+                          UNUSED uint32_t access,
+                          amxc_var_t* values,
+                          UNUSED int timeout) {
+    amxc_var_set_type(values, AMXC_VAR_ID_LIST);
+    amxc_var_t* obj_data = amxc_var_add(amxc_htable_t, values, NULL);
+
+    amxc_string_t path;
+    amxc_string_init(&path, 0);
+    amxc_string_setf(&path, "%s%s", object, search_path);
+
+    amxc_var_add_key(cstring_t, obj_data, "path", amxc_string_get(&path, 0));
+    //amxc_var_dump(values, STDOUT_FILENO);
+    //fflush(stdout);
+
+    amxc_string_clean(&path);
+    return 0;
+}
+
 static int amxb_dummy_invoke(UNUSED void* const ctx,
                              amxb_invoke_t* invoke_ctx,
                              amxc_var_t* args,
@@ -199,6 +221,7 @@ static amxb_be_funcs_t amxb_dummy_impl = {
     .free = amxb_dummy_free,
     .register_dm = amxb_dummy_register,
     .list = amxb_dummy_list,
+    .describe = dummy_describe,
     .name = "dummy",
     .size = sizeof(amxb_be_funcs_t),
 };

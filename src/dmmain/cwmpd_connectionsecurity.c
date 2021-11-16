@@ -82,7 +82,7 @@ void cwmp_server_maxConnectionsAdd(void) {
     // add a new timestamp to the linked list
     time_list_item_t* item = (time_list_item_t*) calloc(1, sizeof(time_list_item_t));
     if(!item) {
-        SAH_TRACE_ERROR("Cannot allocate memory");
+        SAH_TRACEZ_ERROR("CWMPD", "Cannot allocate memory");
         return;
     }
     amxc_llist_it_init(&item->it);
@@ -98,7 +98,7 @@ bool cwmp_server_maxConnectionsReached(void) {
     char* maxconnectionrequest = NULL;
     unsigned int mc = DEFAULT_MAX_CONNECTIONREQUEST;
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_MAXCONNECTIONREQUEST, &maxconnectionrequest) != 0) {
-        SAH_TRACE_ERROR("Cannot fetch the MaxConnectionRequest");
+        SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the MaxConnectionRequest");
     }
     if(maxconnectionrequest != NULL) {
         mc = atoi(maxconnectionrequest);
@@ -109,7 +109,7 @@ bool cwmp_server_maxConnectionsReached(void) {
     char* freqconnectionrequest = NULL;
     unsigned int fc = DEFAULT_FREQ_CONNECTION_REQUEST;
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_FREQCONNECTIONREQUEST, &freqconnectionrequest) != 0) {
-        SAH_TRACE_ERROR("Cannot fetch the FreqConnectionRequest");
+        SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the FreqConnectionRequest");
     }
     if(freqconnectionrequest != NULL) {
         fc = atoi(freqconnectionrequest);
@@ -130,7 +130,7 @@ bool cwmp_server_maxConnectionsReached(void) {
     }
     // 2*mc: due to the basic/digest authentication, 2 "physical"  connection requests are send per "logical" connection request
     if(amxc_llist_size(&connection_timestamp_list) > 2 * mc) {
-        SAH_TRACE_INFO("The maximum number of connections per period is reached.");
+        SAH_TRACEZ_INFO("CWMPD", "The maximum number of connections per period is reached.");
         return true;
     }
 
@@ -138,7 +138,7 @@ bool cwmp_server_maxConnectionsReached(void) {
 }
 
 void cwmp_server_maxConnectionsCleanup(void) {
-    SAH_TRACE_INFO("Clean up max connections.");
+    SAH_TRACEZ_INFO("CWMPD", "Clean up max connections.");
     amxc_llist_it_t* cur = amxc_llist_get_first(&connection_timestamp_list);
     amxc_llist_it_t* next = NULL;
     while(cur != NULL) {

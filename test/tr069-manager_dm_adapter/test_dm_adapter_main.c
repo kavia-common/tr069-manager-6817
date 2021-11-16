@@ -96,7 +96,9 @@ int main(void) {
         cmocka_unit_test(test_dmadapter_GetParametersValues_searchPath_Object),
         cmocka_unit_test(test_dmadapter_SetParameterValues),
         cmocka_unit_test(test_dmadapter_SetParameterValues_Faults),
-        cmocka_unit_test(test_dmadapter_AddDeleteObject)
+        cmocka_unit_test(test_dmadapter_AddDeleteObject),
+        cmocka_unit_test(test_dmadapter_SetParameterAttributes),
+        cmocka_unit_test(test_dmadapter_GetParameterAttributes)
     };
     ret = cmocka_run_group_tests(tests, test_dmadapter_setup, test_dmadapter_teardown);
 

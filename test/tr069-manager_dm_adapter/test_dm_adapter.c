@@ -105,7 +105,7 @@
 #define PRINT_RESULT 0
 
 static const char* dm_dev_adapter_path = "../../output/x86_64-linux-gnu/libdmda_amx/libdmda_amx.so";
-
+static const char* acache_file = "/tmp/cwmp_acache.txt";
 char* g_randomCpeUrl = NULL;
 
 /* Some functions needed to implement tests not really used */
@@ -276,7 +276,8 @@ void test_dmadapter_connection(UNUSED void** state) {
     void* acsctx = NULL;
     // connect to bus
     int rv = DM_ENG_ActivateNotification(DM_ENG_EntityType_SYSTEM, inform, transferComplete, requestDownload,
-                                         getRPCMethods, timerStart, timerStop, timerTimeRemaining, engineEvent, &systemctx, &acsctx);
+                                         getRPCMethods, timerStart, timerStop, timerTimeRemaining, engineEvent,
+                                         acache_file, &systemctx, &acsctx);
     assert_int_equal(rv, 0);
     system_bus_ctx = (amxb_bus_ctx_t*) systemctx;
     acs_bus_ctx = (amxb_bus_ctx_t*) acsctx;
@@ -776,7 +777,7 @@ void test_dmadapter_GetParametersValues_Object(UNUSED void** state) {
      * [InternetGatewayDevice.DeviceInfo.testInt] : type= 0 , val= 10
      */
     int nb_param = DM_ENG_tablen((void**) params_values_st);
-    assert_int_equal(nb_param, 3);
+    assert_int_equal(nb_param, 5);
 
     //order is not always garanteed with GetParameterValues
     rv = check_parameter_value(params_values_st, "InternetGatewayDevice.DeviceInfo.SerialNumber", "000000123", 5);
@@ -1051,6 +1052,61 @@ void test_dmadapter_AddDeleteObject(UNUSED void** state) {
     }
     printf("-------------------------------test_amx_AddDeleteObject-------------------------------\n");
     #endif
-    //if( path ) free(path);
     amxc_string_clean(&path);
 }
+
+
+void test_dmadapter_SetParameterAttributes(UNUSED void** state) {
+    DM_ENG_ParameterAttributesStruct** pParameterList = NULL;
+    int rv = -1;
+    char* usrName = "InternetGatewayDevice.ManagementServer.Username";
+    // Add some passive notification (PASSIVE == 1)
+    // we will read them on test_dmadapter_GetParameterAttributes
+    pParameterList = DM_ENG_newTabParameterAttributesStruct(2);
+    pParameterList[0] = DM_ENG_newParameterAttributesStruct(usrName, 1, NULL);
+    pParameterList[2] = NULL;
+
+    rv = DM_ENG_SetParameterAttributes(DM_ENG_EntityType_ACS, pParameterList);
+    assert_int_equal(rv, 0);
+    if(pParameterList) {
+        DM_ENG_deleteTabParameterAttributesStruct(pParameterList);
+    }
+}
+
+void test_dmadapter_GetParameterAttributes(UNUSED void** state) {
+    char* paramArray[100];
+    DM_ENG_ParameterAttributesStruct** pResult = NULL;
+    int rv = -1;
+    int rs = 0;
+
+    char* hdrversion = "InternetGatewayDevice.DeviceInfo.HardwareVersion";
+    char* sfrversion = "InternetGatewayDevice.DeviceInfo.SoftwareVersion";
+    char* usrName = "InternetGatewayDevice.ManagementServer.Username";
+    paramArray[0] = hdrversion;
+    paramArray[1] = sfrversion;
+    paramArray[2] = usrName;
+    paramArray[3] = NULL;
+
+    rv = DM_ENG_GetParameterAttributes(DM_ENG_EntityType_ACS, (char**) paramArray, &pResult);
+    assert_int_equal(rv, 0);
+
+    rs = DM_ENG_tablen((void**) pResult);
+    assert_int_equal(rs, 3);
+    //(FORCED == 3), (ACTIVE == 2), (PASSIVE == 1)
+    assert_string_equal(pResult[0]->parameterName, hdrversion);
+    assert_int_equal(pResult[0]->notification, 2);
+    assert_string_equal(pResult[1]->parameterName, sfrversion);
+    assert_int_equal(pResult[1]->notification, 2);
+    assert_string_equal(pResult[2]->parameterName, usrName);
+    assert_int_equal(pResult[2]->notification, 1);
+#if PRINT_RESULT
+    for(int i = 0; i < rs; i++) {
+        printf("param=%s, Notification Mode=%d\n", pResult[i]->parameterName, pResult[i]->notification);
+    }
+#endif
+    //Clean mem
+    if(pResult) {
+        DM_ENG_deleteTabParameterAttributesStruct(pResult);
+    }
+}
+

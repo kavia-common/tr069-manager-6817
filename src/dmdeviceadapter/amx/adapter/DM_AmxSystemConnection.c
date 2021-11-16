@@ -92,7 +92,8 @@
  */
 
 static char* time_path = NULL;
-
+// Subscription list
+static amxc_llist_t systemSubsList;
 //---------------------------------------------------------------------------------------------
 /**
    @brief
@@ -112,7 +113,6 @@ static char* time_path = NULL;
    @param data notification data
  */
 void DM_ENG_Device_SystemConnectionHandleParameterChanged(const char* path, const amxc_var_t* const data) {
-    SAH_TRACEZ_INFO("DM_DA", "DM_ENG_Device_SystemConnectionHandleParameterChanged");
     const amxc_htable_t* htable = NULL;
 
     if((path == NULL) || (data == NULL)) { //DIE HERE
@@ -605,7 +605,7 @@ bool DM_ENG_Device_SystemConnectionSetParameter(dm_amx_env_t* amx, DM_ENG_System
         goto error;
     }
 
-    SAH_TRACEZ_INFO("DM_DA", "Setting param %s.%s to %s", object_name, param_name, pValue);
+    SAH_TRACEZ_INFO("DM_DA", "Setting param %s%s to %s", object_name, param_name, pValue);
 
     amxc_var_add_key(cstring_t, &set, param_name, pValue);
     //amxc_var_dump(&set,STDOUT_FILENO);
@@ -667,7 +667,7 @@ char* DM_ENG_Device_SystemConnectionGetParameter(dm_amx_env_t* amx, DM_ENG_Syste
     retcode = amxb_get(amx->bus_ctx, amxc_string_get(&path, 0), 0, &value, 1);
 
     if((retcode != 0) || amxc_var_is_null(&value)) {
-        SAH_TRACEZ_ERROR("DM_DA", "Failed to get parameter value (%s.%s)", object_name, param_name);
+        SAH_TRACEZ_ERROR("DM_DA", "Failed to get parameter value (%s%s)", object_name, param_name);
         goto error;
     }
 
@@ -736,12 +736,12 @@ static void DM_ENG_Device_SystemConnectionSleepBeforeStarting() {
 
     int randomData = open("/dev/urandom", O_RDONLY);
     if(randomData < 0) {
-        SAH_TRACEZ_INFO("DM_COMMON", "Failed to read /dev/urandom");
+        SAH_TRACEZ_INFO("DM_DA", "Failed to read /dev/urandom");
     } else {
 
         int bytes = read(randomData, &r, sizeof r);
         if(bytes <= 0) {
-            SAH_TRACE_ERROR("failed to read /dev/urandom - %s", strerror(errno));
+            SAH_TRACEZ_ERROR("DM_DA", "failed to read /dev/urandom - %s", strerror(errno));
         }
         close(randomData);
     }
@@ -834,8 +834,9 @@ bool DM_ENG_Device_SystemConnectionInitialize(dm_amx_env_t* amx) {
 
     } while(devstatus && strcmp(devstatus, "Up") != 0);
 
+    amxc_llist_init(&systemSubsList);
     /* Create the notifications */
-    if(DM_ENG_Device_Common_AddSubscription(amx, MANAGEMENTSERVER_PATH,
+    if(DM_ENG_Device_Common_AddSubscription(&systemSubsList, amx, MANAGEMENTSERVER_PATH,
                                             EVENT_DM_FILTER_OBJECT_CHANGED,
                                             &DM_ENG_Device_SystemConnectionHandleParameterChanged,
                                             &id) != 0) {
@@ -843,14 +844,14 @@ bool DM_ENG_Device_SystemConnectionInitialize(dm_amx_env_t* amx) {
         goto stop;
     }
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_TIMEPLUGINPATH, &time_path) != 0) {
-        SAH_TRACEZ_ERROR("DM_ENGINE", "Could not get time plugin path");
+        SAH_TRACEZ_ERROR("DM_DA", "Could not get time plugin path");
     }
     if(!time_path) {
-        SAH_TRACEZ_NOTICE("DM_ENGINE", "Defaulting time path to Time");
+        SAH_TRACEZ_NOTICE("DM_DA", "Defaulting time path to Time");
         time_path = strdup(TIME_PATH);
     }
     /* Create the notifications */
-    if(DM_ENG_Device_Common_AddSubscription(amx, time_path,
+    if(DM_ENG_Device_Common_AddSubscription(&systemSubsList, amx, time_path,
                                             EVENT_DM_FILTER_OBJECT_CHANGED,
                                             &DM_ENG_Device_SystemConnectionHandleParameterChanged,
                                             &id) != 0) {
@@ -858,7 +859,7 @@ bool DM_ENG_Device_SystemConnectionInitialize(dm_amx_env_t* amx) {
         goto stop;
     }
     if(DM_ENG_SetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_SESSIONSTATUS, (char*) "Idle") != 0) {
-        SAH_TRACE_ERROR("Could not set Session Status in the datamodel");
+        SAH_TRACEZ_ERROR("DM_DA", "Could not set Session Status in the datamodel");
     }
     ret = true;
 
@@ -884,6 +885,7 @@ stop:
    @param amx A pointer to the ambiorix system bus environment variable
  */
 void DM_ENG_Device_SystemConnectionCleanup(dm_amx_env_t* amx) {
+    DM_ENG_Device_Common_Cleanup_Subscription(&systemSubsList, amx);
     if(time_path) {
         free(time_path);
     }

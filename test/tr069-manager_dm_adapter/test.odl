@@ -160,6 +160,8 @@
     object DeviceInfo {
         string SerialNumber = "000000123";
         string DeviceStatus = "Up";
+        string HardwareVersion = "1.1";
+        string SoftwareVersion = "2.7";
         uint32 testInt = 10;
     }
 }

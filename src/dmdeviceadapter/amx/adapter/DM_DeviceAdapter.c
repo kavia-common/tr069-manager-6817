@@ -142,7 +142,7 @@ static char* persistentRPCPath = NULL;
 /**
  * Performs the necessary initializations of the device adapter if any, when starting the DM Agent.
  */
-bool DM_ENG_Device_Init(void** systemCtx, void** acsCtx) {
+bool DM_ENG_Device_Init(void** systemCtx, void** acsCtx, const char* rpcPath) {
     bool result;
     SAH_TRACEZ_IN("DM_DA");
     char* tmp;
@@ -166,19 +166,19 @@ bool DM_ENG_Device_Init(void** systemCtx, void** acsCtx) {
     *systemCtx = (void*) (da.system.bus_ctx);
     *acsCtx = (void*) (da.acs.bus_ctx);
 
-    DM_ENG_Device_Common_Init();
-
-    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_PERSISTENTRPCPATH, &persistentRPCPath) != 0) {
-        SAH_TRACE_ERROR("Cannot fetch the DM_ENG_PERSISTENTRPCPATH param");
+    if(!rpcPath) {
+        SAH_TRACEZ_ERROR("DM_DA", "rpcPath is not set , some feautures will not work properly");
+    } else {
+        persistentRPCPath = strdup(rpcPath);
     }
 
     //TODO!:manage  instance_mode properly.
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_INSTANCEMODE, &da.acs.instance_mode) != 0) {
-        SAH_TRACE_ERROR("Cannot fetch the DM_ENG_INSTANCEMODE param");
+        SAH_TRACEZ_ERROR("DM_DA", "Cannot fetch the DM_ENG_INSTANCEMODE param");
     }
 
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_AUTOCREATEINSTANCES, &tmp) != 0) {
-        SAH_TRACE_ERROR("Cannot fetch the DM_ENG_AUTOCREATEINSTANCES param");
+        SAH_TRACEZ_ERROR("DM_DA", "Cannot fetch the DM_ENG_AUTOCREATEINSTANCES param");
     }
     if(tmp) {
         da.acs.autoCreateInstances = atoi(tmp) ? true : false;
@@ -200,7 +200,6 @@ bool DM_ENG_Device_Release() {
 
     DM_ENG_Device_ACSConnectionCleanup(&da.acs);
     DM_ENG_Device_SystemConnectionCleanup(&da.system);
-    DM_ENG_Device_Common_Cleanup();
     free(da.system.instance_mode);
     free(da.acs.instance_mode);
     free(persistentRPCPath);
@@ -757,11 +756,11 @@ int DM_ENG_Device_LoadConfig(DM_ENG_ParameterAttributesStruct** acacheArray[], D
 
     SAH_TRACEZ_INFO("DM_DA", "Loading tr69 device configuration");
     if(DM_ENG_Device_LoadAttributes(path, acacheArray) == -1) {
-        SAH_TRACEZ_INFO("DM_DA", "Could not load attributes file");
+        SAH_TRACEZ_ERROR("DM_DA", "Could not load attributes file");
     }
 
     if(DM_ENG_Device_LoadScheduleInform(path, is) == -1) {
-        SAH_TRACEZ_INFO("DM_DA", "Could not load schedule inform file");
+        SAH_TRACEZ_ERROR("DM_DA", "Could not load schedule inform file");
     }
 
     free(path);
@@ -889,9 +888,11 @@ int DM_ENG_Device_SaveConfig(DM_ENG_ParameterAttributesStruct* acacheArray[], DM
  * @ return 0 if succesfull, -1 if an error occurred
  */
 int DM_ENG_Device_AddNotification(const char* subscriptionPath, int* subscriptionID) {
-    SAH_TRACEZ_INFO("DM_DA", "DM_ENG_Device_AddNotification path=%s", subscriptionPath);
-    (void) subscriptionID;
-    return -1;//Not yet implemented
+    SAH_TRACEZ_INFO("DM_DA", "Add Notification path=%s", subscriptionPath);
+    if(DM_ENG_Device_ACSConnectionAddSubscription(&da.acs, subscriptionPath, subscriptionID) == false) {
+        return -1;
+    }
+    return 0;
 }
 
 /**
@@ -904,7 +905,10 @@ int DM_ENG_Device_AddNotification(const char* subscriptionPath, int* subscriptio
  */
 int DM_ENG_Device_RemoveNotification(const char* subscriptionPath, int subscriptionID) {
     SAH_TRACEZ_INFO("DM_DA", "DM_ENG_Device_RemoveNotification path=%s id=%d", subscriptionPath, subscriptionID);
-    return -1;//Not yet implemented
+    if(DM_ENG_Device_ACSConnectionRemoveSubscription(&da.acs, subscriptionPath, subscriptionID) == false) {
+        return -1;
+    }
+    return 0;
 }
 
 /**

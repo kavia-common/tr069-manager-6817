@@ -80,6 +80,17 @@
 #include <amxc/amxc_macros.h>
 #include "cwmp_plugin.h"
 
+void __wrap_start_cwmpd();
+void __wrap_stop_cwmpd();
+
+void __wrap_start_cwmpd() {
+    //Does nothing
+}
+
+void __wrap_stop_cwmpd() {
+    //Does nothing
+}
+
 static const char* odl_defs = "test.odl";
 
 static amxd_dm_t dm;

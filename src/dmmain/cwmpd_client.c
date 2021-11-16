@@ -347,7 +347,7 @@ int append_read_buffer(char** msg, int* len) {
     if(read_buffer) {
         read_buffer = (char*) realloc(read_buffer, (read_buffer_len + *len + 1) * sizeof(char));
         if(!read_buffer) {
-            SAH_TRACE_ERROR("Couldn't realloc");
+            SAH_TRACEZ_ERROR("CWMPD", "Couldn't realloc");
             return 0;
         }
         memcpy(read_buffer + read_buffer_len, raw, *len);
@@ -378,9 +378,9 @@ void reset_read_buffer() {
 }
 
 int process_body(char* body, int len) {
-    SAH_TRACE_INFO("Message body arrived (%zu)", strlen(body));
+    SAH_TRACEZ_INFO("CWMPD", "Message body arrived (%zu)", strlen(body));
     if(strstr(body, DM_COM_ENV_TAG) == NULL) {
-        SAH_TRACE_WARNING("This is not a SOAP body");
+        SAH_TRACEZ_WARNING("CWMPD", "This is not a SOAP body\n");
     } else {
         DM_SoapXml SoapMsg;
         DM_HttpCheckNamespace(body, len);
@@ -388,7 +388,7 @@ int process_body(char* body, int len) {
         if(DM_OK == DM_AnalyseSoapMessage(&SoapMsg, body, TYPE_ACS, false)) {
             DM_ParseSoapEnveloppe(SoapMsg.pBody, SoapMsg.pSoapID, SoapMsg.nHoldRequest);
         } else {
-            SAH_TRACE_ERROR("Invalid SOAP Message closing session");
+            SAH_TRACEZ_ERROR("CWMPD", "Invalid SOAP Message closing session");
             _closeACSSession(false); // really put this one as last one, as it might trigger a new session
         }
         xmlDocumentFree(SoapMsg.pParser);
@@ -412,17 +412,17 @@ static int cwmp_client_handle_raw_reply(char* raw, int len) {
     append_read_buffer(&msg, &len);
     last_len = phr_parse_response(msg, len, &minor, &status, &header_body, &msg_len, values, &header_len, last_len);
     if(last_len == -2) {
-        SAH_TRACE_WARNING("header is incomplete");
+        SAH_TRACEZ_WARNING("CWMPD", "header is incomplete");
         create_read_buffer(msg, len);
         return 0;
     } else if(last_len == -1) {
-        SAH_TRACE_ERROR("Message is erroneous");
+        SAH_TRACEZ_ERROR("CWMPD", "Message is erroneous");
         reset_read_buffer();
         return 0;
     }
     content_length = get_content_length(values, header_len);
     if(content_length > MAX_CONTENT_LENGTH) {
-        SAH_TRACE_WARNING("Content-length superior to %d (%d)\n", MAX_CONTENT_LENGTH, content_length);
+        SAH_TRACEZ_WARNING("CWMPD", "Content-length superior to %d (%d)\n", MAX_CONTENT_LENGTH, content_length);
         _closeACSSession(false);
         return 0;
     }
@@ -431,7 +431,7 @@ static int cwmp_client_handle_raw_reply(char* raw, int len) {
         return 0;
     }
     body = msg + last_len;
-    printf("<--------------------------\n%s\n-------------------------->\n", msg);
+    SAH_TRACEZ_INFO("CWMPD", "<--------------------------\n%s\n-------------------------->\n", msg);
     switch(status) {
     case 200:
         process_body(body, content_length);
@@ -481,7 +481,7 @@ static int cwmp_client_http_callback(struct lws* wsi, enum lws_callback_reasons 
         read_buffer = NULL;
         read_buffer_len = 0;
         status = (int) lws_http_client_http_response(wsi);
-        SAH_TRACE_INFO(" Client: Connected to ACS server with status (%d)", status);
+        SAH_TRACEZ_INFO("CWMPD", "Client: Connected to ACS server with status (%d)", status);
         if(pending_message) {
             DM_SendHttpMessage(pending_message);
         }
@@ -494,7 +494,7 @@ static int cwmp_client_http_callback(struct lws* wsi, enum lws_callback_reasons 
             // TODO!: properly manage start/end new session ?
             _closeACSSession(true);
         }
-        SAH_TRACE_INFO(" Client: Disconnected from ACS server");
+        SAH_TRACEZ_INFO("CWMPD", "Client: Disconnected from ACS server");
         break;
     case LWS_CALLBACK_WSI_DESTROY:
         if(client_wsi && (client_wsi == wsi)) {
@@ -542,12 +542,12 @@ static int cwmp_client_initialize_connection(const char* acs_url) {
     }
     SAH_TRACE_INFO("ACS URL = %s", acs_url_local);
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_CONNECTIONREQUESTHOST, &crHost) != 0) {
-        SAH_TRACE_ERROR("Cannot fetch the connection request host URL");
+        SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the connection request host URL");
         goto exit_error;
     }
     // Check if wan is up
     if(!(*crHost) || (strcmp(crHost, "0.0.0.0") == 0)) {
-        SAH_TRACE_WARNING("WAN is not connected, not connecting to server");
+        SAH_TRACEZ_WARNING("CWMPD", "WAN is not connected, not connecting to server");
         free(crHost);
         goto exit_error;
     }
@@ -555,10 +555,10 @@ static int cwmp_client_initialize_connection(const char* acs_url) {
     free(acs_server_host);
     acs_server_host = NULL;
     if(lws_parse_uri(acs_url_local, &uriScheme, &uriHost, &uriPort, &uriPath)) {
-        SAH_TRACE_ERROR("Couldn't parse URL (%s)", acs_url_local);
+        SAH_TRACEZ_ERROR("CWMPD", "Couldn't parse URL (%s)", acs_url_local);
         goto exit_error;
     }
-    SAH_TRACE_APP_INFO("Host: %s | Scheme: %s | Port: %d | Path: %s", uriHost, uriScheme, uriPort, uriPath);
+    SAH_TRACEZ_APP_INFO("CWMPD", "Host: %s | Scheme: %s | Port: %d | Path: %s\n", uriHost, uriScheme, uriPort, uriPath);
     acs_server_host = strdup(uriHost);
     acs_server_port = uriPort;
     free(acs_server_path);
@@ -660,7 +660,7 @@ cwmp_status_t cwmp_client_init(struct lws_context_creation_info* lws_ctx_info) {
 /* Initialize and Start new client session */
 cwmp_status_t cwmp_client_start_session(struct lws_context_creation_info* lws_ctx_info,
                                         void** main_loop, struct lws_context* lws_ctx) {
-    SAH_TRACE_NOTICE("Client starting session");
+    SAH_TRACEZ_INFO("CWMPD", "Client stating session");
 
     lws_ctx_info->options = LWS_SERVER_OPTION_LIBEVENT;
     lws_ctx_info->foreign_loops = main_loop;
@@ -670,7 +670,7 @@ cwmp_status_t cwmp_client_start_session(struct lws_context_creation_info* lws_ct
     lws_ctx_info->fd_limit_per_thread = 1 + 1 + 1;
     lws_ctx = lws_create_context(lws_ctx_info);
     if(lws_ctx == NULL) {
-        SAH_TRACE_ERROR("lws client context creation failed");
+        SAH_TRACEZ_ERROR("CWMPD", "lws client context creation failed");
         return cwmp_status_ko;
     }
     g_lws_ctx = lws_ctx;
@@ -735,7 +735,7 @@ int DM_CloseHttpSession(bool closeMode) {
 
 static void cwmp_client_sessionTimedOut(UNUSED char* name) {
     unexpected_close = false;
-    SAH_TRACE_WARNING("session timed out");
+    SAH_TRACEZ_WARNING("CWMPD", "session timed out\n");
     _closeACSSession(false);
 }
 
@@ -752,7 +752,7 @@ static void cwmp_client_send_header(int msgLength) {
     ret += lws_add_http_header_by_name(client_wsi, (const unsigned char*) "Content-Type:", (const unsigned char*) "text/xml; charset=ISO-8859-1", 28, &p, (unsigned char*) (http_header + HTTP_HEADER_SIZE));
     ret += lws_add_http_header_by_name(client_wsi, (const unsigned char*) "SOAPAction:", (const unsigned char*) "", 0, &p, (unsigned char*) (http_header + HTTP_HEADER_SIZE));
     ret += lws_finalize_write_http_header(client_wsi, (unsigned char*) http_header, &p, (unsigned char*) (http_header + HTTP_HEADER_SIZE));
-    printf("ret %d <--------------------------\n%s", ret, http_header);
+    SAH_TRACEZ_INFO("CWMPD", "Send HTTP Header  %d -------------------------->\n%s", ret, http_header);
 }
 
 int DM_SendHttpMessage(const char* msgToSendStr) {
@@ -772,10 +772,10 @@ int DM_SendHttpMessage(const char* msgToSendStr) {
     }
 
     cwmp_client_send_header(msgLength);
-    printf("%s\n-------------------------->\n", msgToSendStr);
+    SAH_TRACEZ_INFO("CWMPD", "Send HTTP msg \n%s\n-------------------------->\n", msgToSendStr);
     DM_UpdateRetryBuffer(msgToSendStr, msgLength);
     lws_write(client_wsi, (unsigned char*) msgToSendStr, strlen(msgToSendStr), LWS_WRITE_HTTP);
-    SAH_TRACE_INFO("Message sent (%d).", msgLength);
+    SAH_TRACEZ_INFO("CWMPD", "Message sent (%d).", msgLength);
     DM_ENG_NotificationInterface_timerStart("Session-timer", session_timeout, 0, cwmp_client_sessionTimedOut);
     if(msgToSendStr == pending_message) {
         free(pending_message);
@@ -785,7 +785,7 @@ int DM_SendHttpMessage(const char* msgToSendStr) {
 }
 
 int client_startSession() {
-    fprintf(stderr, "HTTP start session\n");
+    SAH_TRACEZ_INFO("CWMPD", "HTTP start session");
     if(connectedToServer) {
         return 0;
     }
@@ -812,7 +812,7 @@ int client_startSession() {
     if(session_timeout <= 0) {
         session_timeout = DEFAULT_SESSION_TIMEOUT;
     }
-    SAH_TRACE_INFO("Session timeout = %d", session_timeout);
+    SAH_TRACEZ_INFO("CWMPD", "Session timeout = %d", session_timeout);
     DM_ENG_NotificationInterface_timerStart("Session-timer", session_timeout, 0, cwmp_client_sessionTimedOut);
 
     return 0;

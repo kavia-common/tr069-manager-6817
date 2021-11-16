@@ -111,8 +111,8 @@ static amxc_string_t ipv6AcsAddressList;
 static wan_ip_mode_t wanipmode = IPV4ONLY;
 static amxb_request_t* dns_req_ctx = NULL;
 static unsigned int dns_ttl_timer_value = 0;
-static amxp_proc_ctrl_t* cwmpd_proc;
-static FILE* log_file = NULL;
+static amxp_proc_ctrl_t* cwmpd_proc = NULL;
+static amxp_timer_t* restart_timer = NULL;
 
 void _writeURL(UNUSED const char* const sig_name,
                UNUSED const amxc_var_t* const data,
@@ -121,6 +121,7 @@ void _writeURL(UNUSED const char* const sig_name,
 }
 
 static void updateLocalIP(void) {
+    SAH_TRACEZ_INFO(ME, "cwmp_plugin updateLocalIP");
     amxd_object_t* conn_request = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer.ConnRequest");
     amxc_string_t* crh_value = NULL;
     bool delete_crh = false;
@@ -185,6 +186,7 @@ static void updateACSIPAddressParameter(void) {
 
 
 static void updateACSIP(bool update_only) {
+    SAH_TRACEZ_INFO(ME, "cwmp_plugin updateACSIP");
     amxd_object_t* managementServer = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer");
     amxd_object_t* internal_settings = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer.InternalSettings");
     amxd_param_t* urlParam = amxd_object_get_param_def(managementServer, "URL");
@@ -246,7 +248,7 @@ error:
 void _updateConnectionRequestURL(UNUSED const char* const sig_name,
                                  UNUSED const amxc_var_t* const data,
                                  UNUSED void* const priv) {
-    SAH_TRACE_IN();
+    SAH_TRACEZ_IN(ME);
     amxd_object_t* management_server = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer");
     amxd_object_t* conn_request = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer.ConnRequest");
     amxc_string_t* url = NULL;
@@ -256,19 +258,19 @@ void _updateConnectionRequestURL(UNUSED const char* const sig_name,
     amxd_status_t ret = amxd_status_ok;
 
     if(!management_server || !conn_request) {
-        SAH_TRACE_ERROR("Couldn't access dm ManagementServer\n");
+        SAH_TRACEZ_ERROR(ME, "Couldn't access dm ManagementServer\n");
         goto clean;
     }
     update = amxd_object_get_bool(conn_request, "UpdateConnRequestURL", &ret);
     if(update) {
         host = amxd_object_get_cstring_t(conn_request, "ConnRequestHost", &ret);
         if(ret != amxd_status_ok) {
-            SAH_TRACE_ERROR("Couldn't find ConnRequest Host");
+            SAH_TRACEZ_ERROR(ME, "Couldn't find ConnRequest Host");
             goto clean;
         }
         port = amxd_object_get_uint16_t(conn_request, "ConnRequestPort", &ret);
         if(ret != amxd_status_ok) {
-            SAH_TRACE_ERROR("Couldn't find ConnRequest Port");
+            SAH_TRACEZ_ERROR(ME, "Couldn't find ConnRequest Port");
             goto clean;
         }
         amxc_string_new(&url, 0);
@@ -279,6 +281,7 @@ void _updateConnectionRequestURL(UNUSED const char* const sig_name,
     }
 clean:
     amxc_string_delete(&url);
+    SAH_TRACEZ_OUT(ME);
 }
 
 void _writeInterface(UNUSED const char* const sig_name,
@@ -298,7 +301,7 @@ amxd_status_t _getACSIPTTL(UNUSED amxd_object_t* object,
 }
 
 static void findAndUpdateLocalIP(const char* interface) {
-    SAH_TRACE_NOTICE("CWMPD listening interface is set to %s", interface);
+    SAH_TRACEZ_NOTICE(ME, "CWMPD listening interface is set to %s", interface);
     if(!interface || !*interface) {
         return;
     }
@@ -308,11 +311,11 @@ static void findAndUpdateLocalIP(const char* interface) {
     amxd_status_t ret;
     amxd_object_t* conn_request = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer.ConnRequest");
     if(!conn_request) {
-        SAH_TRACE_ERROR("Couldn't access dm ConnRequest");
+        SAH_TRACEZ_ERROR(ME, "Couldn't access dm ConnRequest");
         return;
     }
     if(getifaddrs(&ifaddr) == -1) {
-        SAH_TRACE_ERROR("getifaddrs failed");
+        SAH_TRACEZ_ERROR(ME, "getifaddrs failed");
         return;
     }
     for(ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
@@ -327,7 +330,7 @@ static void findAndUpdateLocalIP(const char* interface) {
             s = getnameinfo(ifa->ifa_addr, (family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6),
                             host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
             if(s != 0) {
-                SAH_TRACE_ERROR("getnameinfo() failed: %s", gai_strerror(s));
+                SAH_TRACEZ_ERROR(ME, "getnameinfo() failed: %s", gai_strerror(s));
                 continue;
             }
             amxc_string_t* ip = (family == AF_INET) ? &ipv4address : &ipv6address;
@@ -443,7 +446,7 @@ static bool assembleConnectionRequestURL(amxd_object_t* object, amxc_string_t* u
     bool isIPV6 = false;
 
     if(!path || !*path) {
-        SAH_TRACE_ERROR("Couldn't find ConnRequestPath");
+        SAH_TRACEZ_ERROR(ME, "Couldn't find ConnRequestPath");
         return false;
     }
 
@@ -452,39 +455,85 @@ static bool assembleConnectionRequestURL(amxd_object_t* object, amxc_string_t* u
     return true;
 }
 
+static void cwmp_timer_cb(UNUSED amxp_timer_t* timer, UNUSED void* priv) {
+    SAH_TRACEZ_INFO(ME, "wait-timer-expired start cwmpd again");
+    start_cwmpd();
+}
+
+void cwmpd_proc_stopped(UNUSED const char* const event_name,
+                        UNUSED const amxc_var_t* const event_data,
+                        UNUSED void* const priv) {
+    stop_cwmpd();
+    SAH_TRACEZ_NOTICE(ME, "cwmpd stopped signal [%s]", event_name);
+    // cwmpd is dead, wait for x time then restart it
+    amxp_timer_new(&restart_timer, cwmp_timer_cb, NULL);
+    // restart in 2 seconds
+    amxp_timer_start(restart_timer, 2000);
+}
+
 static int build_cwmpd_proc_args(amxc_array_t* cmd, UNUSED amxc_var_t* settings) {
-    char log_level[16] = {0};
+    SAH_TRACEZ_NOTICE(ME, "preparing cwmpd");
 
     amxc_array_init(cmd, 4);
-    amxc_array_append_data(cmd, strdup("cwmpd"));
-    //daemonize by default
-    amxc_array_append_data(cmd, strdup("-f"));
-    //TODO! manage app settings
-    amxc_array_append_data(cmd, strdup("-d/usr/lib/libdmda_amx.so"));
+    amxc_string_t adapter_opt;
+    amxc_string_init(&adapter_opt, 0);
+    // cwmpd cache file name
+    amxc_string_t cache_opt;
+    amxc_string_init(&cache_opt, 0);
+    // cwmpd trustedCA
+    amxc_string_t trustedCA_opt;
+    amxc_string_init(&trustedCA_opt, 0);
+    // pid file
+    amxc_string_t pid_file_opt;
+    amxc_string_init(&pid_file_opt, 0);
+
+    // trace file
+    amxc_string_t trace_level;
+    amxc_string_init(&trace_level, 0);
+
+    amxc_var_t* tr069_config = amxc_var_get_key(cwmp_plugin_get_config(), "tr069-service", AMXC_VAR_FLAG_DEFAULT);
     amxc_var_t* trace = amxc_var_get_key(cwmp_plugin_get_config(), "sahtrace", AMXC_VAR_FLAG_DEFAULT);
-    sprintf(log_level, "-s%d", GET_UINT32(trace, "level"));
-    amxc_array_append_data(cmd, strdup(log_level));
+    amxc_var_dump(tr069_config, 0);
+    amxc_string_setf(&adapter_opt, "-a%s", GETP_CHAR(tr069_config, "cwmpd_adapter_path"));
+    amxc_string_setf(&cache_opt, "-q%s", GETP_CHAR(tr069_config, "cwmpd_cache_file"));
+    amxc_string_setf(&trustedCA_opt, "-t%s", GETP_CHAR(tr069_config, "cwmpd_certs_file"));
+    amxc_string_setf(&pid_file_opt, "-p%s", GETP_CHAR(tr069_config, "cwmpd_pid_file"));
+    amxc_string_setf(&trace_level, "-s%d", GET_UINT32(trace, "level"));
+
+    amxc_array_append_data(cmd, strdup("cwmpd"));
+    amxc_array_append_data(cmd, strdup(amxc_string_get(&adapter_opt, 0)));
+    amxc_array_append_data(cmd, strdup(amxc_string_get(&trace_level, 0)));
+    amxc_array_append_data(cmd, strdup(amxc_string_get(&cache_opt, 0)));
+    amxc_array_append_data(cmd, strdup(amxc_string_get(&trustedCA_opt, 0)));
+    amxc_array_append_data(cmd, strdup(amxc_string_get(&pid_file_opt, 0)));
+
+    //always keep this at last
+    amxc_array_append_data(cmd, strdup("-D"));
+    //clean up
+    amxc_string_clean(&adapter_opt);
+    amxc_string_clean(&trace_level);
+    amxc_string_clean(&cache_opt);
+    amxc_string_clean(&trustedCA_opt);
+    amxc_string_clean(&pid_file_opt);
     return 0;
 }
 
 void start_cwmpd(void) {
-    amxd_object_t* mgmt_server = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer");
-    amxd_object_t* conn_request = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer.ConnRequest");
-    amxd_status_t status;
-    char* localip = amxd_object_get_cstring_t(conn_request, "LocalIPAddress", &status);
-    if(amxd_object_get_bool(mgmt_server, "EnableCWMP", &status) && (strcmp(localip, "0.0.0.0") != 0)) {
-        amxp_proc_ctrl_new(&cwmpd_proc, build_cwmpd_proc_args);
-        amxp_proc_ctrl_start(cwmpd_proc, 0, NULL);
+    if(cwmpd_proc) {
+        SAH_TRACEZ_WARNING(ME, "cwmpd already started");
+        return;
     }
+    SAH_TRACEZ_INFO(ME, "Starting cwmpd");
+    amxp_proc_ctrl_new(&cwmpd_proc, build_cwmpd_proc_args);
+    amxp_proc_ctrl_start(cwmpd_proc, 0, NULL);
 }
 
 void stop_cwmpd(void) {
     if(cwmpd_proc) {
         amxp_proc_ctrl_stop(cwmpd_proc);
         amxp_proc_ctrl_delete(&cwmpd_proc);
-    }
-    if(log_file) {
-        fclose(log_file);
+        cwmpd_proc = NULL;
     }
 }
+
 

@@ -143,10 +143,10 @@ static void timer_timeout_handler(amxp_timer_t* timer, void* priv) {
     timer_list_item* item;
     timerHandler handler;
 
-    SAH_TRACE_NOTICE("Timer callback %s (%p)", name->buffer, timer);
+    SAH_TRACEZ_INFO("CWMPD", "Timer callback %s (%p)", name->buffer, timer);
     item = timer_find_by_addr(timer);
     if(!item) {
-        SAH_TRACE_WARNING("Timer timeout for inexisting timer %s", name->buffer);
+        SAH_TRACEZ_WARNING("CWMPD", "Timer timeout for inexisting timer %s", name->buffer);
         return;
     }
     arg = amxc_string_dup(name, 0, amxc_string_text_length(name));
@@ -203,7 +203,7 @@ int cwmp_timer_start(const char* name, int waitTime, int intervalTime, timerHand
         timer->handler = handler;
         timer_append(timer);
     }
-    SAH_TRACE_INFO("Starting timer %s with %d seconds\n", name, waitTime);
+    SAH_TRACEZ_INFO("CWMPD", "Starting timer %s with %d seconds\n", name, waitTime);
     amxp_timer_start(timer->timer, waitTime * 1000);
     return cwmp_status_ok;
 }
@@ -217,7 +217,7 @@ int cwmp_timer_stop(const char* name) {
     } else {
         return cwmp_status_ko;
     }
-    SAH_TRACE_INFO("timer stop: %s", name);
+    SAH_TRACEZ_INFO("CWMPD", "timer stop: %s", name);
     return cwmp_status_ok;
 }
 

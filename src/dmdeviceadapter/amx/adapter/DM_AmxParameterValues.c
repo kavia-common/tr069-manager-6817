@@ -222,6 +222,7 @@ static int DM_ENG_Device_GetParameterValues_GetRootParameter(dm_amx_env_t* amx, 
     int error = 0;
     int ret = 0;
     amxc_var_t* var = NULL;
+    char* val = NULL;
     u_int32_t type = 0;
     amxc_var_t object;
     amxd_path_t parameterPath;
@@ -247,13 +248,16 @@ static int DM_ENG_Device_GetParameterValues_GetRootParameter(dm_amx_env_t* amx, 
 
     var = GETP_ARG(&object, amxc_string_get(&parameterAmxPath, 0));
     type = amxc_var_type_of(var);
-
+    val = amxc_var_dyncast(cstring_t, var);
     DM_ENG_addParameterValueStruct(pvsList,
                                    DM_ENG_newParameterValueStruct(path,
                                                                   DM_ENG_Device_Common_ConvertParameterType(type),
-                                                                  amxc_var_dyncast(cstring_t, var))
+                                                                  val)
                                    );
 stop:
+    if(val) {
+        free(val);
+    }
     amxd_path_clean(&parameterPath);
     amxc_string_clean(&parameterAmxPath);
     amxc_var_clean(&object);

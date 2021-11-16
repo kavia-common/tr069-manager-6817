@@ -222,12 +222,12 @@ static const char* is_complete(const char* buf, const char* buf_end, size_t last
 }
 
 #define PARSE_INT(valp_, mul_)                                                                                                     \
-    if(* buf < '0' || '9' < * buf) {                                                                                                \
-        buf ++;                                                                                                                     \
-        * ret = -1;                                                                                                                 \
+    if(*buf < '0' || '9' < *buf) {                                                                                                \
+        buf++;                                                                                                                     \
+        *ret = -1;                                                                                                                 \
         return NULL;                                                                                                               \
     }                                                                                                                              \
-    *(valp_) = (mul_)* (* buf ++ - '0');
+    *(valp_) = (mul_) * (*buf++ - '0');
 
 #define PARSE_INT_3(valp_)                                                                                                         \
     do {                                                                                                                           \
