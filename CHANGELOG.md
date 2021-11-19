@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.5.1 - 2021-11-19(10:57:11 +0000)
+
+### Fixes
+
+- properly handle the connection with ACSIP list
+
 ## Release v1.5.0 - 2021-11-16(14:52:24 +0000)
 
 ### New
