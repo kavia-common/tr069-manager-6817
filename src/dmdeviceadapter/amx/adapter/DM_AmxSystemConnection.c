@@ -404,6 +404,7 @@ static const char* DM_ENG_Device_ConvertToObjectName(DM_ENG_SystemParameter_t pa
         return time_path;
     case DM_ENG_ACSIPAFFINITY:
     case DM_ENG_ACSIPTTL:
+    case DM_ENG_ACSADDRFAMILY:
     case DM_ENG_ALLOWCONNECTIONREQUESTFROMADDRESS:
     case DM_ENG_DATAMODEL:
     case DM_ENG_DATAMODELURL:
@@ -463,6 +464,7 @@ static const char* DM_ENG_Device_ConvertToParameterName(DM_ENG_SystemParameter_t
     case DM_ENG_URL:                               return "URL";
     case DM_ENG_ACSIPAFFINITY:                     return "ACSIPAffinity";
     case DM_ENG_ACSIPTTL:                          return "ACSIPTTL";
+    case DM_ENG_ACSADDRFAMILY:                     return "ACSAddrFamily";
     case DM_ENG_PERIODICINFORMINTERVAL:            return "PeriodicInformInterval";
     case DM_ENG_PERIODICINFORMTIME:                return "PeriodicInformTime";
     case DM_ENG_PERIODICINFORMENABLE:              return "PeriodicInformEnable";

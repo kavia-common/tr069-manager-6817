@@ -86,7 +86,6 @@
 #define DEFAULT_SESSION_TIMEOUT 45
 #define MAX_CONTENT_LENGTH      33554432
 #define USER_AGENT              "prpl_user_agent"
-#define addrFamilyPath          "Device.ManagementServer.InternalSettings.ACSAddrFamily"
 
 /**********************************************************
 * Type definitions
@@ -172,16 +171,14 @@ static int isIPAddress(const char* ip) {
 
 static int cwmp_client_getACSAddrFamily() {
     uint8_t addrFamily = 0;
-    DM_ENG_ParameterValueStruct** pResult = NULL;
-    char* paramsArray[2];
-    paramsArray[0] = (char*) addrFamilyPath;
-    paramsArray[1] = NULL;
-
-    if(DM_ENG_GetParameterValues(DM_ENG_EntityType_SYSTEM, (char**) paramsArray, &pResult) == 0) {
-        addrFamily = atoi(pResult[0]->value);
-        DM_ENG_deleteAllParameterValueStruct(pResult);
-        free(pResult);
+    char* tmp = NULL;
+    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ACSADDRFAMILY, &tmp) == 0) {
+        if(tmp) {
+            addrFamily = atoi(tmp);
+            free(tmp);
+        }
     }
+    SAH_TRACEZ_INFO("CWMPD", "ACSADDFamily = %d", addrFamily);
     if(addrFamily == 4) {
         return AF_INET;
     } else if(addrFamily == 6) {
