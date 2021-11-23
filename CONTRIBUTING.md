@@ -40,7 +40,7 @@ git clone git@gitlab.com:<USER>/tr069-manager.git
 Add `upstream` as a remote called `upstream`:
 
 ```bash
-git remote add upstream git@gitlab.com:soft.at.home/plugins/tr069-manager.git
+git remote add upstream git@gitlab.com:prpl-foundation/components/core/plugins/tr069-manager.git
 ```
 
 ## For Each Contribution
