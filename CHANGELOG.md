@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.6.0 - 2021-11-24(13:13:42 +0000)
+
+### New
+
+- Add support for ACS Address Family
+
 ## Release v1.5.1 - 2021-11-19(10:57:11 +0000)
 
 ### Fixes
