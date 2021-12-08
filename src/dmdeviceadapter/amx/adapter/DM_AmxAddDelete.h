@@ -69,8 +69,8 @@ extern "C"
 #include "DM_AmxCommon.h"
 
 
-int DM_ENG_Device_AddDeleteObject_Add(dm_amx_env_t* amx, char* objectName, unsigned int* pInstanceNumber, DM_ENG_ParameterStatus* pStatus);
-int DM_ENG_Device_AddDeleteObject_Delete(dm_amx_env_t* amx, char* objectName, DM_ENG_ParameterStatus* pStatus);
+int DM_ENG_Device_AddDeleteObject_Add(dm_amx_env_t* amx, const char* objectName, unsigned int* pInstanceNumber, DM_ENG_ParameterStatus* pStatus);
+int DM_ENG_Device_AddDeleteObject_Delete(dm_amx_env_t* amx, const char* objectName, DM_ENG_ParameterStatus* pStatus);
 
 #ifdef __cplusplus
 }

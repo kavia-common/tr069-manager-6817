@@ -85,7 +85,7 @@ const char* ROOT_DM_INTERNAL_PARAMETER_PATH[3] = {
 
 const char* DM_ENG_Device_Common_GetRootParameterInternalPath(const char* path) {
 
-    char* parameterName = DM_ENG_Device_Common_ACSToAMXPath_noalloc(path);
+    const char* parameterName = DM_ENG_Device_Common_ACSToAMXPath_noalloc(path);
 
     if(parameterName == NULL) {
         return NULL;
@@ -103,7 +103,7 @@ const char* DM_ENG_Device_Common_GetRootParameterInternalPath(const char* path) 
 
 bool DM_ENG_Device_Common_IsRootParameter(const char* path) {
 
-    char* parameterName = DM_ENG_Device_Common_ACSToAMXPath_noalloc(path);
+    const char* parameterName = DM_ENG_Device_Common_ACSToAMXPath_noalloc(path);
 
     if(parameterName == NULL) {
         return false;
@@ -143,17 +143,17 @@ bool DM_ENG_Device_Common_IsRootParameter(const char* path) {
 bool DM_ENG_Device_Common_AmxConnect(dm_amx_env_t* amx, const char* envVariable, const char* defaultLocation,
                                      const char* envURI, const char* defaultURI) {
 
-    char* uri = getenv(envURI);
-    char* path = getenv(envVariable);
+    const char* uri = getenv(envURI);
+    const char* path = getenv(envVariable);
 
     if(!path) {
         SAH_TRACEZ_INFO("DM_DA", "env var [%s] not found, using default path [%s]", envVariable, defaultLocation);
-        path = (char*) defaultLocation;
+        path = defaultLocation;
     }
 
     if(!uri) {
         SAH_TRACEZ_INFO("DM_DA", "env [%s] not found, using default uri [%s]", envURI, defaultURI);
-        uri = (char*) defaultURI;
+        uri = defaultURI;
     }
 
     SAH_TRACEZ_INFO("DM_DA", "Loading AMX backend [%s] ...", path);
@@ -191,7 +191,7 @@ bool DM_ENG_Device_Common_AmxConnect(dm_amx_env_t* amx, const char* envVariable,
    - NULL if an error occurred
    - a pointer tot the translated Ambiorix path
  */
-char* DM_ENG_Device_Common_ACSToAMXPath_noalloc(const char* acsPath) {
+const char* DM_ENG_Device_Common_ACSToAMXPath_noalloc(const char* acsPath) {
     char* amxPath = NULL;
     int prefixlen = 0;
     const char* prefixName = "";
@@ -202,7 +202,7 @@ char* DM_ENG_Device_Common_ACSToAMXPath_noalloc(const char* acsPath) {
     }
 
     if(strlen(acsPath) == 0) { //if path is an empty string, return the top of the name hierarchy
-        return (char*) acsPath;
+        return acsPath;
     }
 
     if(prefixName != NULL) {
@@ -222,7 +222,7 @@ char* DM_ENG_Device_Common_ACSToAMXPath_noalloc(const char* acsPath) {
     }
     amxPath++;
 
-    return (char*) amxPath;
+    return amxPath;
 }
 
 //---------------------------------------------------------------------------------------------
@@ -414,7 +414,7 @@ static void DM_ENG_Device_Common_Resolve_Path_cb(const amxb_bus_ctx_t* bus_ctx, 
     - false : error path couldn't be resolved
     - true : no error path resolved successfully
  */
-bool DM_ENG_Device_Common_Resolve_Path(dm_amx_env_t* amx, char* path, amxc_var_t* resolved) {
+bool DM_ENG_Device_Common_Resolve_Path(dm_amx_env_t* amx, const char* path, amxc_var_t* resolved) {
     bool ret = true;
     int rv = 0;
     amxd_path_t amxd_path;

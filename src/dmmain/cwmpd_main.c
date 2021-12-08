@@ -113,25 +113,24 @@ static void app_usage() {
 }
 
 static void cwmp_app_configureDefaults() {
-    cwmp_app.name = (char*) "cwmpd";
+    cwmp_app.name = "cwmpd";
     cwmp_app.daemonize = 1;
 
-    cwmp_app.pidFile = (char*) getenv("CWMPD_PID_FILE");
+    cwmp_app.pidFile = getenv("CWMPD_PID_FILE");
     if(cwmp_app.pidFile == NULL) {
-        cwmp_app.pidFile = (char*) CFG_PID_FILE;
+        cwmp_app.pidFile = CFG_PID_FILE;
     }
     /* defaults for sahtrace */
     cwmp_app.traceLevel = 200;
     cwmp_app.traceType = TRACE_TYPE_SYSLOG;
-    cwmp_app.cacheFile = (char*) "/tmp/cwmpd_cache.txt";
+    cwmp_app.cacheFile = "/tmp/cwmpd_cache.txt";
     /* ssl default */
 #ifdef CONFIG_SAH_AMX_TR069_MANAGER_CERTIFICATE_NO_PEM
     cwmp_app.trustedCA = NULL;
     cwmp_app.ssl_priv_key = NULL;
 #else
-    cwmp_app.trustedCA = (char*) "/etc/ca.pem";
-    cwmp_app.ssl_client_priv_key = NULL;
-    cwmp_app.ssl_client_cert = NULL;
+    cwmp_app.trustedCA = "/etc/ca.pem";
+    cwmp_app.ssl_priv_key = "/etc/ssl_priv_key.key";
 #endif
 }
 

@@ -112,13 +112,13 @@ typedef struct DM_Subscription {
     amxc_llist_it_t it;
 } DM_Subscription_t;
 
-char* DM_ENG_Device_Common_ACSToAMXPath_noalloc(const char* acsPath);
+const char* DM_ENG_Device_Common_ACSToAMXPath_noalloc(const char* acsPath);
 char* DM_ENG_Device_Common_ACSToAMXPath(const char* acsPath);
 bool DM_ENG_Device_Common_CheckSystem(dm_amx_env_t* amx);
 bool DM_ENG_Device_Common_AmxConnect(dm_amx_env_t* amx, const char* envVariable, const char* defaultLocation, const char* envURI, const char* defaultURI);
 bool DM_ENG_Device_Common_IsWildcardPath(const char* path);
 bool DM_ENG_Device_Common_IsWildcardPathValid(const char* path);
-bool DM_ENG_Device_Common_Resolve_Path(dm_amx_env_t* amx, char* path, amxc_var_t* resolved);
+bool DM_ENG_Device_Common_Resolve_Path(dm_amx_env_t* amx, const char* path, amxc_var_t* resolved);
 DM_ENG_ParameterType DM_ENG_Device_Common_ConvertParameterType(u_int32_t type);
 const char* DM_ENG_Device_Common_GetRootParameterInternalPath(const char* path);
 bool DM_ENG_Device_Common_IsRootParameter(const char* path);

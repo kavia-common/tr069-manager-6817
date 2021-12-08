@@ -218,7 +218,7 @@ stop:
    - false if an error occurred
    - true if succesfull
  */
-static int DM_ENG_Device_GetParameterValues_GetRootParameter(dm_amx_env_t* amx, char* path, DM_ENG_ParameterValueStruct** pvsList) {
+static int DM_ENG_Device_GetParameterValues_GetRootParameter(dm_amx_env_t* amx, const char* path, DM_ENG_ParameterValueStruct** pvsList) {
     int error = 0;
     int ret = 0;
     amxc_var_t* var = NULL;
@@ -279,9 +279,9 @@ stop:
    - Tr69 error code (90xx) in case of an error
    - 0 if succesfull
  */
-int DM_ENG_Device_GetParameterValues_GetValues(dm_amx_env_t* amx, char* path, DM_ENG_ParameterValueStruct** pvsList) {
+int DM_ENG_Device_GetParameterValues_GetValues(dm_amx_env_t* amx, const char* path, DM_ENG_ParameterValueStruct** pvsList) {
     int error = 0;
-    char* internalPath = NULL;
+    const char* internalPath = NULL;
     amxc_var_t objects;
     amxc_var_init(&objects);
 
@@ -402,7 +402,7 @@ int DM_ENG_Device_SetParameterValues_Validate(dm_amx_env_t* amx, DM_ENG_Paramete
     int amxb_ret = 0;
     bool checkType = false;
     char* tempString = NULL;
-    char* internalPath = NULL;
+    const char* internalPath = NULL;
     amxc_var_t* parameters = NULL;
     amxd_path_t obj_path;
     amxc_var_t obj_desc;
@@ -421,7 +421,7 @@ int DM_ENG_Device_SetParameterValues_Validate(dm_amx_env_t* amx, DM_ENG_Paramete
 
     amxd_path_init(&obj_path, internalPath);
     amxc_var_init(&obj_desc);
-    object_path = (char*) strdup(amxd_path_get(&obj_path, AMXD_OBJECT_TERMINATE));
+    object_path = strdup(amxd_path_get(&obj_path, AMXD_OBJECT_TERMINATE));
 
     if(amxd_path_is_search_path(&obj_path)) {
         // Not a supported path
@@ -564,7 +564,7 @@ stop:
 int DM_ENG_Device_SetParameterValues_SetValues(dm_amx_env_t* amx_env, DM_ENG_ParameterValueStruct* parameterList[], int* i, DM_ENG_SetParameterValuesFault** faultsList, int* nbFaults) {
     int error = 0;
     int rv = 0;
-    char* internalPath = NULL;
+    const char* internalPath = NULL;
     amxd_path_t path;
     amxc_var_t set;
     amxc_var_t ret;
@@ -587,7 +587,7 @@ int DM_ENG_Device_SetParameterValues_SetValues(dm_amx_env_t* amx_env, DM_ENG_Par
     amxd_path_clean(&path);
     amxd_path_init(&path, internalPath);
 
-    object_path = (char*) strdup(amxd_path_get(&path, AMXD_OBJECT_TERMINATE));
+    object_path = strdup(amxd_path_get(&path, AMXD_OBJECT_TERMINATE));
 
     amxc_var_set_type(&set, AMXC_VAR_ID_HTABLE);
 

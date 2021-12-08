@@ -100,7 +100,7 @@ int DM_ENG_Device_AddDeleteObject_Add(dm_amx_env_t* amx, char* objectName, unsig
     int error = 0;
     int rv = 0;
     int type_id = 0;
-    char* internalPath = NULL;
+    const char* internalPath = NULL;
     amxc_var_t ret;
     amxc_var_t desc;
     amxc_var_init(&ret);
@@ -180,7 +180,7 @@ stop:
 
 int DM_ENG_Device_AddDeleteObject_Delete(dm_amx_env_t* amx, char* objectName, DM_ENG_ParameterStatus* pStatus) {
     int error = 0;
-    char* internalPath = NULL;
+    const char* internalPath = NULL;
     int rv = 0;
     int type_id = 0;
     amxc_var_t ret;

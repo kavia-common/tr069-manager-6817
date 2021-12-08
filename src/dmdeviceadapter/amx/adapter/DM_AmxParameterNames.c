@@ -402,7 +402,7 @@ static void DM_ENG_Device_GetParameterNames_AddRootObject(const char* dmprefix, 
  */
 int DM_ENG_Device_GetParameterNames_PartialPath(dm_amx_env_t* amx_env, char* path, bool nextLevel, DM_ENG_ParameterInfoStruct** infoList) {
     int error = 0;
-    char* internalPath = NULL;
+    const char* internalPath = NULL;
     amxc_var_t objects;
     amxc_var_init(&objects);
     SAH_TRACEZ_IN("DM_DA");
@@ -474,7 +474,7 @@ int DM_ENG_Device_GetParameterNames_Parameter(dm_amx_env_t* amx_env, char* path,
     SAH_TRACEZ_IN("DM_DA");
     int error = 0;
     u_int32_t flags = AMXB_FLAG_PARAMETERS;
-    char* internalPath = NULL;
+    const char* internalPath = NULL;
     amxc_var_t parameters;
     amxd_path_t paramPath;
     amxc_var_t object;

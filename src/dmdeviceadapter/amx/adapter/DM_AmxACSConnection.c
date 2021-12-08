@@ -143,11 +143,11 @@ void DM_ENG_Device_ACSConnectionHandleNotification(const char* path, const amxc_
         parameter = amxc_var_from_htable_it(hit);
         value = amxc_var_dyncast(cstring_t, GETP_ARG(parameter, "to"));
 
-        if(DM_ENG_ValueWasCachedInParameterAttributesCache((char*) acs_path, value) == 0) {
-            DM_ENG_GetParameterAttributesCacheEllement((char*) acs_path, &mode, &acclist);
+        if(DM_ENG_ValueWasCachedInParameterAttributesCache(acs_path, value) == 0) {
+            DM_ENG_GetParameterAttributesCacheEllement(acs_path, &mode, &acclist);
             SAH_TRACEZ_INFO("DM_DA", "notificationmode for element %s = %d", acs_path, mode);
             dm_amx_env_t* acs = DM_ENG_Device_GetACSInfo();
-            if(DM_ENG_Device_GetParameterValues_GetValues(acs, (char*) acs_path, &pvsList) != 0) {
+            if(DM_ENG_Device_GetParameterValues_GetValues(acs, acs_path, &pvsList) != 0) {
                 SAH_TRACEZ_ERROR("DM_DA", "Could not get ParameterValueStruct for param %s", acs_path);
                 free(value);
                 return;

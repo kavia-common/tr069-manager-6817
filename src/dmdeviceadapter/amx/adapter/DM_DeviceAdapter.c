@@ -380,7 +380,7 @@ int DM_ENG_Device_GetParameterNames(char* path, bool nextLevel, DM_ENG_Parameter
         /* A.3.2.3: Or, if ParameterPath were empty, with NextLevel equal true, the response would list
                      only “InternetGatewayDevice.” (if the CPE is an Internet Gateway Device). */
         DM_ENG_ParameterInfoStruct* dmis = NULL;
-        dmis = DM_ENG_newParameterInfoStruct((char*) da.acs.prefix, false);
+        dmis = DM_ENG_newParameterInfoStruct(da.acs.prefix, false);
         DM_ENG_addParameterInfoStruct(infoList, dmis);
     } else if(( pathLength == 0) || ( path[pathLength - 1] == '.') || ( path[pathLength - 1] == '*')) {
         // Paths that ends with '*' are part of the standard but we support them any way :)
@@ -425,7 +425,7 @@ stop:
  *
  * @return Returns 0 (zero) if OK or a fault code (9002, ...) according to the TR-069.
  */
-int DM_ENG_Device_SetParameterValues(DM_ENG_ParameterValueStruct* parameterList[], char* parameterKey, DM_ENG_ParameterStatus* pStatus, DM_ENG_SetParameterValuesFault** faultsList) {
+int DM_ENG_Device_SetParameterValues(DM_ENG_ParameterValueStruct* parameterList[], const char* parameterKey, DM_ENG_ParameterStatus* pStatus, DM_ENG_SetParameterValuesFault** faultsList) {
     (void) parameterKey;//its handled by the caller
     int i = 0;
     int len = 0;
@@ -496,7 +496,7 @@ stop:
  *
  * @return Returns 0 (zero) if OK or a fault code (9002, ...) according to the TR-069.
  */
-int DM_ENG_Device_AddObject(char* objectName, char* parameterKey, unsigned int* pInstanceNumber, DM_ENG_ParameterStatus* pStatus) {
+int DM_ENG_Device_AddObject(const char* objectName, const char* parameterKey, unsigned int* pInstanceNumber, DM_ENG_ParameterStatus* pStatus) {
     (void) parameterKey;
     int error = 0;
     SAH_TRACEZ_IN("DM_DA");
@@ -525,7 +525,7 @@ stop:
  *
  * @return Returns 0 (zero) if OK or a fault code (9002, ...) according to the TR-069.
  */
-int DM_ENG_Device_DeleteObject(char* objectName, char* parameterKey, DM_ENG_ParameterStatus* pStatus) {
+int DM_ENG_Device_DeleteObject(const char* objectName, const char* parameterKey, DM_ENG_ParameterStatus* pStatus) {
     (void) parameterKey;
     int error = 0;
     SAH_TRACEZ_IN("DM_DA");

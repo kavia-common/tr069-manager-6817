@@ -68,7 +68,7 @@ extern "C"
 
 #include "DM_AmxCommon.h"
 
-int DM_ENG_Device_GetParameterValues_GetValues(dm_amx_env_t* amx_env, char* path, DM_ENG_ParameterValueStruct** pvsList);
+int DM_ENG_Device_GetParameterValues_GetValues(dm_amx_env_t* amx_env, const char* path, DM_ENG_ParameterValueStruct** pvsList);
 int DM_ENG_Device_SetParameterValues_Validate(dm_amx_env_t* amx_env, DM_ENG_ParameterValueStruct* parameterList[], int* i, DM_ENG_SetParameterValuesFault** faultsList, int* nbFaults);
 int DM_ENG_Device_SetParameterValues_SetValues(dm_amx_env_t* amx_env, DM_ENG_ParameterValueStruct* parameterList[], int* i, DM_ENG_SetParameterValuesFault** faultsList, int* nbFaults);
 
