@@ -63,14 +63,20 @@
 #include <string.h>
 #include "cwmp_plugin.h"
 
+#include <debug/sahtrace.h>
+
 static cwmp_plugin_app_t app;
 static const char* AMXB_URI = "AMXB_URI";
 
+static void wait_done(UNUSED const char* const sig_name,
+                      UNUSED const amxc_var_t* const data,
+                      UNUSED void* const priv) {
+    SAH_TRACEZ_INFO(ME, "Wait done for required objects before starting cwmpd");
+    start_cwmpd();
+}
 
 static void cwmp_plugin_init(amxd_dm_t* dm, amxo_parser_t* parser) {
-    /* SAH_TRACEZ_INFO(ME, "**************************************"); */
-    /* SAH_TRACEZ_INFO(ME, "*        cwmp_plugin started          *"); */
-    /* SAH_TRACEZ_INFO(ME, "**************************************"); */
+    SAH_TRACEZ_INFO(ME, "cwmp_plugin started");
     app.dm = dm;
     app.parser = parser;
     app.amxb_bus_ctx = NULL;
@@ -80,13 +86,43 @@ static void cwmp_plugin_init(amxd_dm_t* dm, amxo_parser_t* parser) {
     if(amxb_uri && (amxb_connect(&app.amxb_bus_ctx, amxb_uri) == AMXB_STATUS_OK)) {
         amxb_new_invoke(&app.dns_resolv_invoke, app.amxb_bus_ctx, "DNS", NULL, "resolvURI");
     } else {
-        fprintf(stderr, "Couldn't connect to amxb bus %s\n", amxb_uri);
+        SAH_TRACEZ_ERROR(ME, "Couldn't connect to amxb bus %s", amxb_uri);
     }
     // Load previous config
     amxo_parser_parse_file(parser, GET_CHAR(&parser->config, "save_file"), (amxd_object_t*) dm);
 
+    // Waiting for required objects.
+    SAH_TRACEZ_INFO(ME, "Waiting for required objects before starting cwmpd");
+    int rv = -1;
+    rv = amxb_wait_for_object("Time.");
+    if(rv != AMXB_STATUS_OK) {
+        SAH_TRACEZ_ERROR(ME, "Wait failed for Time object");
+    }
+    rv = amxb_wait_for_object("Device.");
+    if(rv != AMXB_STATUS_OK) {
+        SAH_TRACEZ_ERROR(ME, "Wait failed for Device object");
+    }
+    rv = amxb_wait_for_object("DeviceInfo.");
+    if(rv != AMXB_STATUS_OK) {
+        SAH_TRACEZ_ERROR(ME, "Wait failed for DeviceInfo object");
+    }
+
+    // When all objects are available,
+    // The signal "wait:done" is emitted on the global signal manager.
+    amxp_slot_connect(NULL, "wait:done", NULL, wait_done, NULL);
+
     amxp_sigmngr_add_signal(NULL, "proc:stopped");
     amxp_slot_connect(NULL, "proc:stopped", NULL, cwmpd_proc_stopped, NULL);
+}
+
+static void cwmp_plugin_exit(UNUSED amxd_dm_t* dm,
+                             UNUSED amxo_parser_t* parser) {
+    app.dm = NULL;
+    app.parser = NULL;
+    app.dns_resolv_invoke = NULL;
+    app.amxb_bus_ctx = NULL;
+    stop_cwmpd();
+    SAH_TRACEZ_INFO(ME, "cwmp_plugin stopped");
 }
 
 amxd_dm_t* cwmp_plugin_get_dm(void) {
@@ -115,16 +151,11 @@ int _cwmp_plugin_main(int reason, amxd_dm_t* dm, amxo_parser_t* parser) {
 
     //SAH_TRACEZ_INFO(ME, "cwmp_plugin_main, reason: %i", reason);
     switch(reason) {
-    case 0: // START
+    case AMXO_START: // START
         cwmp_plugin_init(dm, parser);
-        start_cwmpd();
         break;
-    case 1: // STOP
-        app.dm = NULL;
-        app.parser = NULL;
-        app.dns_resolv_invoke = NULL;
-        app.amxb_bus_ctx = NULL;
-        stop_cwmpd();
+    case AMXO_STOP: // STOP
+        cwmp_plugin_exit(dm, parser);
         break;
     default:
         retval = -1;
