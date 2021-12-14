@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.7.0 - 2021-12-14(13:19:42 +0000)
+
+### New
+
+- Downgrade to libwebsockets3
+
 ## Release v1.6.0 - 2021-11-24(13:13:42 +0000)
 
 ### New
