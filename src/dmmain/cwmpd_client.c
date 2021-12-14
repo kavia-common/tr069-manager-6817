@@ -61,6 +61,8 @@
 /**********************************************************
 * Include files
 **********************************************************/
+#include <netinet/in.h>
+#include <signal.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <debug/sahtrace.h>
@@ -78,6 +80,7 @@
 #include <ares.h>
 #include <arpa/inet.h>
 #include <event2/event.h>
+#include <string.h>
 
 /**********************************************************
 * Macro definitions
@@ -88,74 +91,46 @@
 #define USER_AGENT              "prpl_user_agent"
 
 /**********************************************************
-* Type definitions
-**********************************************************/
-struct dnsresolve_context {
-    struct event_base* base;
-    struct event* fd_event_cb;
-    ares_channel channel;
-    struct ares_options ares_opts;
-};
-
-typedef struct AddrInfo {
-    char* addrStr;
-    unsigned int ttl;
-    amxc_llist_it_t it;
-} AddrInfo_t;
-
-/**********************************************************
 * Variable declarations
 **********************************************************/
 static char* acs_server_host;
 static char* acs_server_ip;
+static int acs_server_ttl = 0;
 static int acs_server_port;
 static char* acs_server_path;
 static char* acsip_affinity = NULL;
-static bool new_session = true;
 
 static bool connectedToServer = false;
-static bool retransmitLastMessage = false;
 static int session_timeout = 0;
-static char* lastMessage = NULL;
 static char* pending_message = NULL;
 static bool unexpected_close = true;
 static char* read_buffer = NULL;
 static int read_buffer_len = 0;
-char http_header[HTTP_HEADER_SIZE] = {0};
-int last_used = 0;
 
-static struct lws* client_wsi = NULL;
-struct lws_client_connect_info cnx_info;
-UNUSED static const char* ba_user, * ba_password; // TO DO move to client struct
-struct lws_context* g_lws_ctx;
+static struct lws* lws_client_wsi = NULL;         /* client ws interface */
+static struct lws_context* lws_client_ctx = NULL; /* client lws context */
+static struct lws_vhost* lws_client_vhost = NULL; /* client vhost */
 
-struct dnsresolve_context dns_ctx;
-
+static struct ares_addrinfo* dns_cache = NULL;
 static amxp_timer_t* dns_ttl_timer = NULL;
-static unsigned int dns_ttl_timer_value = 0;
-static bool ttl_timer_started = false;
+static bool resolve_DNS = true; /* do we need a dns resolution */
 
-// list of ACS addresses with ttl.
-amxc_llist_t addrInfo_list;
-
-// current addrInfo it
-static amxc_llist_it_t* curr_addrInfo_it = NULL;
-
-/**********************************************************
-* Function Prototypes
-**********************************************************/
-static int cwmp_client_connect_to_acs();
-static void cwmp_client_try_connect_to_acsip(const AddrInfo_t* addr_info);
 static void cwmp_client_sessionTimedOut(UNUSED char* name);
 static void cwmp_client_send_header(int msgLength);
-static int cwmp_client_getACSAddrFamily();
-static bool cwmp_client_dns_resolve(const char* hostname);
-static int cwmp_client_initialize_connection(const char* acs_url);
 static int cwmp_client_handle_raw_reply(char* raw, int len);
+static int cwmp_client_http_callback(struct lws* wsi, enum lws_callback_reasons reason,
+                                     UNUSED void* user, void* in, size_t len);
+static void cwmp_client_dnsTTLTimeout_handler(UNUSED amxp_timer_t* timer, UNUSED void* priv);
+static int isIPAddress(const char* ip);
+static int get_content_length(struct phr_header* values, unsigned int len);
+static int append_read_buffer(char** msg, int* len);
+static int create_read_buffer(char* raw, int len);
+static void reset_read_buffer();
+static int cwmp_client_process_body(char* body, int len);
+static cwmp_status_t cwmp_client_connect_to(sa_family_t sa_family, const char* ip);
+static cwmp_status_t cwmp_client_connect();
 
-/**********************************************************
-* Functions
-**********************************************************/
+
 static int isIPAddress(const char* ip) {
     struct in6_addr result;
     int res = inet_pton(AF_INET, ip, &result);
@@ -169,105 +144,14 @@ static int isIPAddress(const char* ip) {
     return 0;
 }
 
-static int cwmp_client_getACSAddrFamily() {
-    uint8_t addrFamily = 0;
-    char* tmp = NULL;
-    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ACSADDRFAMILY, &tmp) == 0) {
-        if(tmp) {
-            addrFamily = atoi(tmp);
-            free(tmp);
-        }
-    }
-    SAH_TRACEZ_INFO("CWMPD", "ACSADDFamily = %d", addrFamily);
-    if(addrFamily == 4) {
-        return AF_INET;
-    } else if(addrFamily == 6) {
-        return AF_INET6;
-    }
-    return AF_UNSPEC;
-}
+/* check if the given ip is in the DNS cache*/
+static bool foundInDNSCache(const char* ip) {
+    if(ip && dns_cache && dns_cache->nodes) {
+        struct ares_addrinfo_node* ai_cur;
+        char addrstr[46] = "";
+        for(ai_cur = dns_cache->nodes; ai_cur != NULL; ai_cur = ai_cur->ai_next) {
+            uint8_t* addr = NULL;
 
-static void cwmp_client_fd_event_cb(int fd, short flags, UNUSED void* arg) {
-    int write = ARES_SOCKET_BAD;
-    int read = ARES_SOCKET_BAD;
-    if(flags & EV_READ) {
-        read = fd;
-    }
-    if(flags & EV_WRITE) {
-        write = fd;
-    }
-    ares_process_fd(dns_ctx.channel, read, write);
-}
-
-static void cwmp_client_ares_sock_state_cb(UNUSED void* data, int fd, int read, int write) {
-    if(((read + write) == 0) && (dns_ctx.fd_event_cb != NULL)) {
-        // remove registred event if any
-        event_del(dns_ctx.fd_event_cb);
-        free(dns_ctx.fd_event_cb);
-        dns_ctx.fd_event_cb = NULL;
-        return;
-    }
-    short events = 0;
-    SAH_TRACEZ_INFO("CWMPD", "Change state fd %d read:%d write:%d", fd, read, write);
-    if(read) {
-        events = EV_READ;
-    }
-    if(write) {
-        events = EV_WRITE;
-    }
-    SAH_TRACEZ_INFO("CWMPD", "Assign event callback here");
-    dns_ctx.fd_event_cb = event_new(dns_ctx.base, fd, events, cwmp_client_fd_event_cb, NULL);
-    // Add event
-    event_add(dns_ctx.fd_event_cb, NULL);
-}
-
-static cwmp_status_t cwmp_client_dnsresolve_cleanup() {
-
-    // cleanup fd_event_cb
-    if(dns_ctx.fd_event_cb) {
-        event_del(dns_ctx.fd_event_cb);
-        free(dns_ctx.fd_event_cb);
-        dns_ctx.fd_event_cb = NULL;
-    }
-
-    if(dns_ctx.channel) {
-        ares_destroy(dns_ctx.channel);
-        ares_library_cleanup();
-        dns_ctx.channel = NULL;
-    }
-
-    SAH_TRACEZ_INFO("CWMPD", "Cleaup dns resolve");
-
-    return cwmp_status_ok;
-}
-
-/*
- * Callback that is invoked by c-ares when an asynchronous name resolution
- * request that we have previously initiated is complete.
- */
-static void cwmp_client_dnsresolve_cb(UNUSED void* data, int status, UNUSED int timeouts, struct ares_addrinfo* ai) {
-    SAH_TRACEZ_INFO("CWMPD", "cwmp_client_dnsresolve_cb called");
-
-    if(!ai || (status != ARES_SUCCESS)) {
-        SAH_TRACEZ_INFO("CWMPD", "Failed to lookup %s", ares_strerror(status));
-        return;
-    }
-
-    if(acsip_affinity && (strcmp(acsip_affinity, "0") == 0) && dns_ttl_timer) {
-        SAH_TRACEZ_INFO("CWMPD", "Stop dns TTL timer");
-        amxp_timer_stop(dns_ttl_timer);
-    }
-
-    amxc_llist_clean(&addrInfo_list, NULL);
-    amxc_llist_init(&addrInfo_list);
-
-    if(ai->nodes != NULL) {
-        // pointer to current ares_addrinfo_node
-        const struct ares_addrinfo_node* ai_cur;
-        char addrstr[100] = "";
-        uint8_t* addr = NULL;
-        for(ai_cur = ai->nodes; ai_cur != NULL; ai_cur = ai_cur->ai_next) {
-            inet_ntop(ai_cur->ai_family, ai_cur->ai_addr->sa_data, addrstr, 100);
             switch(ai_cur->ai_family) {
             case AF_INET:
                 addr = (uint8_t*) &((struct sockaddr_in*) ai_cur->ai_addr)->sin_addr;
@@ -276,66 +160,18 @@ static void cwmp_client_dnsresolve_cb(UNUSED void* data, int status, UNUSED int 
                 addr = (uint8_t*) &((struct sockaddr_in6*) ai_cur->ai_addr)->sin6_addr;
                 break;
             }
-            ares_inet_ntop(ai_cur->ai_family, addr, addrstr, 100);
-
-            if((addrstr == NULL) || (strlen(addrstr) == 0)) {
-                continue;
+            ares_inet_ntop(ai_cur->ai_family, addr, addrstr, sizeof(addrstr));
+            SAH_TRACE_INFO("found ip %s with ttl = %d", addrstr, ai_cur->ai_ttl);
+            if(strcmp(ip, addrstr) == 0) {
+                return true;
             }
-
-            // create a new AddrInfo (addr + ttl).
-            AddrInfo_t* new_addrinfo = (AddrInfo_t*) calloc(1, sizeof(AddrInfo_t));
-            new_addrinfo->addrStr = strndup(addrstr, strlen(addrstr));
-            new_addrinfo->ttl = ai_cur->ai_ttl;
-
-            // add the new AddrInfo to addrInfo_list.
-            amxc_llist_append(&addrInfo_list, &new_addrinfo->it);
-            SAH_TRACEZ_INFO("CWMPD", "ACSIP : IPv%d address: %s, TTL = %d", ai_cur->ai_family == PF_INET6 ? 6 : 4,
-                            addrstr, ai_cur->ai_ttl);
         }
     }
-
-    // connect to acs.
-    cwmp_client_connect_to_acs();
-    ares_freeaddrinfo(ai);
-    if(cwmp_client_dnsresolve_cleanup() != cwmp_status_ok) {
-        SAH_TRACEZ_ERROR("CWMPD", "DNS resolve cleanup failed");
-    }
+    return false;
 }
 
-static bool cwmp_client_dns_resolve(const char* hostname) {
-    int status, optmask = 0;
-    memset(&dns_ctx, 0, sizeof(dns_ctx));
-    dns_ctx.base = cwmp_evlp_get();
-    dns_ctx.channel = NULL;
 
-    status = ares_library_init(ARES_LIB_INIT_ALL);
-    if(status != ARES_SUCCESS) {
-        SAH_TRACEZ_INFO("CWMPD", "ares_library_init: %s", ares_strerror(status));
-        return false;
-    }
-
-    dns_ctx.ares_opts.sock_state_cb = cwmp_client_ares_sock_state_cb;
-    optmask |= ARES_OPT_SOCK_STATE_CB;
-
-    status = ares_init_options(&dns_ctx.channel, &dns_ctx.ares_opts, optmask);
-    if(status != ARES_SUCCESS) {
-        SAH_TRACEZ_INFO("CWMPD", "ares_init_options failed: %s", ares_strerror(status));
-        return false;
-    }
-
-    struct ares_addrinfo_hints hints;
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = cwmp_client_getACSAddrFamily();
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = ARES_AI_CANONNAME | ARES_AI_ENVHOSTS | ARES_AI_NOSORT;
-
-    SAH_TRACEZ_INFO("CWMPD", "Send a new dns query to resolve uriHost : %s", hostname);
-    ares_getaddrinfo(dns_ctx.channel, hostname, NULL, &hints, cwmp_client_dnsresolve_cb, NULL);
-
-    return true;
-}
-
-int get_content_length(struct phr_header* values, unsigned int len) {
+static int get_content_length(struct phr_header* values, unsigned int len) {
     for(unsigned int i = 0; i < len; ++i) {
         if(strncasecmp("content-length:", values[i].name, 15) == 0) {
             return (atoi(values[i].value));
@@ -344,7 +180,7 @@ int get_content_length(struct phr_header* values, unsigned int len) {
     return 0;
 }
 
-int append_read_buffer(char** msg, int* len) {
+static int append_read_buffer(char** msg, int* len) {
     char* raw = *msg;
     if(read_buffer) {
         read_buffer = (char*) realloc(read_buffer, (read_buffer_len + *len + 1) * sizeof(char));
@@ -361,7 +197,7 @@ int append_read_buffer(char** msg, int* len) {
     return 0;
 }
 
-int create_read_buffer(char* raw, int len) {
+static int create_read_buffer(char* raw, int len) {
     if(!read_buffer) {
         read_buffer = (char*) realloc(read_buffer, (len + 1) * sizeof(char));
         memcpy(read_buffer, raw, len);
@@ -371,7 +207,7 @@ int create_read_buffer(char* raw, int len) {
     return 0;
 }
 
-void reset_read_buffer() {
+static void reset_read_buffer() {
     if(read_buffer) {
         free(read_buffer);
         read_buffer = NULL;
@@ -379,10 +215,10 @@ void reset_read_buffer() {
     }
 }
 
-int process_body(char* body, int len) {
+static int cwmp_client_process_body(char* body, int len) {
     SAH_TRACEZ_INFO("CWMPD", "Message body arrived (%zu)", strlen(body));
     if(strstr(body, DM_COM_ENV_TAG) == NULL) {
-        SAH_TRACEZ_WARNING("CWMPD", "This is not a SOAP body\n");
+        SAH_TRACEZ_WARNING("CWMPD", "This is not a SOAP body");
     } else {
         DM_SoapXml SoapMsg;
         DM_HttpCheckNamespace(body, len);
@@ -394,8 +230,6 @@ int process_body(char* body, int len) {
             _closeACSSession(false); // really put this one as last one, as it might trigger a new session
         }
         xmlDocumentFree(SoapMsg.pParser);
-
-        DM_InitSoapMsgReceived(&SoapMsg);
     }
     return 0;
 }
@@ -424,7 +258,7 @@ static int cwmp_client_handle_raw_reply(char* raw, int len) {
     }
     content_length = get_content_length(values, header_len);
     if(content_length > MAX_CONTENT_LENGTH) {
-        SAH_TRACEZ_WARNING("CWMPD", "Content-length superior to %d (%d)\n", MAX_CONTENT_LENGTH, content_length);
+        SAH_TRACEZ_WARNING("CWMPD", "Content-length superior to %d (%d)", MAX_CONTENT_LENGTH, content_length);
         _closeACSSession(false);
         return 0;
     }
@@ -433,65 +267,38 @@ static int cwmp_client_handle_raw_reply(char* raw, int len) {
         return 0;
     }
     body = msg + last_len;
-    SAH_TRACEZ_INFO("CWMPD", "<--------------------------\n%s\n-------------------------->\n", msg);
+    SAH_TRACEZ_INFO("CWMPD", "Received message : \n<--------------------------\n%s\n<--------------------------\n", msg);
     switch(status) {
     case 200:
-        process_body(body, content_length);
+        cwmp_client_process_body(body, content_length);
         break;
     }
     reset_read_buffer();
     return 0;
 }
+/* websocket configuration struct , protocol : http */
+static const struct lws_protocols protocols[] =
+{
+    {"http-only", cwmp_client_http_callback, 0, 0, 0, NULL, 0},
+    { NULL, NULL, 0, 0, 0, NULL, 0} /* mark protocol end  needed by lws */
+};
 
-static void cwmp_client_try_connect_to_acsip(const AddrInfo_t* addr_info) {
-    if(addr_info) {
-        cnx_info.address = addr_info->addrStr;
-        cnx_info.origin = addr_info->addrStr;
-        cnx_info.host = addr_info->addrStr;
-        /** Connecting to curr ACS IP and wait the connection callback :
-         * If connected --> update acs_server_ip and start ttl timer for this address
-         */
-        if(lws_client_connect_via_info(&cnx_info)) {
-            SAH_TRACEZ_INFO("CWMPD", "Start Connecting to ACS server IP:%s and wait the connection callback", addr_info->addrStr);
-        }
-    }
-}
 
 /* http callback */
 static int cwmp_client_http_callback(struct lws* wsi, enum lws_callback_reasons reason,
                                      UNUSED void* user, void* in, size_t len) {
-    int status = 0;
     char serverip[16];
     lws_get_peer_simple(wsi, serverip, 16);
-
     /* protocol logic goes here */
     switch(reason) {
     case LWS_CALLBACK_PROTOCOL_INIT:
         break;
-    case LWS_CALLBACK_RAW_CONNECTED:
+    case LWS_CALLBACK_RAW_ADOPT:
     {
-        client_wsi = wsi;
+        lws_client_wsi = wsi;
         connectedToServer = true;
-        SAH_TRACEZ_INFO("CWMPD", "Connected to ACS server IP : %s", serverip);
-        free(acs_server_ip);
-        acs_server_ip = strdup(serverip);
-        AddrInfo_t* connected_addr = amxc_container_of(curr_addrInfo_it, AddrInfo_t, it);
-        // Start TTl timer when acsip_affinity = false and the ttl > 0
-        if(connected_addr && (connected_addr->ttl > 0) && (strcmp(acsip_affinity, "0") == 0)) {
-            dns_ttl_timer_value = connected_addr->ttl;
-            SAH_TRACEZ_INFO("CWMPD", "Start dns TTL timer [%d]", dns_ttl_timer_value);
-            ttl_timer_started = true;
-            amxp_timer_start(dns_ttl_timer, dns_ttl_timer_value * 1000);
-        }
-
-        free(read_buffer);
-        read_buffer = NULL;
-        read_buffer_len = 0;
-        status = (int) lws_http_client_http_response(wsi);
-        SAH_TRACEZ_INFO("CWMPD", "Client: Connected to ACS server with status (%d)", status);
-        if(pending_message) {
-            DM_SendHttpMessage(pending_message);
-        }
+        /* Register for ONWRITABLE event */
+        lws_callback_on_writable(wsi);
     }
     break;
     case LWS_CALLBACK_RAW_CLOSE:
@@ -501,33 +308,20 @@ static int cwmp_client_http_callback(struct lws* wsi, enum lws_callback_reasons 
             // TODO!: properly manage start/end new session ?
             _closeACSSession(true);
         }
-        SAH_TRACEZ_INFO("CWMPD", "Client: Disconnected from ACS server");
         break;
     case LWS_CALLBACK_WSI_DESTROY:
-        if(client_wsi) {
-            client_wsi = NULL;
+        if(lws_client_wsi && (lws_client_wsi == wsi)) {
+            lws_client_wsi = NULL;
         }
         break;
     case LWS_CALLBACK_RAW_RX:
         cwmp_client_handle_raw_reply((char*) in, len);
         break;
-    case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
+    case LWS_CALLBACK_RAW_WRITEABLE:
     {
-        AddrInfo_t* curr_addrInfo = amxc_llist_it_get_data(curr_addrInfo_it, AddrInfo_t, it);
-        SAH_TRACEZ_ERROR("CWMPD", "Client : connection error with %s : %s", curr_addrInfo->addrStr, in ? (char*) in : "(null)");
-        if(client_wsi) {
-            client_wsi = NULL;
+        if(pending_message) { /* a message is waiting for this connection send it */
+            DM_SendHttpMessage(pending_message);
         }
-        // try with next ACS Server IP.
-        amxc_llist_it_t* next_it = amxc_llist_it_get_next(curr_addrInfo_it);
-        if(next_it) {
-            SAH_TRACEZ_INFO("CWMPD", "Try connect to next ACS server IP");
-            AddrInfo_t* next_addrInfo = amxc_llist_it_get_data(next_it, AddrInfo_t, it);
-            if(next_addrInfo) {
-                cwmp_client_try_connect_to_acsip(next_addrInfo);
-            }
-        }
-        curr_addrInfo_it = next_it;
     }
     break;
     default:
@@ -536,175 +330,294 @@ static int cwmp_client_http_callback(struct lws* wsi, enum lws_callback_reasons 
     return 0;
 }
 
-/* websocket configuration struct , protocol : http */
-static const struct lws_protocols protocols[] =
-{
-    {"http-only", cwmp_client_http_callback, 0, 0, 0, NULL, 0},
-    { NULL, NULL, 0, 0, 0, NULL, 0} /* mark protocol end  needed by lws */
-};
+static cwmp_status_t cwmp_client_connect_to(sa_family_t sa_family, const char* ip) {
+    SAH_TRACEZ_INFO("CWMPD", "cwmp_client_connect_to %s", ip);
+    lws_sock_file_fd_type sock;//connection socket
+    sock.sockfd = -1;
+    switch(sa_family) {
+    case AF_INET://IPv4
+    {
+        struct sockaddr_in sk_in;
+        memset(&sk_in, 0, sizeof(sk_in));
 
-static int cwmp_client_initialize_connection(const char* acs_url) {
-    char* acs_url_local = NULL;
+        inet_pton(sa_family, ip, &(sk_in.sin_addr));
+        sk_in.sin_family = sa_family;
+        sk_in.sin_port = htons(acs_server_port);
+        sock.sockfd = socket(sa_family, SOCK_STREAM, IPPROTO_TCP);
+
+        if(sock.sockfd < 0) {
+            SAH_TRACEZ_ERROR("CWMPD", "Failed to create INET socket");
+            return cwmp_status_ko;
+        }
+        SAH_TRACEZ_INFO("CWMPD", "Starting connect to %s...", ip);
+        if(connect(sock.sockfd, (struct sockaddr*) &sk_in, sizeof(sk_in)) < 0) {
+            SAH_TRACEZ_INFO("CWMPD", "unable to connect");
+            return cwmp_status_ko;
+        }
+    }
+    break;
+    case AF_INET6://IPv6
+    {
+        struct sockaddr_in6 sk6_in;
+        memset(&sk6_in, 0, sizeof(sk6_in));
+
+        inet_pton(sa_family, ip, &(sk6_in.sin6_addr));
+        sk6_in.sin6_family = sa_family;
+        sk6_in.sin6_port = htons(acs_server_port);
+        sock.sockfd = socket(sa_family, SOCK_STREAM, IPPROTO_TCP);
+
+        if(sock.sockfd < 0) {
+            SAH_TRACEZ_ERROR("CWMPD", "Failed to create INET socket");
+            return cwmp_status_ko;
+        }
+        SAH_TRACEZ_INFO("CWMPD", "Starting connect to %s...", ip);
+        if(connect(sock.sockfd, (struct sockaddr*) &sk6_in, sizeof(sk6_in)) < 0) {
+            SAH_TRACEZ_INFO("CWMPD", "unable to connect");
+            return cwmp_status_ko;
+        }
+    }
+    break;
+    }
+
+
+    SAH_TRACEZ_INFO("CWMPD", "Adopting foreign socket into lws");
+
+    lws_client_wsi = lws_adopt_descriptor_vhost(lws_client_vhost, LWS_ADOPT_SOCKET, sock,
+                                                protocols[0].name, NULL);
+    if(lws_client_wsi == NULL) {
+        SAH_TRACEZ_ERROR("CWMPD", "lws return bad context, failed to adopt open socket");
+    }
+
+    return cwmp_status_ok;
+}
+
+static cwmp_status_t cwmp_client_connect() {
+    SAH_TRACE_INFO("cwmp_client_connect");
+    //Use the last used IP if it's set
+    if(acs_server_ip) {
+        SAH_TRACE_INFO("cwmp_client_connect connecting to %s", acs_server_ip);
+        sa_family_t sa_family = AF_INET;
+        // check the IP family
+        struct in6_addr result;
+        if(inet_pton(AF_INET6, acs_server_ip, &result) == 1) {
+            sa_family = AF_INET6;
+        }
+        //IP still valid no need to search a new one
+        if(cwmp_client_connect_to(sa_family, acs_server_ip) == cwmp_status_ok) {
+            if((strcmp(acsip_affinity, "0") == 0) &&
+               (amxp_timer_remaining_time(dns_ttl_timer) <= 0) &&
+               (acs_server_ttl != 0)) {
+                //Start new Timer
+                resolve_DNS = false;    //stop resolving DNS until ttl timer expire
+                amxp_timer_start(dns_ttl_timer, acs_server_ttl * 1000);
+            }
+            return cwmp_status_ok;
+        }
+    }
+
+    //if last used ip is no longer valid, search for a new one
+    //from the dns_cache
+    SAH_TRACE_INFO("ACS IP is not set, search for one");
+    if(dns_cache && dns_cache->nodes) {
+        struct ares_addrinfo_node* ai_cur;
+        char addrstr[46] = "";
+        for(ai_cur = dns_cache->nodes; ai_cur != NULL; ai_cur = ai_cur->ai_next) {
+            uint8_t* addr = NULL;
+            switch(ai_cur->ai_family) {
+            case AF_INET:
+                addr = (uint8_t*) &((struct sockaddr_in*) ai_cur->ai_addr)->sin_addr;
+                break;
+            case AF_INET6:
+                addr = (uint8_t*) &((struct sockaddr_in6*) ai_cur->ai_addr)->sin6_addr;
+                break;
+            }
+            ares_inet_ntop(ai_cur->ai_family, addr, addrstr, sizeof(addrstr));
+            SAH_TRACEZ_INFO("CWMPD", "trying address [%s]:[%d] , DNS_ttl = %d", addrstr, acs_server_port, ai_cur->ai_ttl);
+            //try to connect
+            if(cwmp_client_connect_to(ai_cur->ai_family, addrstr) == cwmp_status_ok) {
+                //CONNECTED
+                if(acs_server_ip) {
+                    free(acs_server_ip);
+                }
+                acs_server_ip = strdup(addrstr);
+                resolve_DNS = false;
+                SAH_TRACEZ_INFO("CWMPD", "connected to ACS [%s]:[%d]", acs_server_ip, acs_server_port);
+
+                if((strcmp(acsip_affinity, "0") == 0) &&
+                   (amxp_timer_remaining_time(dns_ttl_timer) <= 0) &&
+                   (ai_cur->ai_ttl != 0)) {
+                    acs_server_ttl = ai_cur->ai_ttl;//cache ttl value
+                    /* update ttl_timer */
+                    amxp_timer_start(dns_ttl_timer, acs_server_ttl * 1000);
+                }
+                return cwmp_status_ok;
+            }
+        }
+    } else {
+        SAH_TRACEZ_ERROR("CWMPD", "no dns_cache found, not connecting to server");
+    }
+    return cwmp_status_ko;
+}
+
+static void cwmp_client_sessionTimedOut(UNUSED char* name) {
+    unexpected_close = false;
+    SAH_TRACEZ_WARNING("CWMPD", "session timed out, Force closing session");
+    _closeACSSession(false);
+}
+
+static void cwmp_client_dnsTTLTimeout_handler(UNUSED amxp_timer_t* timer, UNUSED void* priv) {
+    if(strcmp(acsip_affinity, "0") == 0) {
+        resolve_DNS = true; // force DNS resolution if affinity is enabled
+        // dont free acs_server_ip as it maybe reused if it's still
+        // a valid IP
+    }
+}
+
+
+static void cwmp_client_send_header(int msgLength) {
+    char http_header[HTTP_HEADER_SIZE] = {0};
+    int last_used = 0;
+    unsigned char* p = (unsigned char*) http_header;
+    int ret;
+
+    memset(http_header, 0, HTTP_HEADER_SIZE);
+    last_used = sprintf(http_header, "POST %s HTTP/1.1\r\n", acs_server_path);
+    p += last_used;
+    ret = lws_add_http_header_by_name(lws_client_wsi, (const unsigned char*) "Host:", (const unsigned char*) acs_server_host, strlen(acs_server_host), &p, (unsigned char*) (http_header + HTTP_HEADER_SIZE));
+    ret += lws_add_http_header_by_name(lws_client_wsi, (const unsigned char*) "User-agent:", (const unsigned char*) USER_AGENT, strlen(USER_AGENT), &p, (unsigned char*) (http_header + HTTP_HEADER_SIZE));
+    ret += lws_add_http_header_content_length(lws_client_wsi, msgLength, &p, (unsigned char*) (http_header + HTTP_HEADER_SIZE));
+    ret += lws_add_http_header_by_name(lws_client_wsi, (const unsigned char*) "Content-Type:", (const unsigned char*) "text/xml; charset=ISO-8859-1", 28, &p, (unsigned char*) (http_header + HTTP_HEADER_SIZE));
+    ret += lws_add_http_header_by_name(lws_client_wsi, (const unsigned char*) "SOAPAction:", (const unsigned char*) "", 0, &p, (unsigned char*) (http_header + HTTP_HEADER_SIZE));
+    ret += lws_finalize_write_http_header(lws_client_wsi, (unsigned char*) http_header, &p, (unsigned char*) (http_header + HTTP_HEADER_SIZE));
+    SAH_TRACEZ_INFO("CWMPD", "Send HTTP Header [code %d] : \n------------->\n%s", ret, http_header);
+}
+
+/* fetch all client info from data model and feed them to server info struct*/
+cwmp_status_t cwmp_client_init() {
+    SAH_TRACEZ_INFO("CWMPD", "Client initialize");
+    static struct lws_context_creation_info lws_client_ctx_info;
+    memset(&lws_client_ctx_info, 0, sizeof lws_client_ctx_info);
+    void* main_loop[1] = { cwmp_evlp_get() };
+    lws_client_ctx_info.protocols = protocols;
+    lws_client_ctx_info.ssl_cert_filepath = NULL;
+    lws_client_ctx_info.ssl_private_key_filepath = NULL;
+    lws_client_ctx_info.options = LWS_SERVER_OPTION_LIBEVENT;
+    lws_client_ctx_info.foreign_loops = main_loop;
+    lws_client_ctx_info.port = CONTEXT_PORT_NO_LISTEN;
+    lws_client_ctx_info.user = NULL;
+    lws_client_ctx_info.timeout_secs = 60;
+    lws_client_ctx_info.fd_limit_per_thread = 1 + 1 + 1;
+
+    //Create lws context
+    lws_client_ctx = lws_create_context(&lws_client_ctx_info);
+    if(lws_client_ctx == NULL) {
+        SAH_TRACEZ_ERROR("CWMPD", "lws client context creation failed");
+        return cwmp_status_ko;
+    }
+
+    //Create a client lws vhost
+    lws_client_vhost = lws_create_vhost(lws_client_ctx, &lws_client_ctx_info);
+
+    if(lws_client_vhost == NULL) {
+        SAH_TRACEZ_ERROR("CWMPD", "lws failed to attribute a vhost for client");
+        return cwmp_status_ko;
+    }
+    amxp_timer_new(&dns_ttl_timer, cwmp_client_dnsTTLTimeout_handler, NULL);
+    resolve_DNS = true;
+
+    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ACSIPAFFINITY, &acsip_affinity) != 0) {
+        SAH_TRACEZ_ERROR("CWMPD", "DM_ENGINE: Cannot fetch ACSIPAffinity parameter");
+    }
+    return cwmp_status_ok;
+}
+
+/* Initialize and Start new client session */
+cwmp_status_t cwmp_client_start_session() {
+
+    cwmp_status_t ret = cwmp_status_ko;
+    char* acs_url = NULL;
+    //char* acs_affinity = NULL;
     const char* uriHost = NULL;
     const char* uriScheme = NULL;
     int uriPort = 0;
     const char* uriPath = NULL;
     char* crHost = NULL;
 
-    if(acs_url == NULL) {
-        if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_URL, &acs_url_local) != 0) {
-            SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the ACS SERVER URL");
-            goto exit_error;
-        }
-    } else {
-        acs_url_local = strdup(acs_url);
+    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_URL, &acs_url) != 0) {
+        SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the ACS SERVER URL");
+        goto error;
     }
-    SAH_TRACEZ_INFO("CWMPD", "ACS URL = %s", acs_url_local);
+
+    SAH_TRACEZ_INFO("CWMPD", "ACS URL = %s", acs_url);
+
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_CONNECTIONREQUESTHOST, &crHost) != 0) {
         SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the connection request host URL");
-        goto exit_error;
+        goto error;
     }
     // Check if wan is up
     if(!(*crHost) || (strcmp(crHost, "0.0.0.0") == 0)) {
         SAH_TRACEZ_WARNING("CWMPD", "WAN is not connected, not connecting to server");
         free(crHost);
-        goto exit_error;
+        goto error;
     }
     free(crHost);
     free(acs_server_host);
     acs_server_host = NULL;
-    if(lws_parse_uri(acs_url_local, &uriScheme, &uriHost, &uriPort, &uriPath)) {
-        SAH_TRACEZ_ERROR("CWMPD", "Couldn't parse URL (%s)", acs_url_local);
-        goto exit_error;
+    if(lws_parse_uri(acs_url, &uriScheme, &uriHost, &uriPort, &uriPath)) {
+        SAH_TRACEZ_ERROR("CWMPD", "Couldn't parse URL (%s)", acs_url);
+        goto error;
     }
-    SAH_TRACEZ_APP_INFO("CWMPD", "Host: %s | Scheme: %s | Port: %d | Path: %s\n", uriHost, uriScheme, uriPort, uriPath);
+    SAH_TRACEZ_INFO("CWMPD", "Host: %s | Scheme: %s | Port: %d | Path: %s", uriHost, uriScheme, uriPort, uriPath);
     acs_server_host = strdup(uriHost);
+
+    if(uriPort == 0) {
+        SAH_TRACEZ_WARNING("CWMPD", "URI port is not set, default to Port:7547");
+        uriPort = 7547; // default tr-069 CWMP port 7547
+    }
+
     acs_server_port = uriPort;
     free(acs_server_path);
     acs_server_path = strdup(uriPath);
-    if(strcmp(uriScheme, "https") == 0) {
-        // Do stuff for https
-    }
 
-    /**
-     * Check if host is IP address so we don't need to resolve it.
-     * Check if TTL has expired or initialize new session so :
-     * 1 - Send new dns query to resolve acs host
-     * 2 - If resolving OK : Try to connect to acs
-     *  cwmp_client_connect_to_acs called in dnsresolve_cb
-     */
-    if(isIPAddress(uriHost) == 1) {
+    if(isIPAddress(uriHost)) {
+        if(acs_server_ip) {
+            free(acs_server_ip);
+            acs_server_ip = NULL;
+        }
         acs_server_ip = strdup(uriHost);
-        SAH_TRACEZ_INFO("CWMPD", "URI host : %s is IP address so we don't need to resolve it", uriHost);
-        cwmp_client_connect_to_acs();
-    } else {
-        if(new_session || (acsip_affinity && (strcmp(acsip_affinity, "0") == 0) &&
-                           dns_ttl_timer_value && (amxp_timer_remaining_time(dns_ttl_timer) <= 0))) {
-            SAH_TRACEZ_INFO("CWMPD", "TTL expired, we need a new dns query to resolve acs host");
-            cwmp_client_dns_resolve(uriHost);
-        } else {
-            SAH_TRACEZ_INFO("CWMPD", "ACS IP already resolved : %s", acs_server_ip);
-            cwmp_client_connect_to_acs();
+    } else if(resolve_DNS || (acs_server_ip == NULL)) {
+        //free DNS cache
+        if(dns_cache) {
+            ares_freeaddrinfo(dns_cache);
+            dns_cache = NULL;
         }
-    }
-    return 0;
-
-exit_error:
-    free(acs_url_local);
-    return -1;
-}
-
-static int cwmp_client_connect_to_acs() {
-    memset(&cnx_info, 0, sizeof(cnx_info));
-    cnx_info.context = g_lws_ctx;
-    cnx_info.method = "RAW";
-    cnx_info.protocol = protocols[0].name;
-    cnx_info.ssl_connection = 0;
-    cnx_info.pwsi = &client_wsi;
-    cnx_info.fi_wsi_name = "user";
-    unexpected_close = true;
-
-    cnx_info.port = acs_server_port;
-    cnx_info.host = acs_server_host;
-    cnx_info.path = acs_server_path;
-
-    if(acs_server_ip) {
-        cnx_info.address = acs_server_ip;
-        if(!lws_client_connect_via_info(&cnx_info)) {
-            SAH_TRACEZ_ERROR("CWMPD", "Couldn't connect to %s", acs_server_ip);
-            return -1;
+        // To prevent impacting the libdnengine internal
+        // Behavior, DNS resolution should done in sync mode
+        // when we starting a new session,So we should wait here
+        // until it's done
+        if(cwmp_dns_resolve(uriHost, &dns_cache) != cwmp_status_ok) {
+            ret = cwmp_status_ko;
+            goto error;
         }
-    }
-
-    if(!client_wsi) {
-        SAH_TRACEZ_INFO("CWMPD", "Try to connect to acs ip list");
-        amxc_llist_it_t* first_it = amxc_llist_get_first(&addrInfo_list);
-        if(first_it) {
-            curr_addrInfo_it = first_it;
-            AddrInfo_t* first_addrInfo = amxc_llist_it_get_data(first_it, AddrInfo_t, it);
-            if(first_addrInfo) {
-                // try to connect to first acsip.
-                cwmp_client_try_connect_to_acsip(first_addrInfo);
+        /* check if the last used IP still part of the DNS pool*/
+        if(foundInDNSCache(acs_server_ip) == false) {
+            //this IP is no longer valid free it
+            if(acs_server_ip) {
+                free(acs_server_ip);
+                acs_server_ip = NULL;
             }
-        } else {
-            SAH_TRACEZ_INFO("CWMPD", "ACS ip address list is empty");
         }
     }
-
-    return 0;
+    ret = cwmp_client_connect();
+error:
+    free(acs_url);
+    return ret;
 }
 
-/* fetch all server info from data model and feed them to server info struct*/
-cwmp_status_t cwmp_client_init(struct lws_context_creation_info* lws_ctx_info) {
-    lws_ctx_info->protocols = protocols;
-    lws_ctx_info->ssl_cert_filepath = NULL;
-    lws_ctx_info->ssl_private_key_filepath = NULL;
-    return cwmp_status_ok;
-}
+cwmp_status_t cwmp_client_stop() {
 
-/* Initialize and Start new client session */
-cwmp_status_t cwmp_client_start_session(struct lws_context_creation_info* lws_ctx_info,
-                                        void** main_loop, struct lws_context* lws_ctx) {
-    SAH_TRACEZ_INFO("CWMPD", "Client stating session");
-
-    lws_ctx_info->options = LWS_SERVER_OPTION_LIBEVENT;
-    lws_ctx_info->foreign_loops = main_loop;
-    lws_ctx_info->port = CONTEXT_PORT_NO_LISTEN;
-    lws_ctx_info->user = NULL;
-    lws_ctx_info->connect_timeout_secs = 60;
-    lws_ctx_info->fd_limit_per_thread = 1 + 1 + 1;
-    lws_ctx = lws_create_context(lws_ctx_info);
-    if(lws_ctx == NULL) {
-        SAH_TRACEZ_ERROR("CWMPD", "lws client context creation failed");
-        return cwmp_status_ko;
-    }
-    g_lws_ctx = lws_ctx;
-
-    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ACSIPAFFINITY, &acsip_affinity) != 0) {
-        SAH_TRACEZ_ERROR("CWMPD", "DM_ENGINE: Cannot fetch ACSIPAffinity parameter");
-        goto exit_error;
-    }
-
-    amxp_timer_new(&dns_ttl_timer, NULL, NULL);
-    if(cwmp_client_initialize_connection(NULL) == -1) {
-        SAH_TRACEZ_NOTICE("CWMPD", "Cannot initialize client connection");
-        goto exit_error;
-    }
-    new_session = false;
-
-    return cwmp_status_ok;
-
-exit_error:
-    free(acsip_affinity);
-    return cwmp_status_ko;
-}
-
-cwmp_status_t cwmp_client_stop(struct lws_context* lws_ctx) {
-    lws_context_destroy(lws_ctx);
-    if(dns_ctx.channel) {
-        ares_destroy(dns_ctx.channel);
-        ares_library_cleanup();
-    }
+    lws_vhost_destroy(lws_client_vhost);
+    lws_context_destroy(lws_client_ctx);
 
     if(acs_server_host) {
         free(acs_server_host);
@@ -716,18 +629,37 @@ cwmp_status_t cwmp_client_stop(struct lws_context* lws_ctx) {
         acs_server_path = NULL;
     }
 
+    if(acs_server_ip) {
+        free(acs_server_ip);
+        acs_server_ip = NULL;
+    }
+
+    if(dns_cache) {
+        ares_freeaddrinfo(dns_cache);
+        dns_cache = NULL;
+    }
+
     return cwmp_status_ok;
 }
+
+void cwmp_client_clear_ACSIP() {
+    if(acs_server_ip) {
+        free(acs_server_ip);
+        acs_server_ip = NULL;
+    }
+    // force new DNS resolution when next session kicks in
+    resolve_DNS = true;
+}
+
+/** libtr069-engine callbacks **/
 
 int DM_CloseHttpSession(bool closeMode) {
     if(connectedToServer) {
         unexpected_close = false;
-        if((closeMode != NORMAL_CLOSE) && client_wsi) {
-            lws_set_timeout(client_wsi, PENDING_TIMEOUT_KILLED_BY_PROXY_CLIENT_CLOSE, LWS_TO_KILL_SYNC);
-        }
-        if(lastMessage) {
-            free(lastMessage);
-            lastMessage = NULL;
+        if((closeMode != NORMAL_CLOSE) && lws_client_wsi) {
+            lws_set_timeout(lws_client_wsi,
+                            PENDING_TIMEOUT_KILLED_BY_PROXY_CLIENT_CLOSE,
+                            LWS_TO_KILL_SYNC);
         }
         connectedToServer = false;
         free(acs_server_host);
@@ -738,28 +670,6 @@ int DM_CloseHttpSession(bool closeMode) {
     return 0;
 }
 
-static void cwmp_client_sessionTimedOut(UNUSED char* name) {
-    unexpected_close = false;
-    SAH_TRACEZ_WARNING("CWMPD", "session timed out\n");
-    _closeACSSession(false);
-}
-
-static void cwmp_client_send_header(int msgLength) {
-    unsigned char* p = (unsigned char*) http_header;
-    int ret;
-
-    memset(http_header, 0, HTTP_HEADER_SIZE);
-    last_used = sprintf(http_header, "POST %s HTTP/1.1\r\n", acs_server_path);
-    p += last_used;
-    ret = lws_add_http_header_by_name(client_wsi, (const unsigned char*) "Host:", (const unsigned char*) acs_server_host, strlen(acs_server_host), &p, (unsigned char*) (http_header + HTTP_HEADER_SIZE));
-    ret += lws_add_http_header_by_name(client_wsi, (const unsigned char*) "User-agent:", (const unsigned char*) USER_AGENT, strlen(USER_AGENT), &p, (unsigned char*) (http_header + HTTP_HEADER_SIZE));
-    ret += lws_add_http_header_content_length(client_wsi, msgLength, &p, (unsigned char*) (http_header + HTTP_HEADER_SIZE));
-    ret += lws_add_http_header_by_name(client_wsi, (const unsigned char*) "Content-Type:", (const unsigned char*) "text/xml; charset=ISO-8859-1", 28, &p, (unsigned char*) (http_header + HTTP_HEADER_SIZE));
-    ret += lws_add_http_header_by_name(client_wsi, (const unsigned char*) "SOAPAction:", (const unsigned char*) "", 0, &p, (unsigned char*) (http_header + HTTP_HEADER_SIZE));
-    ret += lws_finalize_write_http_header(client_wsi, (unsigned char*) http_header, &p, (unsigned char*) (http_header + HTTP_HEADER_SIZE));
-    SAH_TRACEZ_INFO("CWMPD", "Send HTTP Header  %d -------------------------->\n%s", ret, http_header);
-}
-
 int DM_SendHttpMessage(const char* msgToSendStr) {
     int msgLength = 0;
 
@@ -768,20 +678,21 @@ int DM_SendHttpMessage(const char* msgToSendStr) {
         pending_message = strdup(msgToSendStr);
         return 0;
     }
-    if(msgToSendStr != lastMessage) {
-        free(lastMessage);
-        lastMessage = strdup(msgToSendStr);
-    }
+
     if(msgToSendStr != NULL) {
         msgLength = strlen(msgToSendStr);
     }
 
     cwmp_client_send_header(msgLength);
-    SAH_TRACEZ_INFO("CWMPD", "Send HTTP msg \n%s\n-------------------------->\n", msgToSendStr);
+    SAH_TRACEZ_INFO("CWMPD", "Sending message :\n%s\n--------------->", msgToSendStr);
     DM_UpdateRetryBuffer(msgToSendStr, msgLength);
-    lws_write(client_wsi, (unsigned char*) msgToSendStr, strlen(msgToSendStr), LWS_WRITE_HTTP);
-    SAH_TRACEZ_INFO("CWMPD", "Message sent (%d).", msgLength);
-    DM_ENG_NotificationInterface_timerStart("Session-timer", session_timeout, 0, cwmp_client_sessionTimedOut);
+    lws_write(lws_client_wsi, (unsigned char*) msgToSendStr, strlen(msgToSendStr), LWS_WRITE_HTTP);
+    //Update session Timer if Any, else start a new one
+    DM_ENG_NotificationInterface_timerStart("Session-timer",
+                                            session_timeout,
+                                            0,
+                                            cwmp_client_sessionTimedOut);
+
     if(msgToSendStr == pending_message) {
         free(pending_message);
         pending_message = NULL;
@@ -795,12 +706,10 @@ int client_startSession() {
         return 0;
     }
     char* s_timeout = NULL;
-    retransmitLastMessage = false;
-    lastMessage = NULL;
 
     SAH_TRACEZ_INFO("CWMPD", "The reamining time of DNS TTL timer is : %d", amxp_timer_remaining_time(dns_ttl_timer));
 
-    if(cwmp_client_initialize_connection(NULL) == -1) {
+    if(cwmp_client_start_session() == cwmp_status_ko) {
         SAH_TRACEZ_NOTICE("CWMPD", "Cannot initialize client connection");
         return -1;
     }
@@ -823,9 +732,3 @@ int client_startSession() {
     return 0;
 }
 
-void cwmp_client_clear_ACSIP() {
-    if(acs_server_ip) {
-        free(acs_server_ip);
-        acs_server_ip = NULL;
-    }
-}

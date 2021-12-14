@@ -88,10 +88,6 @@
 #endif
 
 application_t cwmp_app;// app instance
-static struct lws_context_creation_info server_info;
-static struct lws_context_creation_info client_info;
-static struct lws_context* server_ctx = NULL;
-static struct lws_context* client_ctx = NULL;
 amxb_bus_ctx_t* sys_bus_ctx = NULL;
 amxb_bus_ctx_t* acs_bus_ctx = NULL;
 
@@ -200,20 +196,16 @@ static cwmp_status_t cwmp_app_http_server_restart() {
     // need to destroy the whole server context and then create a new one
 
     /* Stop http Server */
-    if(cwmp_server_stop(server_ctx) != cwmp_status_ok) {
+    if(cwmp_server_stop() != cwmp_status_ok) {
         SAH_TRACEZ_WARNING("CWMPD", "failed to stop HTTP server");
     }
-    // configuration maybe updatet, reinitialize
-    memset(&server_info, 0, sizeof server_info);
     /* Init http Server */
-    if(cwmp_server_init(&server_info) != cwmp_status_ok) {
+    if(cwmp_server_init() != cwmp_status_ok) {
         SAH_TRACEZ_ERROR("CWMPD", "failed to initialize HTTP server");
         return cwmp_status_ko;
     }
-
-    void* foreign_loops[1] = { cwmp_evlp_get() };
     /* Start http Server */
-    if(cwmp_server_start(&server_info, foreign_loops, server_ctx) != cwmp_status_ok) {
+    if(cwmp_server_start() != cwmp_status_ok) {
         SAH_TRACEZ_ERROR("CWMPD", "failed to start HTTP server");
         return cwmp_status_ko;
     }
@@ -223,11 +215,11 @@ static cwmp_status_t cwmp_app_http_server_restart() {
 
 static cwmp_status_t cwmp_app_clean() {
     cwmp_status_t status = cwmp_status_ok;
-    if(cwmp_client_stop(client_ctx) != cwmp_status_ok) {
+    if(cwmp_client_stop() != cwmp_status_ok) {
         SAH_TRACEZ_ERROR("CWMPD", "failed to stop HTTP client");
         status = cwmp_status_ko;
     }
-    if(cwmp_server_stop(server_ctx) != cwmp_status_ok) {
+    if(cwmp_server_stop() != cwmp_status_ok) {
         SAH_TRACEZ_ERROR("CWMPD", "failed to stop HTTP server");
         status = cwmp_status_ko;
     }
@@ -249,25 +241,15 @@ int cwmp_app_engineEventHandler(const char* eventType) {
             raise(SIGTERM);
         }
     } else if(strcmp(eventType, EVENT_ENG_SRV_STOP) == 0) {
-        if(cwmp_server_stop(server_ctx) != cwmp_status_ok) {
+        if(cwmp_server_stop() != cwmp_status_ok) {
             SAH_TRACEZ_ERROR("CWMPD", "Stopping HTTP server failed");
         }
     } else if(strcmp(eventType, EVENT_ENG_SRV_START) == 0) {
-        if(server_ctx != NULL) {
-            SAH_TRACEZ_WARNING("CWMPD", "Attemp to Start a new HTTP server while another is running");
-            // Stop the other first , otherwise we will fail to bind to ip:port
-            if(cwmp_server_stop(server_ctx) != cwmp_status_ok) {
-                SAH_TRACEZ_ERROR("CWMPD", "Stopping HTTP server failed");
-            }
-        }
-        // Configuration maybe changed, reinitialize
-        memset(&server_info, 0, sizeof server_info);
-        if(cwmp_server_init(&server_info) != cwmp_status_ok) {
+        if(cwmp_server_init() != cwmp_status_ok) {
             SAH_TRACEZ_WARNING("CWMPD", "HTTP server initialization failed");
         }
-        void* foreign_loops[1] = { cwmp_evlp_get() };
         /* Start http Server */
-        if(cwmp_server_start(&server_info, foreign_loops, server_ctx) != cwmp_status_ok) {
+        if(cwmp_server_start() != cwmp_status_ok) {
             SAH_TRACEZ_ERROR("CWMPD", "Starting HTTP server failed");
             // if we reach this point propably cwmpd need a restart exit
             // the app as it's already dead and can't answer to ACS requests
@@ -323,10 +305,6 @@ int main(int argc, char* argv[]) {
         return rc;
     }
 
-    void* foreign_loops[1] = { cwmp_evlp_get() };
-    memset(&server_info, 0, sizeof server_info);
-    memset(&client_info, 0, sizeof client_info);
-
     /* Daemonize if needed */
     if(cwmp_app.daemonize) {
         if(daemon(0, 0) < 0) {
@@ -336,25 +314,25 @@ int main(int argc, char* argv[]) {
     }
 
     /* Init http Server */
-    if(cwmp_server_init(&server_info) != cwmp_status_ok) {
+    if(cwmp_server_init() != cwmp_status_ok) {
         SAH_TRACEZ_ERROR("CWMPD", "Failed to initialize HTTP server");
         goto error;
     }
 
     /* Start http Server */
-    if(cwmp_server_start(&server_info, foreign_loops, server_ctx) != cwmp_status_ok) {
+    if(cwmp_server_start() != cwmp_status_ok) {
         SAH_TRACEZ_ERROR("CWMPD", "Failed to start HTTP server");
         goto error;
     }
 
     /* Init http Client */
-    if(cwmp_client_init(&client_info) != cwmp_status_ok) {
+    if(cwmp_client_init() != cwmp_status_ok) {
         SAH_TRACEZ_ERROR("CWMPD", "HTTP client initialization failed");
         goto error;
     }
 
     /* Start http Server */
-    if(cwmp_client_start_session(&client_info, foreign_loops, client_ctx) != cwmp_status_ok) {
+    if(cwmp_client_start_session() != cwmp_status_ok) {
         SAH_TRACEZ_ERROR("CWMPD", "failed to start HTTP client");
         goto error;
     }

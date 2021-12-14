@@ -146,8 +146,8 @@ void start_cwmpd(void);
 void stop_cwmpd(void);
 
 void cwmpd_proc_stopped(const char* const event_name,
-                        const amxc_var_t* const event_data,
-                        void* const priv);
+                        UNUSED const amxc_var_t* const event_data,
+                        UNUSED void* const priv);
 
 #ifdef __cplusplus
 }

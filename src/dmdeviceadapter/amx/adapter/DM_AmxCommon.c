@@ -577,8 +577,6 @@ int DM_ENG_Device_Common_AddSubscription(amxc_llist_t* slist,
                                          const char* filter,
                                          notification_cb_t cb,
                                          int* subscriptionID) {
-    //Wen we init a subscription we subscribe to all object
-    //then we filter on events on callback
     SAH_TRACEZ_INFO("DM_DA", "Create New Subscription for [%s]", path);
     int error = 0;
     int rv = 0;
@@ -639,6 +637,9 @@ int DM_ENG_Device_Common_AddSubscription(amxc_llist_t* slist,
 stop:
     if((error != 0) && sub) {
         free(sub);
+    }
+    if((error != 0) && subInfo) {
+        free(subInfo);
     }
     amxc_string_clean(&uidstr);
     amxd_path_clean(&amxpath);

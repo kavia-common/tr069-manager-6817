@@ -229,7 +229,10 @@ void DM_ENG_Device_OpenSession() {
             goto error;
         }
         //TODO! Handle Find wan device
-        SAH_TRACEZ_INFO("DM_DA", "DM_ENG_Device_ACSConnectionHandleGetwandevice returned %s value %s", paramName, addressFound);
+        SAH_TRACEZ_INFO("DM_DA", "returned %s value %s",
+                        (paramName != NULL) ? paramName : "nil",
+                        (addressFound != NULL) ? addressFound : "nil");
+
         free(ipAddress);
         externalIPAddress = addressFound;
     } else if(( da.acs.prefix != NULL) && ( strcmp(da.acs.prefix, "Device.") == 0)) {

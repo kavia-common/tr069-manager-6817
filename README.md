@@ -2,8 +2,8 @@
 
 ## Requirement
 
-The cwmpd require libevent/libwebsockets and libtr69-engine to be installed on the target
-if you are compiling and using this on docker please download and install them manually.
+The cwmpd require libevent, libwebsockets, libtr69-engine and libcares + amx libs
+
 ### libevent
 
 Download and install libevent
@@ -31,14 +31,14 @@ Download libwebsockets
 ```
 git clone https://github.com/warmcat/libwebsockets.git
 cd libwebsockets
-git checkout v4.2.0 #required 4.2.0 or greater version
+git checkout v3.1.0 #required 3.1.0 or greater version
 ```
 Configure and build the lib
 
 ```
 mkdir build
 cd build
-cmake ../ -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DLWS_WITH_LIBEVENT=ON -DLWS_WITH_SYS_FAULT_INJECTION=ON -DLWS_WITH_SECURE_STREAMS=ON -DLWS_WITH_SYS_ASYNC_DNS=ON DLWS_MAX_SMP=10
+cmake ../ -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DLWS_WITH_LIBEVENT=ON -DLWS_MAX_SMP=10
 make
 sudo make install
 ```
@@ -54,6 +54,24 @@ cd libtr69-engine
 Configure and build the lib
 
 ```
+make
+sudo make install
+```
+### libcares
+
+Download and install libcares
+
+Download libtr69-engine
+```
+git clone https://github.com/c-ares/c-ares.git
+cd c-ares
+git checkout c-ares-1_17_2 # required 1_17_2 or greater
+```
+Configure and build the lib
+
+```
+./buildconf
+./configure --prefix=/usr --disable-static
 make
 sudo make install
 ```

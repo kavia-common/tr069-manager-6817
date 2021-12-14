@@ -89,10 +89,10 @@ amxc_string_t buffer;
 
 char* g_randomCpeUrl = NULL;
 static int httpCode = 0;
-static struct lws_vhost* server_vhost = NULL;
 
-
-static bool connection_timestamp_list_initialized = false;
+struct lws_context_creation_info lws_server_ctx_info;
+static struct lws_context* lws_server_ctx = NULL; /* server lws context */
+static struct lws_vhost* lws_server_vhost = NULL; /* server vhost */
 
 static int server_getHWAddressFromIp(const char* ip, char* macbuf, size_t buflen) {
     char ifbuf[1024];
@@ -236,25 +236,18 @@ static int server_createURL() {
 
     g_randomCpeUrl = (char*) malloc(CPE_URL_SIZE + 1);
     strcpy(g_randomCpeUrl, random_cpe_url);
-    SAH_TRACEZ_INFO("CWMPD", "CPE URL: %s\n", g_randomCpeUrl);
+    SAH_TRACEZ_INFO("CWMPD", "CPE URL: %s", g_randomCpeUrl);
     free(random_cpe_url);
     return 0;
 }
 
-int server_handleRequestBody(char* body, int len) {
-    SAH_TRACEZ_INFO("CWMPD", "CWMD SERVER ACS Request---->\n%s\n--------------------------\n", body);
-    process_body(body, len);
-    reset_read_buffer();
-    return 0;
-}
-
-int server_handleRequest(struct lws* wsi, char* in, int len) {
+static int cwmp_server_handleRequest(struct lws* wsi, char* in, int len) {
     unsigned char buf[LWS_PRE + 2048],
         * start = &buf[LWS_PRE],
         * p = start,
         * end = &buf[sizeof(buf) - LWS_PRE - 1];
     const char* requested_uri = (char*) in;
-    SAH_TRACEZ_INFO("CWMPD", "Handling request %s\n", requested_uri);
+    SAH_TRACEZ_INFO("CWMPD", "Handling request %s", requested_uri);
 
     if(len < 1) {
         httpCode = HTTP_STATUS_BAD_REQUEST;
@@ -299,19 +292,15 @@ int server_handleRequest(struct lws* wsi, char* in, int len) {
 
     char* random_cpe_url;
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_CONNECTIONREQUESTPATH, &random_cpe_url) != 0) {
-        SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the ACS connection request path\n");
+        SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the ACS connection request path");
         httpCode = HTTP_STATUS_NOT_FOUND;
     }
 
     if(( requested_uri == NULL) || ( random_cpe_url == NULL) || ( strcmp(requested_uri + 1, random_cpe_url) != 0)) { //+1 because we need to skip the initial slash
-        SAH_TRACEZ_ERROR("CWMPD", "Not a valid path (%s != %s)\n", requested_uri + 1, random_cpe_url);
+        SAH_TRACEZ_ERROR("CWMPD", "Not a valid path (%s != %s)", requested_uri + 1, random_cpe_url);
         httpCode = HTTP_STATUS_NOT_FOUND;
     }
     free(random_cpe_url);
-
-    char ip[16];
-    lws_get_peer_simple(wsi, ip, 16);
-    SAH_TRACEZ_INFO("CWMPD", "peer ip = %s\n", ip);
 
     // 3.2.2: The CPE MUST accept Connection Requests from any source that has the correct authentication parameters for the target CPE.
     // OK: we do not check on the source address
@@ -321,7 +310,7 @@ int server_handleRequest(struct lws* wsi, char* in, int len) {
     // If this HTTP Message do not contain DIGEST Authentication data, send
     // an authentication request.
     if(!lws_hdr_total_length(wsi, WSI_TOKEN_HTTP_AUTHORIZATION)) {
-        SAH_TRACEZ_ERROR("CWMPD", "Received a request without authentication data\n");
+        SAH_TRACEZ_ERROR("CWMPD", "Received a request without authentication data");
         httpCode = HTTP_STATUS_UNAUTHORIZED;
     } else {
         char auth_data[1024];
@@ -338,10 +327,10 @@ int server_handleRequest(struct lws* wsi, char* in, int len) {
         // Check if all the digest authentication data are in the message.
         if(_checkDigestAuthMessageContent(tmp)) {
             if(false == performClientDigestAuthentication(tmp)) {
-                SAH_TRACEZ_ERROR("CWMPD", "DIGEST AUTHENTICATION: FAILED.\n");
+                SAH_TRACEZ_ERROR("CWMPD", "DIGEST AUTHENTICATION: FAILED.");
                 httpCode = HTTP_STATUS_UNAUTHORIZED;
             } else {
-                SAH_TRACEZ_INFO("CWMPD", "DIGEST AUTHENTICATION: SUCCESS\n.");
+                SAH_TRACEZ_INFO("CWMPD", "DIGEST AUTHENTICATION: SUCCESS.");
                 httpCode = 0;
             }
         } else {
@@ -378,7 +367,7 @@ int server_handleRequest(struct lws* wsi, char* in, int len) {
     }
 
     if(httpCode == HTTP_STATUS_UNAUTHORIZED) {
-        SAH_TRACEZ_INFO("CWMPD", "Request the ACS to provide Authentication Data.\n");
+        SAH_TRACEZ_INFO("CWMPD", "Request the ACS to provide Authentication Data.");
 
         char* requestDigestMsg = _getRandomString();
         if(lws_add_http_header_status(wsi, HTTP_STATUS_UNAUTHORIZED, &p, end)) {
@@ -430,11 +419,11 @@ static int cwmp_server_http_callback(struct lws* wsi, enum lws_callback_reasons 
         lws_set_timeout(wsi, PENDING_TIMEOUT_AWAITING_PROXY_RESPONSE, 60);
         break;
     case LWS_CALLBACK_HTTP:
-        server_handleRequest(wsi, (char*) in, len);
-        break;
-    case LWS_CALLBACK_HTTP_BODY:
-        server_handleRequestBody((char*) in, len);
-        break;
+        cwmp_server_handleRequest(wsi, (char*) in, len);
+        // dont proceed otherwise lws_callback_http_dummy
+        // will send a 404 NOT FOUND message, this may lead
+        // to an unwanted behavior
+        return 0;
     case LWS_CALLBACK_HTTP_BODY_COMPLETION:
         /* the expected amount of http request body has been delivered */
         lws_return_http_status(wsi, HTTP_STATUS_OK, NULL);
@@ -452,34 +441,32 @@ static const struct lws_protocols protocols[] = {
 };
 
 /* fetch all server info from data model and feed them to server info struct*/
-cwmp_status_t cwmp_server_init(struct lws_context_creation_info* lws_ctx_info) {
+cwmp_status_t cwmp_server_init() {
     cwmp_status_t ret = cwmp_status_ko;
     char* server_host = NULL;
     char* server_port = NULL;
     char* acsip = NULL;
-    char* sourceprefix = NULL;
-
-    SAH_TRACEZ_INFO("CWMPD", "lws init server\n");
-    lws_ctx_info->options = LWS_SERVER_OPTION_VALIDATE_UTF8
+    SAH_TRACEZ_INFO("CWMPD", "lws init server");
+    memset(&lws_server_ctx_info, 0, sizeof lws_server_ctx_info);
+    void* main_loop[1] = { cwmp_evlp_get() };
+    /* this will attach our server to our main evlp */
+    lws_server_ctx_info.foreign_loops = main_loop;
+    lws_server_ctx_info.options = LWS_SERVER_OPTION_VALIDATE_UTF8
         | LWS_SERVER_OPTION_LIBEVENT
         | LWS_SERVER_OPTION_EXPLICIT_VHOSTS
         | LWS_SERVER_OPTION_ALLOW_LISTEN_SHARE;
 
-    lws_ctx_info->protocols = protocols;
+    lws_server_ctx_info.protocols = protocols;
 
     /* check app conf */
-    lws_ctx_info->ssl_cert_filepath = NULL;
-    lws_ctx_info->ssl_private_key_filepath = NULL;
-    /* ..... other stuuf can be configured here*/
-    // lws_ctx_info->ka_time = 0;
-    // lws_ctx_info->ka_probes = 0;
-    // lws_ctx_info->ka_interval = 0;
+    lws_server_ctx_info.ssl_cert_filepath = NULL;
+    lws_server_ctx_info.ssl_private_key_filepath = NULL;
 
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_LOCALIPADDRESS, &server_host) != 0) {
         SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the local ip address");
         return ret;
     }
-    SAH_TRACEZ_INFO("CWMPD", "Connection request host = %s\n", server_host);
+    SAH_TRACEZ_INFO("CWMPD", "Connection request host = %s", server_host);
 
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_CONNECTIONREQUESTPORT, &server_port) != 0) {
         SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the local connection request port #");
@@ -488,14 +475,10 @@ cwmp_status_t cwmp_server_init(struct lws_context_creation_info* lws_ctx_info) {
     SAH_TRACEZ_INFO("CWMPD", "Connection request port # = %s", server_port);
 
     // set server info struct.
-    lws_ctx_info->vhost_name = server_host;
-    lws_ctx_info->port = atoi(server_port);
+    lws_server_ctx_info.vhost_name = server_host;
+    lws_server_ctx_info.port = atoi(server_port);
 
-    if(connection_timestamp_list_initialized == false) {
-        // init connection timestamp list.
-        cwmp_server_initConnectionTimestampList();
-        connection_timestamp_list_initialized = true;
-    }
+    cwmp_server_initConnectionTimestampList();
 
     // Create the randomly chosen CPE URL
     if(server_createURL() != 0) {
@@ -507,10 +490,15 @@ cwmp_status_t cwmp_server_init(struct lws_context_creation_info* lws_ctx_info) {
         goto error;
     }
 
-    sourceprefix = strdup(acsip);
-
-    if(!lws_ctx_info->vhost_name || !(*lws_ctx_info->vhost_name)) {
+    if(!lws_server_ctx_info.vhost_name || !(*lws_server_ctx_info.vhost_name)) {
         SAH_TRACEZ_NOTICE("CWMPD", "No Connection request host is set, stop initializing server");
+        goto error;
+    }
+    // Create the lws context
+    lws_server_ctx = lws_create_context(&lws_server_ctx_info);
+
+    if(!lws_server_ctx) {
+        SAH_TRACEZ_ERROR("CWMPD", "lws init failed");
         goto error;
     }
 
@@ -525,28 +513,14 @@ error:
     if(acsip) {
         free(acsip);
     }
-    if(sourceprefix) {
-        free(sourceprefix);
-    }
     return ret;
 }
 
-/* Initialize and Start the main server */
-cwmp_status_t cwmp_server_start(struct lws_context_creation_info* lws_ctx_info,
-                                void** main_loop, struct lws_context* lws_ctx) {
+/* Start the main server */
+cwmp_status_t cwmp_server_start() {
     httpCode = 0;
     char* cpe_enabled = NULL;
     bool cpe_enabled_b = false;
-
-    /* this will attach our server to our main evlp */
-    lws_ctx_info->foreign_loops = main_loop;
-
-    lws_ctx = lws_create_context(lws_ctx_info);
-
-    if(!lws_ctx) {
-        SAH_TRACEZ_ERROR("CWMPD", "lws init failed");
-        return cwmp_status_ko;
-    }
 
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ENABLECWMP, &cpe_enabled) != 0) {
         SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the ACS enable flag");
@@ -559,33 +533,29 @@ cwmp_status_t cwmp_server_start(struct lws_context_creation_info* lws_ctx_info,
 
     if(cpe_enabled_b) {
         /* create the vhost */
-        server_vhost = lws_create_vhost(lws_ctx, lws_ctx_info);
+        lws_server_vhost = lws_create_vhost(lws_server_ctx, &lws_server_ctx_info);
 
-        if(server_vhost == NULL) {
+        if(lws_server_vhost == NULL) {
             SAH_TRACEZ_ERROR("CWMPD", "lws vhost creation failed");
             return cwmp_status_ko;
         }
 
-        // All good
+        // All good, server is now listening
         return cwmp_status_ok;
     } else {
-        SAH_TRACEZ_ERROR("CWMPD", "Start server failed : CPE not enabled !");
+        SAH_TRACEZ_ERROR("CWMPD", "CWMP Server is not Started : CPE not enabled !");
     }
     return cwmp_status_ok;
 }
 
-cwmp_status_t cwmp_server_stop(struct lws_context* lws_ctx) {
+cwmp_status_t cwmp_server_stop() {
     SAH_TRACEZ_INFO("CWMPD", "Server is going to stop Cleaning ressources");
-    //TODO! lws Docs says we should destroy vhost only
-    // for now I will destroy the whole server context
-    if(server_vhost) {
-        lws_vhost_destroy(server_vhost);
+    if(lws_server_vhost) {
+        lws_vhost_destroy(lws_server_vhost);
     }
-
-    server_vhost = NULL;
-    lws_context_destroy(lws_ctx);
-    lws_ctx = NULL;
-
+    lws_server_vhost = NULL;
+    lws_context_destroy(lws_server_ctx);
+    lws_server_ctx = NULL;
     // clean up maxconnections.
     cwmp_server_maxConnectionsCleanup();
     return cwmp_status_ok;

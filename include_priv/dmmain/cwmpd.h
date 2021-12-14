@@ -70,6 +70,7 @@
 #include <dmengine/DM_ENG_NotificationInterface.h>
 #include "httpparser/picohttpparser.h"
 #include <debug/sahtrace.h>
+#include <ares.h>
 
 #define COPY_BUFFER_SIZE 4 * 1024
 
@@ -99,20 +100,20 @@ typedef struct application application_t;
 application_t cwmp_app_getconf(void);
 
 //Server
-cwmp_status_t cwmp_server_init(struct lws_context_creation_info* lws_ctx_info);
+cwmp_status_t cwmp_server_init(void);
 
-cwmp_status_t cwmp_server_start(struct lws_context_creation_info* lws_ctx_info,
-                                void** evlp, struct lws_context* lws_ctx);
+cwmp_status_t cwmp_server_start(void);
 
-cwmp_status_t cwmp_server_stop(struct lws_context* lws_ctx);
+cwmp_status_t cwmp_server_stop(void);
 
 //Client
-cwmp_status_t cwmp_client_init(struct lws_context_creation_info* lws_ctx_info);
+cwmp_status_t cwmp_client_init(void);
 
-cwmp_status_t cwmp_client_start_session(struct lws_context_creation_info* lws_ctx_info,
-                                        void** evlp, struct lws_context* lws_ctx);
+cwmp_status_t cwmp_client_start_session(void);
 
-cwmp_status_t cwmp_client_stop(struct lws_context* lws_ctx);
+cwmp_status_t cwmp_client_stop(void);
+
+void cwmp_client_dns_resolved(struct ares_addrinfo* dns_result);
 
 void cwmp_client_clear_ACSIP();
 
@@ -143,17 +144,7 @@ int cwmp_timer_start(const char* name, int waitTime, int intervalTime, timerHand
 
 unsigned int cwmp_timer_remainingTime(const char* name);
 
-//API
-int get_content_length(struct phr_header* values, unsigned int len);
-
-int append_read_buffer(char** msg, int* len);
-
-int create_read_buffer(char* raw, int len);
-
-void reset_read_buffer(void);
-
-int process_body(char* body, int len);
-
-
+//DNS Resolver
+cwmp_status_t cwmp_dns_resolve(const char* hostname, struct ares_addrinfo** dns_pool);
 
 #endif // !_CWMPD_H_
