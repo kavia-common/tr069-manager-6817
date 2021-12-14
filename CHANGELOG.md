@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.8.0 - 2021-12-14(15:04:10 +0000)
+
+### New
+
+- Wait for required objects before starting cwmpd
+
 ## Release v1.7.0 - 2021-12-14(13:19:42 +0000)
 
 ### New
