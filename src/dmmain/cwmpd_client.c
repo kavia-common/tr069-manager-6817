@@ -110,6 +110,7 @@ static int read_buffer_len = 0;
 static struct lws* lws_client_wsi = NULL;         /* client ws interface */
 static struct lws_context* lws_client_ctx = NULL; /* client lws context */
 static struct lws_vhost* lws_client_vhost = NULL; /* client vhost */
+static struct lws_context_creation_info lws_client_ctx_info;
 
 static struct ares_addrinfo* dns_cache = NULL;
 static amxp_timer_t* dns_ttl_timer = NULL;
@@ -379,13 +380,23 @@ static cwmp_status_t cwmp_client_connect_to(sa_family_t sa_family, const char* i
     break;
     }
 
+    if(lws_client_vhost == NULL) {
+        //Create a client lws vhost
+        SAH_TRACEZ_INFO("CWMPD", "Client vhost has been destroyed, create a new one");
+        lws_client_vhost = lws_create_vhost(lws_client_ctx, &lws_client_ctx_info);
 
+        if(lws_client_vhost == NULL) {
+            SAH_TRACEZ_ERROR("CWMPD", "lws failed to attribute a vhost for client");
+            return cwmp_status_ko;
+        }
+    }
     SAH_TRACEZ_INFO("CWMPD", "Adopting foreign socket into lws");
-
     lws_client_wsi = lws_adopt_descriptor_vhost(lws_client_vhost, LWS_ADOPT_SOCKET, sock,
                                                 protocols[0].name, NULL);
     if(lws_client_wsi == NULL) {
         SAH_TRACEZ_ERROR("CWMPD", "lws return bad context, failed to adopt open socket");
+        close(sock.sockfd);
+        return cwmp_status_ko;
     }
 
     return cwmp_status_ok;
@@ -495,7 +506,6 @@ static void cwmp_client_send_header(int msgLength) {
 /* fetch all client info from data model and feed them to server info struct*/
 cwmp_status_t cwmp_client_init() {
     SAH_TRACEZ_INFO("CWMPD", "Client initialize");
-    static struct lws_context_creation_info lws_client_ctx_info;
     memset(&lws_client_ctx_info, 0, sizeof lws_client_ctx_info);
     void* main_loop[1] = { cwmp_evlp_get() };
     lws_client_ctx_info.protocols = protocols;
