@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.8.1 - 2021-12-28(13:22:53 +0000)
+
+### Fixes
+
+- Clean ressources when cwmpd cant connect
+
 ## Release v1.8.0 - 2021-12-14(15:04:10 +0000)
 
 ### New
