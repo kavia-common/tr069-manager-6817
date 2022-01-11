@@ -13,8 +13,8 @@ INCDIR_PRIV = ../../include_priv -I../../libs/include_priv
 ifdef STAGINGDIR
 #libwebsocket default install (/usr/local/include,/usr/local/lib)
 INCDIRS = $(INCDIR_PRIV) $(if $(STAGINGDIR), -I$(STAGINGDIR)/include) \
-				$(if $(STAGINGDIR), -I$(STAGINGDIR)/usr/include) \
-				$(if $(STAGINGDIR), -I$(STAGINGDIR)/usr/local/include)
+		  $(if $(STAGINGDIR), -I$(STAGINGDIR)/usr/include) \
+		  $(if $(STAGINGDIR), -I$(STAGINGDIR)/usr/local/include)
 
 STAGING_LIBDIR = $(if $(STAGINGDIR), -L$(STAGINGDIR)/lib) \
 				 $(if $(STAGINGDIR), -L$(STAGINGDIR)/usr/lib) \
@@ -58,6 +58,14 @@ define install_to
 	$(INSTALL) -m 0755 $(OBJDIR)/$(COMPONENT) $(1)/usr/bin/
 endef
 
+LDFLAGS_PRIO = $(if $(STAGINGDIR), -L$(STAGINGDIR)/opt/prplos/lib) \
+			   $(if $(STAGINGDIR), -L$(STAGINGDIR)/opt/prplos/usr/lib) \
+			   $(if $(STAGINGDIR), -L$(STAGINGDIR)/opt/prplos/usr/local/lib)
+
+CFLAGS_PRIO = $(if $(STAGINGDIR), -I$(STAGINGDIR)/opt/prplos/include) \
+			  $(if $(STAGINGDIR), -I$(STAGINGDIR)/opt/prplos/usr/include) \
+			  $(if $(STAGINGDIR), -I$(STAGINGDIR)/opt/prplos/usr/local/include)
+
 all: bannerCompile $(TARGET_BIN)
 
 bannerCompile:
@@ -67,13 +75,13 @@ bannerInstall:
 	@echo "*********************** Istalling $(COMPONENT) ********************************"
 
 $(TARGET_BIN): $(OBJECTS)
-	$(CC) -o $@ $(OBJECTS) $(LDFLAGS)
+	$(CC) -o $@ $(OBJECTS) $(LDFLAGS_PRIO) $(LDFLAGS)
 
 -include $(OBJECTS:.o=.d)
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.c | $(OBJDIR)/
-	$(CC) $(CFLAGS) -c -o $@ $<
-	@$(CC) $(CFLAGS) -MM -MP -MT '$(@) $(@:.o=.d)' -MF $(@:.o=.d) $(<)
+	$(CC) $(CFLAGS_PRIO) $(CFLAGS) -c -o $@ $<
+	@$(CC) $(CFLAGS_PRIO) $(CFLAGS) -MM -MP -MT '$(@) $(@:.o=.d)' -MF $(@:.o=.d) $(<)
 
 $(OBJDIR)/:
 	$(MKDIR) -p $@
