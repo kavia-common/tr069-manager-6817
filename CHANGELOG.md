@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.8.2 - 2022-01-11(11:57:44 +0000)
+
+### Changes
+
+- Add LDFLAGS and CFLAGS allowing to search libraries under /opt/prplos
+
 ## Release v1.8.1 - 2021-12-28(13:22:53 +0000)
 
 ### Fixes
