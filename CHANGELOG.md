@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.9.0 - 2022-01-13(09:59:51 +0000)
+
+### New
+
+- Find and update wan Interface and IP address
+
 ## Release v1.8.2 - 2022-01-11(11:57:44 +0000)
 
 ### Changes
