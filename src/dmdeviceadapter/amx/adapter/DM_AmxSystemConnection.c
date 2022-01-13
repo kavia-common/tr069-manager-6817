@@ -368,7 +368,6 @@ static const char* DM_ENG_Device_ConvertToObjectName(DM_ENG_SystemParameter_t pa
     case DM_ENG_DEFAULTACTIVENOTIFICATIONTHROTTLE:
     case DM_ENG_MANAGEABLEDEVICENOTIFICATIONLIMIT:
     case DM_ENG_INSTANCEWILDCARDSSUPPORTED:
-    case DM_ENG_REFUSEBASICAUTHENTICATION:
     case DM_ENG_CONNECTIONREQUESTUSERNAME:
     case DM_ENG_CONNECTIONREQUESTPASSWORD:
     case DM_ENG_CONNECTIONREQUESTURL:
@@ -377,18 +376,12 @@ static const char* DM_ENG_Device_ConvertToObjectName(DM_ENG_SystemParameter_t pa
     case DM_ENG_MAXDOWNLOADDELAY:
     case DM_ENG_MAXUPLOADDELAY:
     case DM_ENG_BOOTPERSISTENTSCHEDULEINFORM:
-    case DM_ENG_ALLOWMULTIPLESCHEDULEINFORM:
-    case DM_ENG_ALWAYSEMPTYPOSTATENDOFSESSION:
-    case DM_ENG_ACSIP:
     case DM_ENG_ALLOWCONNECTIONREQUESTFROMUNKNOWNHOST:
     case DM_ENG_MAXDOWNLOADS:
     case DM_ENG_MAXDOWNLOADSERRORCODE:
-    case DM_ENG_UPGRADESAVAILABLE:
     case DM_ENG_ACSEVENTS:
     case DM_ENG_DELIVEREDEVENTS:
     case DM_ENG_BLOCKEDEVENTS:
-    case DM_ENG_VERIFYPARAMETERTYPE:
-    case DM_ENG_DISABLEBOOTINFORM:
     case DM_ENG_ALIASBASEDADDRESSING:
     case DM_ENG_INSTANCEMODE:
     case DM_ENG_AUTOCREATEINSTANCES:
@@ -403,7 +396,6 @@ static const char* DM_ENG_Device_ConvertToObjectName(DM_ENG_SystemParameter_t pa
     case DM_ENG_NTPSTATUS:
         return time_path;
     case DM_ENG_ACSIPAFFINITY:
-    case DM_ENG_ACSIPTTL:
     case DM_ENG_ACSADDRFAMILY:
     case DM_ENG_ALLOWCONNECTIONREQUESTFROMADDRESS:
     case DM_ENG_DATAMODEL:
@@ -416,7 +408,6 @@ static const char* DM_ENG_Device_ConvertToObjectName(DM_ENG_SystemParameter_t pa
     case DM_ENG_SSLACCEPTEXPIRED:
     case DM_ENG_SSLVERIFYPARTIALCHAIN:
     case DM_ENG_PERSISTENTRPCPATH:
-    case DM_ENG_TIMEPLUGINPATH:
     case DM_ENG_UPGRADEBOOTDELAY:
     case DM_ENG_SESSIONTIMEOUT:
     case DM_ENG_VERIFYSUPPORTEDACSMETHODS:
@@ -435,6 +426,8 @@ static const char* DM_ENG_Device_ConvertToObjectName(DM_ENG_SystemParameter_t pa
     case DM_ENG_FACTORYRESETOCCURRED:
     case DM_ENG_SESSIONSTATUS:
     case DM_ENG_REBOOTCOMMANDKEY:
+    case DM_ENG_ACSIPTTL:
+    case DM_ENG_ACSIP:
         return "ManagementServer.State.";
     case DM_ENG_GETPARAMETERVALUEREQUESTS:
         return "ManagementServer.Stats.";
@@ -471,9 +464,7 @@ static const char* DM_ENG_Device_ConvertToParameterName(DM_ENG_SystemParameter_t
     case DM_ENG_PARAMETERKEY:                      return "ParameterKey";
     case DM_ENG_ENABLECWMP:                        return "EnableCWMP";
     case DM_ENG_DEFAULTACTIVENOTIFICATIONTHROTTLE: return "DefaultActiveNotificationThrottle";
-    case DM_ENG_MANAGEABLEDEVICENOTIFICATIONLIMIT: return "ManageableDeviceNotificationLimit";
     case DM_ENG_INSTANCEWILDCARDSSUPPORTED:        return "InstanceWildcardsSupported";
-    case DM_ENG_REFUSEBASICAUTHENTICATION:         return "RefuseBasicAuthentication";
     case DM_ENG_CONNECTIONREQUESTUSERNAME:         return "ConnectionRequestUsername";
     case DM_ENG_CONNECTIONREQUESTURL:              return "ConnectionRequestURL";
     case DM_ENG_CONNECTIONREQUESTPASSWORD:         return "ConnectionRequestPassword";
@@ -505,29 +496,23 @@ static const char* DM_ENG_Device_ConvertToParameterName(DM_ENG_SystemParameter_t
     case DM_ENG_MAXDOWNLOADDELAY:                  return "MaxDownloadDelay";
     case DM_ENG_MAXUPLOADDELAY:                    return "MaxUploadDelay";
     case DM_ENG_BOOTPERSISTENTSCHEDULEINFORM:      return "BootPersistentScheduleInform";
-    case DM_ENG_ALLOWMULTIPLESCHEDULEINFORM:       return "AllowMultipleScheduleInform";
-    case DM_ENG_ALWAYSEMPTYPOSTATENDOFSESSION:     return "AlwaysEmptyPostAtEndOfSession";
     case DM_ENG_ACSIP:                             return "ACSIP";
     case DM_ENG_ALLOWCONNECTIONREQUESTFROMUNKNOWNHOST: return "AllowConnectionRequestFromUnknownHost";
     case DM_ENG_ALLOWCONNECTIONREQUESTFROMADDRESS: return "AllowConnectionRequestFromAddress";
     case DM_ENG_GETPARAMETERVALUEREQUESTS:         return "GetParameterValuesRequests";
     case DM_ENG_MAXDOWNLOADS:                      return "MaxDownloads";
-    case DM_ENG_UPGRADESAVAILABLE:                 return "UpgradesAvailable";
     case DM_ENG_UPGRADEBOOTDELAY:                  return "UpgradeBootDelay";
     case DM_ENG_ACSEVENTS:                         return "ACSEvents";
     case DM_ENG_DELIVEREDEVENTS:                   return "DeliveredEvents";
     case DM_ENG_BLOCKEDEVENTS:                     return "BlockedEvents";
     case DM_ENG_MAXDOWNLOADSERRORCODE:             return "MaxDownloadsErrorCode";
     case DM_ENG_NTPSTATUS:                         return "Status";
-    case DM_ENG_VERIFYPARAMETERTYPE:               return "VerifyParameterType";
-    case DM_ENG_DISABLEBOOTINFORM:                 return "DisableBootInform";
     case DM_ENG_DATAMODEL:                         return "Datamodel";
     case DM_ENG_DATAMODELURL:                      return "DatamodelURL";
     case DM_ENG_PERSISTENTRPCPATH:                 return "PersistentRPCPath";
     case DM_ENG_ALIASBASEDADDRESSING:              return "AliasBasedAddressing";
     case DM_ENG_INSTANCEMODE:                      return "InstanceMode";
     case DM_ENG_AUTOCREATEINSTANCES:               return "AutoCreateInstances";
-    case DM_ENG_TIMEPLUGINPATH:                    return "TimePluginPath";
     case DM_ENG_LOCALIPADDRESS:                    return "LocalIPAddress";
     case DM_ENG_INHIBIT_VALUE_CHANGE_UPON_BOOT:    return "InhibitValueChangeUponBoot";
     case DM_ENG_IPV4IPV6WANMODE:                   return "IPV4IPV6WANMode";
@@ -713,12 +698,7 @@ static void DM_ENG_Device_SystemConnectionSleepBeforeStarting() {
         free(tmp);
     }
 
-    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_UPGRADESAVAILABLE, &tmp) == 0) {
-        if(tmp) {
-            upgradesAvailable = atoi(tmp);
-        }
-        free(tmp);
-    }
+    // TODO : get upgradesAvailable from Device.UserInterface.UpgradeAvailable
 
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_UPGRADEBOOTDELAY, &tmp) == 0) {
         if(tmp) {
@@ -845,13 +825,10 @@ bool DM_ENG_Device_SystemConnectionInitialize(dm_amx_env_t* amx) {
         SAH_TRACEZ_ERROR("DM_DA", "Could not create notification for %s", MANAGEMENTSERVER_PATH);
         goto stop;
     }
-    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_TIMEPLUGINPATH, &time_path) != 0) {
-        SAH_TRACEZ_ERROR("DM_DA", "Could not get time plugin path");
-    }
-    if(!time_path) {
-        SAH_TRACEZ_NOTICE("DM_DA", "Defaulting time path to Time");
-        time_path = strdup(TIME_PATH);
-    }
+
+    SAH_TRACEZ_NOTICE("DM_DA", "Defaulting time path to Time");
+    time_path = strdup(TIME_PATH);
+
     /* Create the notifications */
     if(DM_ENG_Device_Common_AddSubscription(&systemSubsList, amx, time_path,
                                             EVENT_DM_FILTER_OBJECT_CHANGED,

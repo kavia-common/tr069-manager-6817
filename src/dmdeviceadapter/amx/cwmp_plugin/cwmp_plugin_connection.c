@@ -222,16 +222,6 @@ void _writeInterface(UNUSED const char* const sig_name,
     findAndUpdateLocalIP(GETP_CHAR(data, "parameters.Interface.to"));
 }
 
-amxd_status_t _getACSIPTTL(UNUSED amxd_object_t* object,
-                           UNUSED amxd_param_t* param,
-                           UNUSED amxd_action_t reason,
-                           UNUSED const amxc_var_t* const args,
-                           amxc_var_t* const retval,
-                           UNUSED void* priv) {
-    amxc_var_set(int32_t, retval, 1);
-    return amxd_status_ok;
-}
-
 void wanIPAddressChanged(UNUSED const char* const sig_name,
                          const amxc_var_t* const data,
                          UNUSED void* const priv) {

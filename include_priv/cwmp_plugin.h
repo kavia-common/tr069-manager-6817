@@ -128,13 +128,6 @@ void _writeInterface(const char* const sig_name,
                      const amxc_var_t* const data,
                      void* const priv);
 
-amxd_status_t _getACSIPTTL(amxd_object_t* object,
-                           amxd_param_t* param,
-                           amxd_action_t reason,
-                           const amxc_var_t* const args,
-                           amxc_var_t* const retval,
-                           void* priv);
-
 void findWanInterface(void);
 
 void wanIPAddressChanged(const char* const sig_name,

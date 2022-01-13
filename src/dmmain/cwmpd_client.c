@@ -458,6 +458,11 @@ static cwmp_status_t cwmp_client_connect() {
                    (amxp_timer_remaining_time(dns_ttl_timer) <= 0) &&
                    (ai_cur->ai_ttl != 0)) {
                     acs_server_ttl = ai_cur->ai_ttl;//cache ttl value
+                    char tmpStr[10];
+                    snprintf(tmpStr, 10, "%d", ai_cur->ai_ttl);
+                    if(DM_ENG_SetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ACSIPTTL, tmpStr) != 0) {
+                        SAH_TRACEZ_ERROR("CWMPD", "failed to set the ACSIP TTL in the datamodel");
+                    }
                     /* update ttl_timer */
                     amxp_timer_start(dns_ttl_timer, acs_server_ttl * 1000);
                 }
@@ -479,6 +484,10 @@ static void cwmp_client_sessionTimedOut(UNUSED char* name) {
 static void cwmp_client_dnsTTLTimeout_handler(UNUSED amxp_timer_t* timer, UNUSED void* priv) {
     if(strcmp(acsip_affinity, "0") == 0) {
         resolve_DNS = true; // force DNS resolution if affinity is enabled
+        // Set ACSIPTTL to 0 : means that ttl is expired
+        if(DM_ENG_SetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ACSIPTTL, "0") != 0) {
+            SAH_TRACEZ_ERROR("CWMPD", "failed to set the ACSIP TTL in the datamodel");
+        }
         // dont free acs_server_ip as it maybe reused if it's still
         // a valid IP
     }
@@ -609,6 +618,7 @@ cwmp_status_t cwmp_client_start_session() {
             ret = cwmp_status_ko;
             goto error;
         }
+        // TODO : update ACSIP in the DM after dns resolve.
         /* check if the last used IP still part of the DNS pool*/
         if(foundInDNSCache(acs_server_ip) == false) {
             //this IP is no longer valid free it

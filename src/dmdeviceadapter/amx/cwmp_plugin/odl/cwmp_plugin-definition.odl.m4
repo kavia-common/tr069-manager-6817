@@ -35,18 +35,6 @@
         }
 
       /**
-        * The ACS IP that was detected
-        * @version 1.0
-        */
-        read-only string ACSIP;
-
-      /**
-        * Update ACSIP parameter
-        * This function is called when the URL parameter is changed or when ACSIP is needed and ACSIPAffinity is false
-        */
-        //TPB bool updateACSIP();
-
-      /**
         * Username used to authenticate the CPE when making a connection to the ACS using the CPE WAN Management Protocol.
         * This username is used only for HTTP-based authentication of the CPE.
         * Note that on a factory reset of the CPE, the value of this parameter might be reset to its factory value. If an ACS modifies the value of this parameter, it SHOULD be prepared to accommodate the situation that the original value is restored as the result of a factory reset.
@@ -319,16 +307,6 @@
             persistent read-only bool ACSIPAffinity=1;
 
           /**
-            * The remaining time before TTL expiration.
-            * 0 means that the TTL is expired.
-            * -1 means that the TTL is unknown.
-            * @version 1.0
-            */
-            %read-only int32 ACSIPTTL {
-              on action read call getACSIPTTL;
-            }
-
-          /**
             * Speficify the desired address family for the ACS URL resolution:
             *   - 0 indicates DNS should return socket addresses for any address family (either IPv4 or IPv6)
             *   - 4 IPv4 address family only
@@ -491,7 +469,22 @@
             string SessionStatus {
                 constraint enum ["Initializing","Idle","Busy","ServerDown"];
                 default "Initializing";
-                //TPBwrite with writeSessionStatus;
+            }
+
+          /**
+            * The ACS IP that was detected
+            * @version 1.0
+            */
+            read-only string ACSIP;
+
+          /**
+            * The remaining time before TTL expiration.
+            * 0 means that the TTL is expired.
+            * -1 means that the TTL is unknown.
+            * @version 1.0
+            */
+            read-only int32 ACSIPTTL {
+                default -1;
             }
         }
 
@@ -513,301 +506,3 @@
         }
     }
 }
-
-/*
-  ALL PARAMETERS FROM SOP NOT ADDED YET
-
-
-   /**
-    * When this flag is set the tr069 http server will allow connection requests from hosts other then the ACS
-    * @version 1.0
-
-    persistent bool AllowConnectionRequestFromUnknownHost=false;
-
-   /**
-    * Indicates whether or not basic authentication is allowed.
-    * @version 1.0
-
-    persistent bool RefuseBasicAuthentication=0;
-
-
-   /**
-    * This parameter is used to control throttling of active notifications sent by the CPE to the ACS. It defines the minimum number of seconds that the CPE MUST wait since the end of the last session with the ACS before establishing a new session for the purpose of delivering an active notification.
-    * In other words, if CPE needs to establish a new session with the ACS for the sole purpose of delivering an active notification, it MUST delay establishing such a session as needed to ensure that the minimum time since the last session completion has been met.
-    * The time is counted since the last successfully completed session, regardless of whether or not it was used for active notifications or other purposes. However, if connection to the ACS is established for purposes other than just delivering active notifications, including for the purpose of retrying a failed session, such connection MUST NOT be delayed based on this parameter value, and the pending active notifications MUSTbe communicated during that connection.
-    * The time of the last session completion does not need to be tracked across reboots.
-    * @version 1.0
-
-    persistent uint32 DefaultActiveNotificationThrottle;
-
-   /**
-    * Maximum download delay
-    * @version 1.0
-
-    persistent uint32 MaxDownloadDelay;
-
-   /**
-    * Maximum upload delay
-    * @version 1.0
-
-    persistent uint32 MaxUploadDelay;
-
-   /**
-    * Maximum number of simultaneous downloads,
-    * @version 1.0
-
-    persistent uint32 MaxDownloads=100;
-
-   /**
-    * Maximum number of simultaneous downloads error code
-    * @version 1.0
-
-    persistent uint32 MaxDownloadsErrorCode=9004;
-
-  ifdef(`NEMO_SUPPORT',`
-   /**
-    * Maximum wait time between incoming ipv4 and ipv6 address for the WAN side of the box
-
-    persistent uint32 IPV4IPV6WANMaxWaitTime=0;
-
-    /**
-     * An artificial delay of seconds between PPP or IP connection establishment and any TR-069 Inform message(s) that are sent afterwards.
-     * @version 1.0
-
-    persistent uint32 InterfaceUpDelay=0;
-
-   /**
-    * IPV4/IPV6 WAN mode:
-    *   - IPV4ONLY: only use IPV4 as WAN address
-    *   - IPV4ANDIPV6: use IPV4 as WAN address, wait for IPV6 for IPV4IPV6WANMaxWaitTime seconds
-
-    persistent string IPV4IPV6WANMode {
-       constraint enum ["IPV4ONLY","IPV4ANDIPV6"];
-       default "IPV4ONLY";
-       //TPBwrite with writeIPV4IPV6WANMode;
-    }
-',`')
-
-
-ifdef(`CONFIG_SAH_SERVICES_TR069_ENABLE_MANAGEABLEDEVICES',`
-     persistent uint32 ManageableDeviceNotificationLimit;
-',`')
-
-ifdef(`CONFIG_SAH_SERVICES_TR069_ENABLE_STUN',`
-   /**
-    * Address and port to which an ACS MAY send a UDP Connection Request to the CPE (see Annex G of [2]).
-    * This parameter is represented in the form of an Authority element as defined in [8]. The value MUST be in one of the following two forms:
-    * host:port
-    * host
-    * When STUNEnable is True, the "host" and "port" portions of this parameter MUST represent the public address and port corresponding to the NAT binding through which the ACS can send UDP Connection Request messages (once this information is learned by the CPE through the use of STUN).
-    * When STUNEnable is False, the "host" and "port" portions of the URL MUST represent the local IP address and port on which the CPE is listening for UDP Connection Request messages.
-    * The second form of this parameter MAY be used only if the port value is equal to "80".
-    * @version 1.0
-
-    string UDPConnectionRequestAddress {
-      constraint maxvalue 256;
-    }
-
-   /**
-    * The minimum time, in seconds, between Active Notifications resulting from changes to the UDP-ConnectionRequestAddress (if Active Notification is enabled).
-    * @version 1.0
-
-    uint32 UDPConnectionRequestAddressNotificationLimit;
-
-   /**
-    * Enables or disables the use of STUN by the CPE. This applies only to the use of STUN in association with the ACS to allow UDP Connection Requests.
-    * @version 1.0
-
-    bool STUNEnable {
-      //TPBwrite with writeSTUNEnable;
-      default  false;
-    }
-
-   /**
-    * Host name or IP address of the STUN server for the CPE to send Binding Requests if STUN is enabled via STUNEnable.
-    * If empty and STUNEnable is True, the CPE MUST use the address of the ACS extracted
-    * from the host portion of the ACS URL.
-    * @version 1.0
-
-    string STUNServerAddress {
-      constraint maxvalue 256;
-    }
-
-   /**
-    * Port number of the STUN server for the CPE to send Binding Requests if STUN is enabled via STUNEnable.
-    * By default, this SHOULD be the equal to the default STUN port, 3478.
-    * @version 1.0
-
-    uint32 STUNServerPort {
-      constraint range [0,65535];
-      default 0;
-    }
-
-   /**
-    * If non-empty, the value of the STUN USERNAME attribute to be used in Binding Requests (only if message integrity has been requested by the STUN server).
-    * If empty, the CPE MUST NOT send STUN Binding Requests with message integrity.
-    * @version 1.0
-
-    string STUNUsername {
-      constraint maxvalue 256;
-    }
-
-   /**
-    * The value of the STUN Password to be used in computing the MESSAGE-INTEGRITY attribute to be used in Binding Requests (only if message integrity has been requested by the STUN server).
-    * When read, this parameter returns an empty string, regardless of the actual value.
-    * @version 1.0
-
-    string STUNPassword {
-      constraint maxvalue 256;
-    }
-
-   /**
-    * If STUN Is enabled, the maximum period, in seconds, that STUN Binding Requests MUST be sent by the CPE for the purpose of maintaining the binding in the Gateway. This applies specifically to Binding Requests sent from the UDP Connection Request address and port.
-    * A value of -1 indicates that no maximum period is specified.
-    * @version 1.0
-
-    int32 STUNMaximumKeepAlivePeriod {
-      constraint minvalue -1;
-      default -1;
-    }
-
-   /**
-    * If STUN Is enabled, the minimum period, in seconds, that STUN Binding Requests can be sent by the CPE for the purpose of maintaining the binding in the Gateway. This limit applies only to Binding Requests sent from the UDP Connection Request address and port, and only those that do not contain the BINDING-CHANGE attribute. This limit does not apply to retransmissions following the procedures defined in [9].
-    * @version 1.0
-
-    uint32 STUNMinimumKeepAlivePeriod = 0;
-
-   /**
-    * When STUN is enabled, this parameter indicates whether or not the CPE has detected address and/or port mapping in use.
-    * A True value indicates that the received MAPPED-ADDRESS in the most recent Binding Response differs from the CPE’s source address and port.
-    * When STUNEnable is False, this value MUST be False.
-    *
-    * Should be read-only
-    * @version 1.0
-
-    bool NATDetected = false;
-',`')
-
-
-
-
-
-   /**
-    * This parameter allows you to disable the boot inform event (needed for devices coming out of sleep mode)
-    * @version 1.0
-
-    bool DisableBootInform {
-       default false;
-    }
-
-   /**
-    * This parameter contains the number of QueuedTranfers that are of the type "1 Firmware upgrade image" and NOT finished
-    * @version 1.0
-
-    uint32 UpgradesAvailable=0;
-
-    /**
-    * List of events send to the ACE  in the format eventtype(cmdkey),eventtype(cmdkey),eventtype(cmdkey),...
-     * @version 1.0
-
-     string DeliveredEvents;
-
-    /**
-     * List of events requested by the ACS in the format eventtype(cmdkey),eventtype(cmdkey),eventtype(cmdkey),...
-     * @version 1.0
-
-     string ACSEvents;
-
-     /**
-     * List of events to block in the format eventtype(cmdkey),eventtype(cmdkey),eventtype(cmdkey),...
-     * @version 1.0
-
-     string BlockedEvents;
-
-     /**
-      * whether to inhibit the value change notification upon rebooting
-      * @version 1.0
-
-     bool InhibitValueChangeUponBoot {
-           default false;
-     }
-
-
-   /**
-    * Function to set ManagementServer values, this is needed for the configurator tool
-    * @version 1.0
-
-    bool set(variant parameters);
-
-   /**
-    * Function to get ManagementServer values, this is needed for the configurator tool
-    * @version 1.0
-
-    variant get();
-
-   /**
-    * This routine triggers a download request in the tr69 stack
-    * @version 1.0
-    * @param filetype The filetype we want to download
-    * @param args The filetype arguments
-    *
-    * @return true if succesfull, false if an error occurred
-
-    //TPBbool RequestDownload(string filetype, ...);
-
-   /**
-    * This RPC triggers the CPE cwmpd to add a custom notification to the next inform message
-    * @version 1.0
-    * @param active When true, the notification will be send immediately, if false, it will be send along in the next inform message
-    * @param notificationName The notification name that will be used in the inform message
-    *
-    * @return true if succesfull, false if an error occurred
-
-    //TPBbool SendCustomNotification(bool active, string notificationName);
-
-   /**
-    * This RPC triggers the CPE cwmpd to add a Diagnostic complete event in the next inform message
-    * @version 1.0
-    *
-    * @return true if succesfull, false if an error occurred
-
-    //TPBbool SendDiagnosticsComplete();
-
-   /**
-    * This RPC triggers the CPE cwmpd to send out an inform containing a connection request
-    * @version 1.0
-    *
-    * @return true if succesfull, false if an error occurred
-
-    //TPBbool SendConnectionRequestInform();
-
-
-   /**
-    * This RPC forces the cwmp plugin to save all data. This is a blocking call untill all data has been saved
-    * @version 1.0
-    *
-    * @return true if succesfull, false if an error occurred
-
-    //TPBbool forceSave();
-
-ifdef(`HGWCFG_SUPPORT',`
-   /**
-    * This RPC is used to import user-settings
-    * @version 1.0
-    * @param fileName The user file to import from
-    *
-    * @return true if succesfull, false if an error occurred
-
-    bool import(string fileName);
-
-   /**
-    * This RPC is used to export user-settings
-    * @version 1.0
-    * @param fileName The user file to export to
-    *
-    * @return true if succesfull, false if an error occurred
-
-    bool export(string fileName);
-',`')
-
-*/
