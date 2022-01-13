@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.9.1 - 2022-01-13(11:16:54 +0000)
+
+### Fixes
+
+- Clean up data model from non standard parameters
+
 ## Release v1.9.0 - 2022-01-13(09:59:51 +0000)
 
 ### New
