@@ -27,14 +27,6 @@ CFLAGS += -Wall -Wextra -Werror -Wno-strict-aliasing \
 
 LDFLAGS += $(STAGING_LIBDIR) -ldl -lsahtrace
 
-
-# helper functions - used in multiple targets
-define install_to
-	$(INSTALL) -d $(1)/usr/lib/
-	$(INSTALL) -m 0755 $(OBJDIR)/$(COMPONENT).so $(1)/usr/lib/
-	$(STRIP) $(1)/usr/lib/$(COMPONENT).so
-endef
-
 ifeq ($(CONFIG_TR69_TEST_COVERAGE),y)
   CFLAGS += -fprofile-arcs -ftest-coverage
   LDFLAGS += -fprofile-arcs
@@ -44,9 +36,6 @@ all: bannerCompile $(TARGET_SO)
 
 bannerCompile:
 	@echo "*********************** Building $(COMPONENT).so *********************************"
-
-bannerInstall:
-	@echo "*********************** Istalling $(COMPONENT).so ********************************"
 
 $(TARGET_SO): $(OBJECTS)
 	$(CC) -Wl,-soname,$(COMPONENT).so -shared -o $@ $(OBJECTS) $(LDFLAGS)
@@ -62,8 +51,5 @@ $(OBJDIR)/:
 
 clean:
 	rm -rf ../../../output/ ../../../$(COMPONENT)-*.* ../../../$(COMPONENT)_*.*
-
-install: all bannerInstall
-	$(call install_to,$(DEST))
 
 .PHONY: all clean

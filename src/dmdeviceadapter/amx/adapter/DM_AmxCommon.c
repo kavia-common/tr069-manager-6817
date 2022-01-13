@@ -501,8 +501,7 @@ DM_Subscription_t* DM_ENG_Device_Common_FindSubscription(amxc_llist_t* list, con
     return NULL;
 }
 
-static void DM_ENG_Device_Common_DeleteSubscriptionInfo(amxc_llist_t* list, int id) {
-    DM_Subscription_t* sub = DM_ENG_Device_Common_FindSubscriptionByID(list, id);
+static void DM_ENG_Device_Common_DeleteSubscriptionInfo(DM_Subscription_t* sub, int id) {
     int index = 0;
     int todel = -1;
     amxc_llist_it_t* item = NULL;
@@ -673,7 +672,7 @@ int DM_ENG_Device_Common_DeleteSubscription(amxc_llist_t* slist,
     }
 
     // Remove parameter from subscription
-    DM_ENG_Device_Common_DeleteSubscriptionInfo(&sub->subscription_info_list, id);
+    DM_ENG_Device_Common_DeleteSubscriptionInfo(sub, id);
 
     // Do we need a unsubscribe ?
     if(amxc_llist_is_empty(&sub->subscription_info_list)) {

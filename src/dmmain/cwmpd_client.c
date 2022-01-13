@@ -685,6 +685,7 @@ int DM_SendHttpMessage(const char* msgToSendStr) {
 
     if(connectedToServer == false) {
         free(pending_message);
+        pending_message = NULL;
         pending_message = strdup(msgToSendStr);
         return 0;
     }

@@ -1060,11 +1060,26 @@ void test_dmadapter_SetParameterAttributes(UNUSED void** state) {
     DM_ENG_ParameterAttributesStruct** pParameterList = NULL;
     int rv = -1;
     char* usrName = "InternetGatewayDevice.ManagementServer.Username";
-    // Add some passive notification (PASSIVE == 1)
+    char* deviceStatus = "InternetGatewayDevice.DeviceInfo.DeviceStatus";
+    // Add some passive notification (PASSIVE == 1) and active notification
     // we will read them on test_dmadapter_GetParameterAttributes
-    pParameterList = DM_ENG_newTabParameterAttributesStruct(2);
+    pParameterList = DM_ENG_newTabParameterAttributesStruct(3);
     pParameterList[0] = DM_ENG_newParameterAttributesStruct(usrName, 1, NULL);
+    pParameterList[1] = DM_ENG_newParameterAttributesStruct(deviceStatus, 2, NULL);
     pParameterList[2] = NULL;
+
+    rv = DM_ENG_SetParameterAttributes(DM_ENG_EntityType_ACS, pParameterList);
+    assert_int_equal(rv, 0);
+    if(pParameterList) {
+        DM_ENG_deleteTabParameterAttributesStruct(pParameterList);
+    }
+
+    // Set the notification mode for deviceStatus parameter to OFF
+    // to test the notification remove and delete the subscription
+    // We will check this mode on test_dmadapter_GetParameterAttributes
+    pParameterList = DM_ENG_newTabParameterAttributesStruct(2);
+    pParameterList[0] = DM_ENG_newParameterAttributesStruct(deviceStatus, 0, NULL);
+    pParameterList[1] = NULL;
 
     rv = DM_ENG_SetParameterAttributes(DM_ENG_EntityType_ACS, pParameterList);
     assert_int_equal(rv, 0);
@@ -1082,23 +1097,27 @@ void test_dmadapter_GetParameterAttributes(UNUSED void** state) {
     char* hdrversion = "InternetGatewayDevice.DeviceInfo.HardwareVersion";
     char* sfrversion = "InternetGatewayDevice.DeviceInfo.SoftwareVersion";
     char* usrName = "InternetGatewayDevice.ManagementServer.Username";
+    char* deviceStatus = "InternetGatewayDevice.DeviceInfo.DeviceStatus";
     paramArray[0] = hdrversion;
     paramArray[1] = sfrversion;
     paramArray[2] = usrName;
-    paramArray[3] = NULL;
+    paramArray[3] = deviceStatus;
+    paramArray[4] = NULL;
 
     rv = DM_ENG_GetParameterAttributes(DM_ENG_EntityType_ACS, (char**) paramArray, &pResult);
     assert_int_equal(rv, 0);
 
     rs = DM_ENG_tablen((void**) pResult);
-    assert_int_equal(rs, 3);
-    //(FORCED == 3), (ACTIVE == 2), (PASSIVE == 1)
+    assert_int_equal(rs, 4);
+    //(FORCED == 3), (ACTIVE == 2), (PASSIVE == 1) and (OFF == 0)
     assert_string_equal(pResult[0]->parameterName, hdrversion);
     assert_int_equal(pResult[0]->notification, 2);
     assert_string_equal(pResult[1]->parameterName, sfrversion);
     assert_int_equal(pResult[1]->notification, 2);
     assert_string_equal(pResult[2]->parameterName, usrName);
     assert_int_equal(pResult[2]->notification, 1);
+    assert_string_equal(pResult[3]->parameterName, deviceStatus);
+    assert_int_equal(pResult[3]->notification, 0);
 #if PRINT_RESULT
     for(int i = 0; i < rs; i++) {
         printf("param=%s, Notification Mode=%d\n", pResult[i]->parameterName, pResult[i]->notification);

@@ -42,13 +42,6 @@ ifeq ($(CONFIG_TR69_TEST_COVERAGE),y)
   LDFLAGS += -fprofile-arcs
 endif
 
-# helper functions - used in multiple targets
-define install_to
-	$(INSTALL) -d $(1)/usr/lib/cwmp/
-	$(INSTALL) -m 0755 $(OBJDIR)/$(COMPONENT).so $(1)/usr/lib/cwmp/
-	$(STRIP) $(1)/usr/lib/cwmp/$(COMPONENT).so
-endef
-
 test: all
 
 all: banner $(TARGET_SO)

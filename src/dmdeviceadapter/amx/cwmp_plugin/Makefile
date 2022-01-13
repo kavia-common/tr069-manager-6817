@@ -43,18 +43,11 @@ endif
 LDFLAGS += $(STAGING_LIBDIR) -shared -fPIC
 LDFLAGS += -lamxc -lamxd -lamxo -lamxb -lamxp -lsahtrace
 
-# helper functions - used in multiple targets
-define install_to
-	$(INSTALL) -D -p -m 0644 $(TARGET_SO) $(1)/usr/lib/amx/$(COMPONENT)/$(COMPONENT).so
-	$(INSTALL) -D -p -m 0644 odl/$(COMPONENT).odl $(1)/etc/amx/$(COMPONENT)/$(COMPONENT).odl
-	$(INSTALL) -D -p -m 0644 odl/$(COMPONENT)-defaults.odl $(1)/etc/amx/$(COMPONENT)/$(COMPONENT)-defaults.odl
-	$(INSTALL) -D -p -m 0644 $(OBJDIR)/$(COMPONENT)-definition.odl $(1)/etc/amx/$(COMPONENT)/$(COMPONENT)-definition.odl
-	$(INSTALL) -d -m 0755 $(1)$(BINDIR)
-	$(INSTALL) -D -p -m 0755 scripts/$(COMPONENT).sh $(1)$(INITDIR)/$(COMPONENT)
-endef
-
 # targets
-all: $(TARGET_SO) $(TARGET_A) $(TARGET_M4)
+all: banner $(TARGET_SO) $(TARGET_A) $(TARGET_M4)
+
+banner:
+	@echo "*********************** Building $(COMPONENT).so *********************************"
 
 $(TARGET_SO): $(OBJECTS)
 	$(CC) -Wl,-soname,$(COMPONENT).so -o $@ $(OBJECTS) $(LDFLAGS)
@@ -76,9 +69,5 @@ $(OBJDIR)/:
 
 clean:
 	rm -rf $(ROOT)/output/ $(ROOT)/$(COMPONENT)-*.* $(ROOT)/$(COMPONENT)_*.*
-
-install: all
-	$(call install_to,$(DEST))
-	ln -sfr $(DEST)$(BINDIR)/amxrt $(DEST)$(BINDIR)/$(COMPONENT)
 
 .PHONY: all clean

@@ -71,9 +71,6 @@ all: bannerCompile $(TARGET_BIN)
 bannerCompile:
 	@echo "*********************** Building $(COMPONENT) *********************************"
 
-bannerInstall:
-	@echo "*********************** Istalling $(COMPONENT) ********************************"
-
 $(TARGET_BIN): $(OBJECTS)
 	$(CC) -o $@ $(OBJECTS) $(LDFLAGS_PRIO) $(LDFLAGS)
 
@@ -89,7 +86,4 @@ $(OBJDIR)/:
 clean:
 	rm -rf ../../output/ ../../$(COMPONENT)-*.* ../../$(COMPONENT)_*.*
 
-install: all bannerInstall
-	$(call install_to,$(DEST))
-
-.PHONY: all clean install release
+.PHONY: all clean

@@ -66,13 +66,12 @@
 #include <debug/sahtrace.h>
 
 static cwmp_plugin_app_t app;
-static const char* AMXB_URI = "AMXB_URI";
 
 static void wait_done(UNUSED const char* const sig_name,
                       UNUSED const amxc_var_t* const data,
                       UNUSED void* const priv) {
     SAH_TRACEZ_INFO(ME, "Wait done for required objects before starting cwmpd");
-    start_cwmpd();
+    findWanInterface();
 }
 
 static void cwmp_plugin_init(amxd_dm_t* dm, amxo_parser_t* parser) {
@@ -80,14 +79,7 @@ static void cwmp_plugin_init(amxd_dm_t* dm, amxo_parser_t* parser) {
     app.dm = dm;
     app.parser = parser;
     app.amxb_bus_ctx = NULL;
-    app.dns_resolv_invoke = NULL;
-    char* amxb_uri = getenv(AMXB_URI);
 
-    if(amxb_uri && (amxb_connect(&app.amxb_bus_ctx, amxb_uri) == AMXB_STATUS_OK)) {
-        amxb_new_invoke(&app.dns_resolv_invoke, app.amxb_bus_ctx, "DNS", NULL, "resolvURI");
-    } else {
-        SAH_TRACEZ_ERROR(ME, "Couldn't connect to amxb bus %s", amxb_uri);
-    }
     // Load previous config
     amxo_parser_parse_file(parser, GET_CHAR(&parser->config, "save_file"), (amxd_object_t*) dm);
 
@@ -106,6 +98,10 @@ static void cwmp_plugin_init(amxd_dm_t* dm, amxo_parser_t* parser) {
     if(rv != AMXB_STATUS_OK) {
         SAH_TRACEZ_ERROR(ME, "Wait failed for DeviceInfo object");
     }
+    rv = amxb_wait_for_object("IP.Interface.");
+    if(rv != AMXB_STATUS_OK) {
+        SAH_TRACEZ_ERROR(ME, "Wait failed for IP.Interface object");
+    }
 
     // When all objects are available,
     // The signal "wait:done" is emitted on the global signal manager.
@@ -119,8 +115,13 @@ static void cwmp_plugin_exit(UNUSED amxd_dm_t* dm,
                              UNUSED amxo_parser_t* parser) {
     app.dm = NULL;
     app.parser = NULL;
-    app.dns_resolv_invoke = NULL;
     app.amxb_bus_ctx = NULL;
+    amxb_bus_ctx_t* ctx = amxb_be_who_has("IP.");
+    SAH_TRACEZ_INFO(ME, "Removing subscription for wan interface");
+    amxb_unsubscribe(ctx,
+                     "IP.Interface.wan.",
+                     wanIPAddressChanged,
+                     NULL);
     stop_cwmpd();
     SAH_TRACEZ_INFO(ME, "cwmp_plugin stopped");
 }
@@ -135,10 +136,6 @@ amxo_parser_t* cwmp_plugin_get_parser(void) {
 
 amxc_var_t* cwmp_plugin_get_config(void) {
     return &(app.parser->config);
-}
-
-amxb_invoke_t* cwmp_plugin_get_dns_resolv_invoke(void) {
-    return app.dns_resolv_invoke;
 }
 
 amxb_bus_ctx_t* cwmp_plugin_get_bus(void) {

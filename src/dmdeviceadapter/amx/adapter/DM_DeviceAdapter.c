@@ -243,8 +243,13 @@ void DM_ENG_Device_OpenSession() {
             SAH_TRACEZ_ERROR("DM_DA", "Cannot get the connection request host");
             goto error;
         }
-        SAH_TRACEZ_ERROR("DM_DA", "Finish Implementing ME");
-        //TODO! Find WAN Device ?
+        if(DM_ENG_Device_ACSConnectionHandleGetwaninterface(&da.system, ipAddress, &paramName)) {
+            SAH_TRACEZ_INFO("DM_DA", "WAN Interface: path=[%s] and IP Address=[%s]", paramName, ipAddress);
+            DM_ENG_TR181SetExternalIPAddressPath(paramName);
+
+            // reset the cached value to make sure a value change event is send out if the external ip address would have changed
+            DM_ENG_AddCachedValueToParameterAttributesCache(paramName, ipAddress);
+        }
         free(externalIPAddress);
         externalIPAddress = ipAddress;
     }

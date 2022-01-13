@@ -64,8 +64,10 @@
 #include <string.h>
 #include <sys/time.h>
 #include <time.h>
+#include <arpa/inet.h>
 
 #include <debug/sahtrace.h>
+#include <debug/sahtrace_macros.h>
 
 #include <amxc/amxc.h>
 #include <amxp/amxp.h>
@@ -80,6 +82,9 @@
 #include "DM_AmxParameterValues.h"
 #include "DM_DeviceAdapter.h"
 #include "DM_AmxCommon.h"
+#include <dmengine/DM_ENG_Device.h>
+
+#define ME "DM_DA"
 
 #define AMX_WAIT_FOR_REPLY_TIMEOUT 3
 /* Acs subscription list */
@@ -177,6 +182,61 @@ char* DM_ENG_Device_ACSConnectionHandleGetwandevice(dm_amx_env_t* amx, const cha
     (void) ipaddress;
     (void) addressFound;
     return NULL;
+}
+
+bool DM_ENG_Device_ACSConnectionHandleGetwaninterface(UNUSED dm_amx_env_t* amx, const char* ipaddress, char** ppWanInterface) {
+    bool ret = false;
+    amxc_string_t wanInterface;
+    amxc_string_init(&wanInterface, 0);
+    amxc_var_t result;
+    amxc_var_init(&result);
+    amxc_string_t path;
+    amxc_string_init(&path, 0);
+
+    if(!ipaddress || !ipaddress[0] || !strcmp(ipaddress, "0.0.0.0")) {
+        SAH_TRACE_ERROR("Wrong IP address");
+        goto exit;
+    }
+
+    amxb_bus_ctx_t* ctx = amxb_be_who_has("IP.");
+
+    // Check if IPv6 Address
+    struct in6_addr res;
+    bool isIPv6 = false;
+    if(inet_pton(AF_INET6, ipaddress, &res) == 1) {
+        isIPv6 = true;
+    }
+
+    amxc_string_setf(&path, "IP.Interface.[Alias=='wan'].%s.[IPAddress=='%s']",
+                     isIPv6 ? "IPv6Address" : "IPv4Address", ipaddress);
+
+    int rv = amxb_get(ctx, amxc_string_get(&path, 0), 0, &result, 0);
+    if((rv != AMXB_STATUS_OK) || amxc_var_is_null(&result)) {
+        SAH_TRACE_ERROR("failed to get WAN interface object");
+        goto exit;
+    }
+
+    //WAN IP Interface found
+    const char* key = amxc_var_key(amxc_var_get_first(GET_ARG(&result, "0")));
+    when_null_trace(key, exit, ERROR, "WAN Interface path should not be NULL");
+    when_str_empty_trace(key, exit, ERROR, "WAN Interface path should not be empty");
+
+    const char* prefix = DM_ENG_getDatamodelPrefix();
+    amxc_string_append(&wanInterface, prefix, strlen(prefix));
+    amxc_string_append(&wanInterface, key, strlen(key));
+    amxc_string_append(&wanInterface, "IPAddress", 10);
+    SAH_TRACE_INFO("[%s] WAN Interface: %s", ipaddress, amxc_string_get(&wanInterface, 0));
+
+    if(!amxc_string_is_empty(&wanInterface)) {
+        *ppWanInterface = strdup(amxc_string_get(&wanInterface, 0));
+        ret = true;
+    }
+
+exit:
+    amxc_string_clean(&wanInterface);
+    amxc_string_clean(&path);
+    amxc_var_clean(&result);
+    return ret;
 }
 
 //---------------------------------------------------------------------------------------------

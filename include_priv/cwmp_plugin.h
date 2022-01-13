@@ -90,7 +90,6 @@ extern "C"
 typedef struct _cwmp_plugin_app {
     amxd_dm_t* dm;
     amxo_parser_t* parser;
-    amxb_invoke_t* dns_resolv_invoke;
     amxb_bus_ctx_t* amxb_bus_ctx;
 } cwmp_plugin_app_t;
 
@@ -99,7 +98,6 @@ int _cwmp_plugin_main(int reason, amxd_dm_t* dm, amxo_parser_t* parser);
 amxd_dm_t* PRIVATE cwmp_plugin_get_dm(void);
 amxo_parser_t* PRIVATE cwmp_plugin_get_parser(void);
 amxc_var_t* PRIVATE cwmp_plugin_get_config(void);
-amxb_invoke_t* PRIVATE cwmp_plugin_get_dns_resolv_invoke(void);
 amxb_bus_ctx_t* PRIVATE cwmp_plugin_get_bus(void);
 
 //Dm functions
@@ -117,10 +115,6 @@ amxd_status_t _ManagementServer_updateConnectionRequestURL(amxd_object_t* object
                                                            amxd_function_t* func,
                                                            amxc_var_t* args,
                                                            amxc_var_t* ret);
-
-void _writeURL(const char* const sig_name,
-               const amxc_var_t* const data,
-               void* const priv);
 
 void _manageCwmpd(UNUSED const char* const sig_name,
                   UNUSED const amxc_var_t* const data,
@@ -140,6 +134,12 @@ amxd_status_t _getACSIPTTL(amxd_object_t* object,
                            const amxc_var_t* const args,
                            amxc_var_t* const retval,
                            void* priv);
+
+void findWanInterface(void);
+
+void wanIPAddressChanged(const char* const sig_name,
+                         const amxc_var_t* const data,
+                         void* const priv);
 
 void start_cwmpd(void);
 
