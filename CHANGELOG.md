@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.9.2 - 2022-01-14(08:54:48 +0000)
+
+### Fixes
+
+- Set mod_sahtrace as an optional include in odl file
+
 ## Release v1.9.1 - 2022-01-13(11:16:54 +0000)
 
 ### Fixes
