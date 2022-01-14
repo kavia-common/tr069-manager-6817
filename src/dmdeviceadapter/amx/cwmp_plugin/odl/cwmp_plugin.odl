@@ -39,7 +39,7 @@
 #include "${name}-${storage-type}.odl";
 
 import "${name}.so" as "${name}";
-include "mod_sahtrace.odl";
+#include "mod_sahtrace.odl";
 
 include "${definition_file}";
 include "${defaults_file}";
