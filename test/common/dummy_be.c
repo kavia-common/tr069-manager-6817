@@ -226,13 +226,13 @@ static amxb_be_funcs_t amxb_dummy_impl = {
     .size = sizeof(amxb_be_funcs_t),
 };
 
-static amxb_version_t sup_min_lib_version = {
+static amxb_version_t sup_min_libversion = {
     .major = 2,
     .minor = 0,
     .build = -1
 };
 
-static amxb_version_t sup_max_lib_version = {
+static amxb_version_t sup_max_libversion = {
     .major = 2,
     .minor = -1,
     .build = -1
@@ -245,8 +245,8 @@ static amxb_version_t dummy_be_version = {
 };
 
 amxb_be_info_t amxb_dummy_be_info = {
-    .min_supported = &sup_min_lib_version,
-    .max_supported = &sup_max_lib_version,
+    .min_supported = &sup_min_libversion,
+    .max_supported = &sup_max_libversion,
     .be_version = &dummy_be_version,
     .name = "dummy",
     .description = "AMXB Dummy Backend for testing",

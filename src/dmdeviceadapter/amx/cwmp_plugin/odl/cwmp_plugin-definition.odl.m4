@@ -14,7 +14,7 @@
         * The factory default value MUST be true.
         * @version 1.0
         */
-        persistent bool EnableCWMP=1;
+        %persistent bool EnableCWMP=1;
 
       /**
         * Load and save functions for ambiorix consistancy
@@ -30,7 +30,7 @@
         * If an ACS modifies the value of this parameter, it SHOULD be prepared to accommodate the situation that the original value is restored as the result of a factory reset.
         * @version 1.0
         */
-        persistent string URL {
+        %persistent string URL {
             default "http://acs-download.qacafe.com";
         }
 
@@ -40,7 +40,7 @@
         * Note that on a factory reset of the CPE, the value of this parameter might be reset to its factory value. If an ACS modifies the value of this parameter, it SHOULD be prepared to accommodate the situation that the original value is restored as the result of a factory reset.
         * @version 1.0
         */
-        persistent string Username {
+        %persistent string Username {
             constraint maxvalue 256;
             default "cdrouter";
         }
@@ -52,7 +52,7 @@
         * When read, this parameter returns an empty string, regardless of the actual value.
         * @version 1.0
         */
-        persistent string Password {
+        %persistent string Password {
             constraint maxvalue 256;
             default "cdrouter";
         }
@@ -61,13 +61,13 @@
         * Whether or not the CPE MUST periodically send CPE information to the ACS using the Inform method call.
         * @version 1.0
         */
-        persistent bool PeriodicInformEnable=1;
+        %persistent bool PeriodicInformEnable=1;
 
       /**
         * The duration in seconds of the interval for which the CPE MUST attempt to connect with the ACS and call the Inform method if PeriodicInformEnable is True.
         * @version 1.0
         */
-        persistent uint32 PeriodicInformInterval {
+        %persistent uint32 PeriodicInformInterval {
             constraint minvalue 1;
             default 432000;
         }
@@ -80,13 +80,13 @@
         * If absolute time is not available to the CPE, its periodic Inform behavior MUST be the same as if the PeriodicInformTime parameter was set to the Unknown Time value.
         * @version 1.0
         */
-        persistent string PeriodicInformTime;
+        %persistent string PeriodicInformTime;
 
       /**
         * Indicates support of instance wildcards to the ACS
         * @version 1.0
         */
-        persistent bool InstanceWildcardsSupported=1;
+        %persistent bool InstanceWildcardsSupported=1;
 
       /**
         * ParameterKey provides the ACS a reliable and extensible means to track changes made by the ACS. The value of ParameterKey MUST be equal to the value of the ParameterKey argument from the most recent successful SetParameterValues, AddObject, or DeleteObject method call from the ACS.
@@ -95,13 +95,13 @@
         * value of ParameterKey MUST be set to empty.
         * @version 1.0
         */
-        persistent string ParameterKey;
+        %persistent string ParameterKey;
 
       /**
         * The name of the interface on which to listen for connection requests.
         * @version 1.0
         */
-        persistent string Interface;
+        %persistent string Interface;
 
       /**
         * HTTP URL, as defined in [8], for an ACS to make a Connection Request notification to the CPE.
@@ -111,13 +111,13 @@
         * Note: If the host portion of the URL is a literal IPv6 address then it MUST be enclosed in square brackets (see [Section 3.2.2/RFC3986]).
         * @version 1.0
         */
-        read-only string ConnectionRequestURL;
+        %read-only string ConnectionRequestURL;
 
       /**
         * Username used to authenticate an ACS making a Connection Request to the CPE.
         * @version 1.0
         */
-        persistent string ConnectionRequestUsername {
+        %persistent string ConnectionRequestUsername {
             constraint maxvalue 256;
             default "acs";
         }
@@ -127,7 +127,7 @@
         * When read, this parameter returns an empty string, regardless of the actual value.
         * @version 1.0
         */
-        persistent string ConnectionRequestPassword {
+        %persistent string ConnectionRequestPassword {
             constraint maxvalue 256;
             default "acs";
         }
@@ -150,7 +150,7 @@
         * Note that an autonomous upgrade (reported via an "10 AUTONOMOUS TRANSFER COMPLETE" Inform Event code) SHOULD be regarded as a managed upgade if it is performed according to ACS-specified policy.
         * @version 1.0
         */
-        persistent bool UpgradesManaged=1;
+        %persistent bool UpgradesManaged=1;
 
       /**
         * This parameter is used to control throttling of active notifications sent by the CPE to the ACS. It defines the minimum number of seconds that the CPE MUST wait since the end of the last session with the ACS before establishing a new session for the purpose of delivering an active notification.
@@ -159,14 +159,14 @@
         * The time of the last session completion does not need to be tracked across reboots.
         * @version 1.0
         */
-        persistent uint32 DefaultActiveNotificationThrottle;
+        %persistent uint32 DefaultActiveNotificationThrottle;
 
       /**
         * Indicates whether or not the Alias-Based Addressing Mechanism is supported.
         * A true value indicates that the CPE supports the Alias-Based Addressing Mechanism, as defined in [Section 3.6.1/TR-069] and described in [Appendix II/TR-069].     * @version 6.0
         * @version 1.0
         */
-        read-only bool AliasBasedAddressing = true;
+        %read-only bool AliasBasedAddressing = true;
 
       /**
         * Instance identification mode as defined in [Section 3.6.1/TR-069]. When AliasBasedAddressing is true, InstanceMode is used by the ACS to control whether the CPE will use Instance Numbers or Instance Aliases in returned Path Names. Enumeration of:
@@ -176,7 +176,7 @@
         * The factory default value MUST be InstanceNumber.
         * @version 1.0
         */
-        read-only string InstanceMode {
+        %read-only string InstanceMode {
             constraint enum ["InstanceNumber","InstanceAlias"];
             default "InstanceNumber";
         }
@@ -189,12 +189,12 @@
         * The factory default value MUST be false.
         * @version 1.0
         */
-        read-only bool AutoCreateInstances = true;
+        %read-only bool AutoCreateInstances = true;
 
       /**
         * Object containing informations about connection request
         */
-        %persistent object ConnRequest {
+        %persistent %protected object ConnRequest {
           /**
             * The connection request host name, may be an ip address, this parameter thould be updated by a service like NetModeConfig when a new WAN IP address is available
             * @version 1.0
@@ -222,7 +222,7 @@
             * The connection request port
             * @version 1.0
             */
-            persistent uint32 ConnRequestPort {
+            %persistent uint32 ConnRequestPort {
                 constraint range [0,65535];
                 default 50805;
             }
@@ -231,7 +231,7 @@
             * The connection request path
             * @version 1.0
             */
-            persistent string ConnRequestPath {
+            %persistent string ConnRequestPath {
               default "default_path";
             }
 
@@ -243,7 +243,7 @@
             * - Fixed-MacBased: At cwmpd startup, a path will be constructed based on the MAC address
             * @version 1.0
             */
-            persistent string ConnRequestPathType {
+            %persistent string ConnRequestPathType {
                 constraint enum ["Fixed-Default","Random","Randomize","Fixed-MacBased"];
                 default "Random";
             }
@@ -253,7 +253,7 @@
             * If true the ConnRequestURL is updated automatically.
             * @version 1.0
             */
-            read-only bool UpdateConnRequestURL {
+            %read-only bool UpdateConnRequestURL {
                 default true;
             }
 
@@ -261,7 +261,7 @@
             * whether to update connrequesthost automatically
             * @version 1.0
             */
-            read-only bool UpdateConnRequestHost {
+            %read-only bool UpdateConnRequestHost {
                 default true;
             }
 
@@ -269,7 +269,7 @@
             * This parameter defines the time window in which MaxConnectionRequest may occur.
             * @version 1.0
             */
-            persistent uint32 FreqConnectionRequest {
+            %persistent uint32 FreqConnectionRequest {
                 constraint minvalue 60;
                 default 3600;
             }
@@ -278,7 +278,7 @@
             * This parameter defines the maximum number of connection requests per FreqConnectionRequest.
             * @version 1.0
             */
-            persistent uint32 MaxConnectionRequest {
+            %persistent uint32 MaxConnectionRequest {
                 constraint minvalue 1;
                 default 50;
             }
@@ -288,12 +288,12 @@
         * read-only internal CWMP parameters used to customize builds
         * @version 1.0
         */
-        %persistent object InternalSettings {
+        %persistent %protected object InternalSettings {
           /**
             * Datamodel that should be used
             * @version 1.0
             */
-            read-only string Datamodel {
+            %read-only string Datamodel {
                 constraint enum ["TR098","TR106","TR181"];
                 default "TR181";
             }
@@ -304,7 +304,7 @@
             * Else, we continue to use the same ACS IP without sending a new DNS request.
             * @version 1.0
             */
-            persistent read-only bool ACSIPAffinity=1;
+            %persistent %read-only bool ACSIPAffinity=1;
 
           /**
             * Speficify the desired address family for the ACS URL resolution:
@@ -312,7 +312,7 @@
             *   - 4 IPv4 address family only
             *   - 6 IPv6 address family only
             */
-            persistent uint8 ACSAddrFamily=0;
+            %persistent uint8 ACSAddrFamily=0;
 
           /**
             * This parameter makes the behavior on partial paths configurable.
@@ -334,14 +334,14 @@
             * To avoid booting all boxes at the same time and overloading the ACS on a power outage, cwmp waits for a random number of seconds before starting. This number defines the maximum startup delay that a box may have.
             * @version 1.0
             */
-            persistent uint32 MaxStartupDelay;
+            %persistent uint32 MaxStartupDelay;
 
           /**
             * The session timeout timer value in seconds.
             * When the acs stops responding during a session, this timeout is used to stop the current ACS session and accept new incoming ACS sessions
             * @version 1.0
             */
-            persistent uint32 SessionTimeout;
+            %persistent uint32 SessionTimeout;
 
           /**
             * This parameter changes the behavior of certificate verification:
@@ -349,7 +349,7 @@
             * if 1, self signed certificates will be allowed
             * @version 1.0
             */
-            persistent bool SSLAcceptSelfSigned;
+            %persistent bool SSLAcceptSelfSigned;
 
           /**
             * This parameter changes the behavior of certificate verification:
@@ -357,7 +357,7 @@
             * if 1, the host name in the certificate will be checked
             * @version 1.0
             */
-            persistent bool SSLVerifyHostname;
+            %persistent bool SSLVerifyHostname;
 
           /**
             * This parameter changes the behavior of certificate verification:
@@ -366,7 +366,7 @@
             * NTP: Do NOT check when NTP is NOT synced, otherwise check the valid time of the certificate
             * @version 1.0
             */
-            persistent string SSLAcceptExpired {
+            %persistent string SSLAcceptExpired {
                 constraint enum ["Never", "Always", "NTP"];
                 default "NTP";
             }
@@ -379,28 +379,28 @@
             * is in trusted store
             * @version 1.0
             */
-            persistent bool SSLVerifyPartialChain;
+            %persistent bool SSLVerifyPartialChain;
 
           /**
             * Number of seconds cwmpd has to wait before starting if there is an unfinished download in the message queue.
             * This parameter is used to avoid sending out 2 separate informs (one containing the boot event and the second the transfer complete)
             * @version 1.0
             */
-            persistent uint32 UpgradeBootDelay;
+            %persistent uint32 UpgradeBootDelay;
 
           /**
             * This parameter enables the GetRPCMethods RPC from CPE to ACS. This can be used to validate if the ACS supports all needed RPC's. This parameter is disabled by default.
             * If this parameter is false, the CPE will not check to see if the ACS method is supported before calling it.
             * @version 1.0
             */
-            persistent bool VerifySupportedACSMethods;
+            %persistent bool VerifySupportedACSMethods;
 
           /**
             * When this value is set, tr069 will only allow connection requests from the specified IP address (e.g. 195.186.0.5) or IP address range (e.g. 195.186.0.0/16)
             * This feature is only active when AllowConnectionRequestFromUnknownHost is set to true.
             * @version 1.0
             */
-            persistent string AllowConnectionRequestFromAddress;
+            %persistent string AllowConnectionRequestFromAddress;
       }
 
       /**
@@ -412,12 +412,12 @@
             * The subscription path
             * @version 1.0
             */
-            persistent string Path;
+            %persistent string Path;
           /**
             * The type of subscription
             * @version 1.0
             */
-            persistent string Type {
+            %persistent string Type {
                 constraint enum ["Off","Passive","Active","Forced"];
                 default "Off";
             }
@@ -425,41 +425,41 @@
             * The value last set by the ACS
             * @version 1.0
             */
-            persistent string Value;
+            %persistent string Value;
           /**
             * The override flag
             * @version 1.0
             */
-            persistent bool Override;
+            %persistent bool Override;
         }
       /**
         * Parameters indicating the state of the ManagementServer
         */
-        object State {
+        %protected object State {
           /**
             * Flag indicating that a factory reset has occurred. Once the CPE has succesfully send an inform message this flag will be set to 1. This flag will be reset to 0 when a factory reset occurs. Formerly known as FactoryResetOccurred
             * @version 1.0
             */
-            persistent bool BootstrapSent=0;
+            %persistent bool BootstrapSent=0;
 
           /**
             * This parameter keeps track of the last succesfull session with the ACS
             * @version 1.0
             */
-            persistent datetime LastSession;
+            %persistent datetime LastSession;
 
 
           /**
             * Parameter to indicate the reboot was caused by the ACS.
             * @version 1.0
             */
-            persistent bool RebootByACS=0;
+            %persistent bool RebootByACS=0;
 
           /**
             * Parameter to keep track of the reboot command key set by the ACS across reboots
             * @version 1.0
             */
-            persistent string RebootCommandKey;
+            %persistent string RebootCommandKey;
 
           /**
             * This parameter displays if the CPE tr69 engine is in session (busy) or waiting for an event (idle) or still not initialized (Initializing)
@@ -475,7 +475,7 @@
             * The ACS IP that was detected
             * @version 1.0
             */
-            read-only string ACSIP;
+            %read-only string ACSIP;
 
           /**
             * The remaining time before TTL expiration.
@@ -483,7 +483,7 @@
             * -1 means that the TTL is unknown.
             * @version 1.0
             */
-            read-only int32 ACSIPTTL {
+            %read-only int32 ACSIPTTL {
                 default -1;
             }
         }
@@ -491,7 +491,7 @@
       /**
         * Object containing statistics
         */
-        object Stats {
+        %protected object Stats {
           /**
             * Number of GetParameterValues requests that have occurred since reboot
             * @version 1.0

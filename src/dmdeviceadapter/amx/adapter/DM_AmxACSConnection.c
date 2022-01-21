@@ -264,6 +264,7 @@ bool DM_ENG_Device_ACSConnectionInitialize(dm_amx_env_t* amx) {
 
     }
     amxc_llist_init(&acsSubsList);
+    amxb_set_access(amx->bus_ctx, AMXB_PUBLIC);
     SAH_TRACEZ_OUT("DM_DA");
     return true;
 }
