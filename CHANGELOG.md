@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.9.3 - 2022-01-21(19:18:17 +0000)
+
+### Fixes
+
+- Expose only the standard parameters to ACS
+
 ## Release v1.9.2 - 2022-01-14(08:54:48 +0000)
 
 ### Fixes
