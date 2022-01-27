@@ -37,11 +37,6 @@ LDFLAGS += $(STAGING_LIBDIR) -ldl -lsahtrace \
 		  -lamxc -lamxd -lamxo -lamxb -lamxp \
 		  -ldmengine -ldmcommon -ldmcom -ldmxml_ixml
 
-ifeq ($(CONFIG_TR69_TEST_COVERAGE),y)
-  CFLAGS += -fprofile-arcs -ftest-coverage
-  LDFLAGS += -fprofile-arcs
-endif
-
 test: all
 
 all: banner $(TARGET_SO)

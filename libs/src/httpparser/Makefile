@@ -27,11 +27,6 @@ CFLAGS += -Wall -Wextra -Werror -Wno-strict-aliasing \
 
 LDFLAGS += $(STAGING_LIBDIR) -ldl -lsahtrace
 
-ifeq ($(CONFIG_TR69_TEST_COVERAGE),y)
-  CFLAGS += -fprofile-arcs -ftest-coverage
-  LDFLAGS += -fprofile-arcs
-endif
-
 all: bannerCompile $(TARGET_SO)
 
 bannerCompile:

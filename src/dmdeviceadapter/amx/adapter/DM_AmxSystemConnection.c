@@ -91,7 +91,6 @@
  * @{
  */
 
-static char* time_path = NULL;
 // Subscription list
 static amxc_llist_t systemSubsList;
 //---------------------------------------------------------------------------------------------
@@ -197,7 +196,7 @@ void DM_ENG_Device_SystemConnectionHandleParameterChanged(const char* path, cons
         }
     }
     //Handle Time plugin Events
-    else if(strcmp(path, time_path) == 0) {
+    else if(strcmp(path, TIME_PATH) == 0) {
         // here we look only for the Status parameters , ignore others
         const char* syncronized = GETP_CHAR(parameters, "Status.to");
         if(syncronized && (strcmp("Synchronized", syncronized) == 0)) {
@@ -376,17 +375,14 @@ static const char* DM_ENG_Device_ConvertToObjectName(DM_ENG_SystemParameter_t pa
     case DM_ENG_MAXDOWNLOADDELAY:
     case DM_ENG_MAXUPLOADDELAY:
     case DM_ENG_BOOTPERSISTENTSCHEDULEINFORM:
-    case DM_ENG_ALLOWCONNECTIONREQUESTFROMUNKNOWNHOST:
     case DM_ENG_MAXDOWNLOADS:
     case DM_ENG_MAXDOWNLOADSERRORCODE:
     case DM_ENG_ACSEVENTS:
     case DM_ENG_DELIVEREDEVENTS:
     case DM_ENG_BLOCKEDEVENTS:
-    case DM_ENG_ALIASBASEDADDRESSING:
     case DM_ENG_INSTANCEMODE:
     case DM_ENG_AUTOCREATEINSTANCES:
     case DM_ENG_INHIBIT_VALUE_CHANGE_UPON_BOOT:
-    case DM_ENG_IPV4IPV6WANMODE:
         return "ManagementServer.";
     case DM_ENG_MANUFACTURER:
     case DM_ENG_MANUFACTUREROUI:
@@ -394,7 +390,7 @@ static const char* DM_ENG_Device_ConvertToObjectName(DM_ENG_SystemParameter_t pa
     case DM_ENG_PRODUCTCLASS:
         return "DeviceInfo.";
     case DM_ENG_NTPSTATUS:
-        return time_path;
+        return TIME_PATH;
     case DM_ENG_ACSIPAFFINITY:
     case DM_ENG_ACSADDRFAMILY:
     case DM_ENG_ALLOWCONNECTIONREQUESTFROMADDRESS:
@@ -497,7 +493,6 @@ static const char* DM_ENG_Device_ConvertToParameterName(DM_ENG_SystemParameter_t
     case DM_ENG_MAXUPLOADDELAY:                    return "MaxUploadDelay";
     case DM_ENG_BOOTPERSISTENTSCHEDULEINFORM:      return "BootPersistentScheduleInform";
     case DM_ENG_ACSIP:                             return "ACSIP";
-    case DM_ENG_ALLOWCONNECTIONREQUESTFROMUNKNOWNHOST: return "AllowConnectionRequestFromUnknownHost";
     case DM_ENG_ALLOWCONNECTIONREQUESTFROMADDRESS: return "AllowConnectionRequestFromAddress";
     case DM_ENG_GETPARAMETERVALUEREQUESTS:         return "GetParameterValuesRequests";
     case DM_ENG_MAXDOWNLOADS:                      return "MaxDownloads";
@@ -515,7 +510,6 @@ static const char* DM_ENG_Device_ConvertToParameterName(DM_ENG_SystemParameter_t
     case DM_ENG_AUTOCREATEINSTANCES:               return "AutoCreateInstances";
     case DM_ENG_LOCALIPADDRESS:                    return "LocalIPAddress";
     case DM_ENG_INHIBIT_VALUE_CHANGE_UPON_BOOT:    return "InhibitValueChangeUponBoot";
-    case DM_ENG_IPV4IPV6WANMODE:                   return "IPV4IPV6WANMode";
     case DM_ENG_RETURNEMPTYLISTONPARIALPATH:       return "ReturnEmptyListOnPartialPath";
     case DM_ENG_EMPTYFULLPARAMETERLIST:            return "EmptyFullParameterList";
     default: break;
@@ -757,7 +751,7 @@ static void DM_ENG_Device_SystemConnectionSleepBeforeStarting() {
    - create subscription on MANAGEMENTSERVER_PATH
    - create subscription on DEVICEINFO_PATH
    - create subscription on MANAGEMENTSERVER_TRANSFERS_NODE
-   - create subscription on time_path
+   - create subscription on TIME_PATH
 
    @param amx A pointer to the amx system bus environment variable
 
@@ -826,18 +820,15 @@ bool DM_ENG_Device_SystemConnectionInitialize(dm_amx_env_t* amx) {
         goto stop;
     }
 
-    SAH_TRACEZ_NOTICE("DM_DA", "Defaulting time path to Time");
-    time_path = strdup(TIME_PATH);
-
     /* Create the notifications */
-    if(DM_ENG_Device_Common_AddSubscription(&systemSubsList, amx, time_path,
+    if(DM_ENG_Device_Common_AddSubscription(&systemSubsList, amx, TIME_PATH,
                                             EVENT_DM_FILTER_OBJECT_CHANGED,
                                             &DM_ENG_Device_SystemConnectionHandleParameterChanged,
                                             &id) != 0) {
-        SAH_TRACEZ_ERROR("DM_DA", "Could not create notification for %s", time_path);
+        SAH_TRACEZ_ERROR("DM_DA", "Could not create notification for %s", TIME_PATH);
         goto stop;
     }
-    if(DM_ENG_SetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_SESSIONSTATUS, (char*) "Idle") != 0) {
+    if(DM_ENG_SetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_SESSIONSTATUS, "Idle") != 0) {
         SAH_TRACEZ_ERROR("DM_DA", "Could not set Session Status in the datamodel");
     }
     ret = true;
@@ -865,10 +856,7 @@ stop:
  */
 void DM_ENG_Device_SystemConnectionCleanup(dm_amx_env_t* amx) {
     DM_ENG_Device_Common_Cleanup_Subscription(&systemSubsList, amx);
-    if(time_path) {
-        free(time_path);
-    }
-    time_path = NULL;
+
     // amx bus connection cleanup
     amxb_free(&amx->bus_ctx);
     amx->bus_ctx = NULL;

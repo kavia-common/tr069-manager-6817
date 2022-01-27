@@ -49,8 +49,6 @@ include "${defaults_file}";
 }
 
 %populate {
-    on event "dm:object-changed" call writeURL
-        filter 'path == "ManagementServer." && contains("parameters.URL")';
     on event "dm:object-changed" call updateConnectionRequestURL
         filter 'path == "ManagementServer.ConnRequest." && (contains("parameters.ConnRequestHost") || contains("parameters.ConnRequestPort") || contains("parameters.ConnRequestPath"))';
     on event "dm:object-changed" call writeInterface

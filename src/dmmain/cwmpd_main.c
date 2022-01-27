@@ -125,7 +125,7 @@ static void cwmp_app_configureDefaults() {
     cwmp_app.traceType = TRACE_TYPE_SYSLOG;
     cwmp_app.cacheFile = (char*) "/tmp/cwmpd_cache.txt";
     /* ssl default */
-#ifdef CONFIG_SAH_SERVICES_TR069_CERTIFICATE_NO_PEM
+#ifdef CONFIG_SAH_AMX_TR069_MANAGER_CERTIFICATE_NO_PEM
     cwmp_app.trustedCA = NULL;
     cwmp_app.ssl_priv_key = NULL;
 #else
