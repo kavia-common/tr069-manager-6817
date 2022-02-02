@@ -28,12 +28,6 @@ $(OBJDIR)/%.o: $(PLUGIN_SRCDIR)/%.c | $(OBJDIR)/
 	@$(CC) $(CFLAGS) -MM -MP -MT '$(@) $(@:.o=.d)' -MF $(@:.o=.d) $(<)
 endif
 
-ifdef ADAPTER_SRCDIR
-$(OBJDIR)/%.o: $(ADAPTER_SRCDIR)/%.c | $(OBJDIR)/
-	$(CC) $(CFLAGS) -fprofile-arcs -ftest-coverage -c -o $@ $<
-	@$(CC) $(CFLAGS) -MM -MP -MT '$(@) $(@:.o=.d)' -MF $(@:.o=.d) $(<)
-endif
-
 $(OBJDIR)/:
 	mkdir -p $@
 

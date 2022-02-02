@@ -9,7 +9,7 @@ OUTPUT_DIR = $(ROOT)/output
 # build destination directories
 OBJDIR = $(ROOT)/output/$(MACHINE)/$(COMPONENT)
 
-SRCDIR = .
+SRCDIR = $(realpath ./)
 INCDIR_PRIV = $(ROOT)/include_priv -I$(ROOT)/libs/include_priv
 # files
 SOURCES = $(wildcard $(SRCDIR)/*.c)
@@ -37,6 +37,11 @@ LDFLAGS += $(STAGING_LIBDIR) -ldl -lsahtrace \
 		  -lamxc -lamxd -lamxo -lamxb -lamxp \
 		  -ldmengine -ldmcommon -ldmcom -ldmxml_ixml
 
+ifeq ($(COVERAGE), y)
+	CFLAGS +=-fprofile-arcs -ftest-coverage
+	LDFLAGS += -fprofile-arcs -ftest-coverage
+endif
+
 test: all
 
 all: banner $(TARGET_SO)
@@ -57,6 +62,6 @@ $(OBJDIR)/:
 	$(MKDIR) -p $@
 
 clean:
-	rm -rf ../../../output/ ../../../$(COMPONENT)-*.* ../../../$(COMPONENT)_*.*
+	rm -rf $(OUTPUT_DIR) $(ROOT)/$(COMPONENT)-*.* $(ROOT)/$(COMPONENT)_*.*
 
 .PHONY: all clean 

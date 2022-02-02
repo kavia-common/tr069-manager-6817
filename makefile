@@ -66,7 +66,6 @@ doc:
 	amxo-xml-to -x html -o output-dir=output/html -o title="$(COMPONENT)" -o version=$(VERSION) -o sub-title="Datamodel reference" output/xml/*.xml
 
 test:
-	$(MAKE) -C src/dmdeviceadapter/amx/adapter test
 	$(MAKE) -C test run
 	$(MAKE) -C test coverage
 
