@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.10.0 - 2022-02-09(16:06:33 +0000)
+
+### New
+
+- Add ssl support for the cwmp_client
+
+### Fixes
+
+- Issue : PCF-546 Properly generate coverage report
+
 ## Release v1.9.4 - 2022-01-27(08:05:37 +0000)
 
 ### Fixes
