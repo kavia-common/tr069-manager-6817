@@ -525,8 +525,8 @@ void cwmpd_proc_stopped(UNUSED const char* const event_name,
     SAH_TRACEZ_NOTICE(ME, "cwmpd stopped signal [%s]", event_name);
     // cwmpd is dead, wait for x time then restart it
     amxp_timer_new(&restart_timer, cwmp_timer_cb, NULL);
-    // restart in 2 seconds
-    amxp_timer_start(restart_timer, 2000);
+    // restart in 10 seconds
+    amxp_timer_start(restart_timer, 10000);
 }
 
 static int build_cwmpd_proc_args(amxc_array_t* cmd, UNUSED amxc_var_t* settings) {

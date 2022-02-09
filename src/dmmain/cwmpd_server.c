@@ -81,7 +81,6 @@
 #include <dmengine/DM_ENG_RPCInterface.h>
 #include <dmcommon/DM_GlobalDefs.h>
 #include <dmcom/dm_com.h>
-#include "httpparser/picohttpparser.h"
 
 extern dm_com_struct g_DmComData;
 
@@ -399,13 +398,12 @@ static int cwmp_server_handleRequest(struct lws* wsi, char* in, int len) {
     } else if(httpCode == HTTP_STATUS_OK) {
         // Send a HTTP response with either the code 200 or 204
         lws_return_http_status(wsi, HTTP_STATUS_OK, HTTP_STRING_OK);
-        return 0;
     }
     // 3.2.2: The CPE MUST NOT reject a properly authenticated Connection Request for any reason other than
     //        those described above. If the CPE rejects a Connection Request for any of the reasons described
     //        above, it MUST NOT initiate a session with the ACS as a result of that Connection Request.
     // OK, as we only implemented the specified reasons
-    return 0;
+    return httpCode;
 }
 
 /* http server callback */
@@ -419,7 +417,9 @@ static int cwmp_server_http_callback(struct lws* wsi, enum lws_callback_reasons 
         lws_set_timeout(wsi, PENDING_TIMEOUT_AWAITING_PROXY_RESPONSE, 60);
         break;
     case LWS_CALLBACK_HTTP:
-        cwmp_server_handleRequest(wsi, (char*) in, len);
+        if(cwmp_server_handleRequest(wsi, (char*) in, len) == HTTP_STATUS_OK) {
+            return -1; //close this connection imediately after sending the reply
+        }
         // dont proceed otherwise lws_callback_http_dummy
         // will send a 404 NOT FOUND message, this may lead
         // to an unwanted behavior
@@ -458,7 +458,7 @@ cwmp_status_t cwmp_server_init() {
 
     lws_server_ctx_info.protocols = protocols;
 
-    /* check app conf */
+    /* there is No ssl on the server */
     lws_server_ctx_info.ssl_cert_filepath = NULL;
     lws_server_ctx_info.ssl_private_key_filepath = NULL;
 
@@ -482,11 +482,6 @@ cwmp_status_t cwmp_server_init() {
 
     // Create the randomly chosen CPE URL
     if(server_createURL() != 0) {
-        goto error;
-    }
-
-    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ACSIP, &acsip) != 0) {
-        SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the ACSIP parameter");
         goto error;
     }
 

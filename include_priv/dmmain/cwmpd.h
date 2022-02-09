@@ -68,7 +68,6 @@
 #include <amxd/amxd_dm.h>
 #include <amxb/amxb.h>
 #include <dmengine/DM_ENG_NotificationInterface.h>
-#include "httpparser/picohttpparser.h"
 #include <debug/sahtrace.h>
 #include <ares.h>
 
@@ -89,7 +88,8 @@ struct application {
     sah_trace_type traceType;
     server_state_t state;
     const char* trustedCA;
-    const char* ssl_priv_key;
+    const char* ssl_client_priv_key;
+    const char* ssl_client_cert;
     const char* pidFile;
     const char* cacheFile;
     const char* da_path;
@@ -108,8 +108,6 @@ cwmp_status_t cwmp_server_stop(void);
 
 //Client
 cwmp_status_t cwmp_client_init(void);
-
-cwmp_status_t cwmp_client_start_session(void);
 
 cwmp_status_t cwmp_client_stop(void);
 

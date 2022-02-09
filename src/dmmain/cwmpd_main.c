@@ -130,7 +130,8 @@ static void cwmp_app_configureDefaults() {
     cwmp_app.ssl_priv_key = NULL;
 #else
     cwmp_app.trustedCA = (char*) "/etc/ca.pem";
-    cwmp_app.ssl_priv_key = (char*) "/etc/ssl_priv_key.key";
+    cwmp_app.ssl_client_priv_key = NULL;
+    cwmp_app.ssl_client_cert = NULL;
 #endif
 }
 
@@ -328,12 +329,6 @@ int main(int argc, char* argv[]) {
     /* Init http Client */
     if(cwmp_client_init() != cwmp_status_ok) {
         SAH_TRACEZ_ERROR("CWMPD", "HTTP client initialization failed");
-        goto error;
-    }
-
-    /* Start http Server */
-    if(cwmp_client_start_session() != cwmp_status_ok) {
-        SAH_TRACEZ_ERROR("CWMPD", "failed to start HTTP client");
         goto error;
     }
 

@@ -9,7 +9,7 @@ OBJDIR = $(OUTPUT_DIR)/$(MACHINE)/$(COMPONENT)
 # directories
 # source directories
 SRCDIR = .
-INCDIR_PRIV = ../../include_priv -I../../libs/include_priv
+INCDIR_PRIV = ../../include_priv
 ifdef STAGINGDIR
 #libwebsocket default install (/usr/local/include,/usr/local/lib)
 INCDIRS = $(INCDIR_PRIV) $(if $(STAGINGDIR), -I$(STAGINGDIR)/include) \
@@ -47,11 +47,9 @@ else
 	CFLAGS += -std=c11
 endif
 
-LOCAL_LIBS = -L$(OUTPUT_DIR)/$(MACHINE)/libhttpparser
-
-LDFLAGS += -ldl $(LOCAL_LIBS) $(STAGING_LIBDIR) -lwebsockets -levent \
+LDFLAGS += -ldl $(STAGING_LIBDIR) -lwebsockets -levent \
 		  -lamxc -lamxd -lamxo -lamxb -lamxp -lsahtrace \
-		  -ldmcom -ldmcommon -ldmengine -ldmxml_ixml -lhttpparser -lcares
+		  -ldmcom -ldmcommon -ldmengine -ldmxml_ixml -lcares
 # helper functions - used in multiple targets
 define install_to
 	$(INSTALL) -d $(1)/usr/bin/

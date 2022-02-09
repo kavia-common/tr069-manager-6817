@@ -31,14 +31,14 @@ Download libwebsockets
 ```
 git clone https://github.com/warmcat/libwebsockets.git
 cd libwebsockets
-git checkout v3.1.0 #required 3.1.0 or greater version
+git checkout v4.2.0 #required 4.2.0 or greater version
 ```
 Configure and build the lib
 
 ```
 mkdir build
 cd build
-cmake ../ -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DLWS_WITH_LIBEVENT=ON -DLWS_MAX_SMP=10
+cmake ../ -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DLWS_WITH_LIBEVENT=ON -DLWS_MAX_SMP=10 -DLWS_WITH_TLS=ON
 make
 sudo make install
 ```
