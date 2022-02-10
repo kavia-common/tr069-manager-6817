@@ -70,5 +70,8 @@ int test_cwmp_plugin_teardown(void** state);
 /* test func */
 void test_cwmp_plugin_start(void** state);
 void test_cwmp_plugin_stop(void** state);
+void test_cwmp_plugin_parameters(void** state);
+void test_cwmp_plugin_write_interface(void** state);
+void test_cwmp_plugin_updateConnectionRequestURL(void** state);
 
 #endif //__TEST_CWMP_PLUGIN_H__

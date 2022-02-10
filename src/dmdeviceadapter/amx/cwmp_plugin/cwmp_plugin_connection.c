@@ -430,6 +430,7 @@ stop:
     freeifaddrs(ifaddr);
 }
 
+// GCOVR_EXCL_START
 static int amxb_uri_part_to_string(amxc_string_t* buffer, UriTextRangeA* tr) {
     return amxc_string_append(buffer, tr->first, tr->afterLast - tr->first);
 }
@@ -595,3 +596,4 @@ void stop_cwmpd(void) {
 }
 
 
+// GCOVR_EXCL_STOP

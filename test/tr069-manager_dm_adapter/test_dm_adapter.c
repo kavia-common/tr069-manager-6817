@@ -1129,3 +1129,26 @@ void test_dmadapter_GetParameterAttributes(UNUSED void** state) {
     }
 }
 
+void test_dmadapter_Open_Close_Session(UNUSED void** state) {
+    char* session_status;
+    DM_ENG_SessionOpened(DM_ENG_EntityType_ACS);
+    assert_int_equal(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_SESSIONSTATUS, &session_status), 0);
+    assert_string_equal(session_status, "Busy");
+    DM_ENG_SessionClosed(DM_ENG_EntityType_ACS, true);
+    assert_int_equal(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_SESSIONSTATUS, &session_status), 0);
+    assert_string_equal(session_status, "Idle");
+}
+
+void test_dmadapter_Reboot(UNUSED void** state) {
+    DM_ENG_SessionOpened(DM_ENG_EntityType_ACS);
+    int rv = DM_ENG_Reboot(DM_ENG_EntityType_ACS, "My reboot command");
+    assert_int_equal(rv, 0);
+    DM_ENG_SessionClosed(DM_ENG_EntityType_ACS, true);
+}
+
+void test_dmadapter_FactoryReset(UNUSED void** state) {
+    DM_ENG_SessionOpened(DM_ENG_EntityType_ACS);
+    int rv = DM_ENG_FactoryReset(DM_ENG_EntityType_ACS);
+    assert_int_equal(rv, 0);
+    DM_ENG_SessionClosed(DM_ENG_EntityType_ACS, true);
+}

@@ -78,6 +78,9 @@ int main(void) {
 
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_cwmp_plugin_start),
+        cmocka_unit_test(test_cwmp_plugin_parameters),
+        cmocka_unit_test(test_cwmp_plugin_write_interface),
+        cmocka_unit_test(test_cwmp_plugin_updateConnectionRequestURL),
         cmocka_unit_test(test_cwmp_plugin_stop)
     };
 

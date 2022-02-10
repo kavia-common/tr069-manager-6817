@@ -139,6 +139,67 @@ void test_cwmp_plugin_start(UNUSED void** state) {
 
 }
 
+void test_cwmp_plugin_parameters(UNUSED void** state) {
+    amxd_dm_t* dm = cwmp_plugin_get_dm();
+    assert_non_null(dm);
+
+    amxd_object_t* management_server = NULL;
+    management_server = amxd_dm_findf(dm, "ManagementServer.");
+    assert_non_null(management_server);
+
+    amxd_object_t* conn_request = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer.ConnRequest");
+    assert_non_null(conn_request);
+
+    amxd_object_t* internal_settings = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer.InternalSettings");
+    assert_non_null(internal_settings);
+
+    amxd_object_t* managementServer_state = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer.State");
+    assert_non_null(managementServer_state);
+
+    amxd_object_t* managementServer_stats = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer.Stats");
+    assert_non_null(managementServer_stats);
+}
+
+void test_cwmp_plugin_write_interface(UNUSED void** state) {
+    amxc_var_t data;
+    amxc_var_t* values = NULL;
+    amxc_var_t* parameters = NULL;
+    amxd_status_t ret = amxd_status_ok;
+
+    amxc_var_init(&data);
+    amxc_var_set_type(&data, AMXC_VAR_ID_HTABLE);
+    parameters = amxc_var_add_key(amxc_htable_t, &data, "parameters", NULL);
+    values = amxc_var_add_key(amxc_htable_t, parameters, "Interface", NULL);
+    amxc_var_add_key(cstring_t, values, "to", "lo");
+    _writeInterface(NULL, &data, NULL);
+
+    amxd_object_t* conn_request = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer.ConnRequest");
+    const char* local_ip = amxd_object_get_cstring_t(conn_request, "LocalIPAddress", &ret);
+    assert_non_null(local_ip);
+    assert_string_equal(local_ip, "127.0.0.1");
+
+    amxc_var_clean(&data);
+}
+
+void test_cwmp_plugin_updateConnectionRequestURL(UNUSED void** state) {
+    amxd_status_t ret = amxd_status_ok;
+    char* connectionRequestURL = NULL;
+
+    amxd_object_t* management_server = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer");
+    amxd_object_t* conn_request = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer.ConnRequest");
+
+    amxd_object_set_cstring_t(management_server, "ConnectionRequestURL", "http://0.0.0.0:50805/default-path");
+
+    amxd_object_set_cstring_t(conn_request, "ConnRequestHost", "172.17.0.2");
+    amxd_object_set_cstring_t(conn_request, "ConnRequestPort", "5000");
+    amxd_object_set_cstring_t(conn_request, "ConnRequestPath", "test");
+
+    _updateConnectionRequestURL(NULL, NULL, NULL);
+    // check ConnectionRequestURL is updated
+    connectionRequestURL = amxd_object_get_cstring_t(management_server, "ConnectionRequestURL", &ret);
+    assert_string_equal(connectionRequestURL, "http://172.17.0.2:5000/test");
+}
+
 void test_cwmp_plugin_stop(UNUSED void** state) {
     assert_int_equal(_cwmp_plugin_main(1, &dm, &parser), 0);
 }

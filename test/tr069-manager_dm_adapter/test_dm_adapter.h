@@ -141,4 +141,10 @@ void test_dmadapter_SetParameterAttributes(void** state);
 
 void test_dmadapter_AddDeleteObject(void** state);
 
+void test_dmadapter_Open_Close_Session(void** state);
+
+void test_dmadapter_Reboot(void** state);
+
+void test_dmadapter_FactoryReset(void** state);
+
 #endif // __TEST_LIB_DMENGINE_H__
