@@ -502,7 +502,6 @@ static cwmp_status_t cwmp_client_prepare_session() {
 
     lws_connect_info.pwsi = &lws_client_wsi;
     lws_connect_info.port = acs_server_port;
-    lws_connect_info.host = acs_server_host;
     lws_connect_info.path = acs_server_path;
     lws_connect_info.alpn = "http/1.1";
     lws_connect_info.protocol = protocols[0].name;
@@ -733,6 +732,14 @@ int DM_SendHttpMessage(const char* soap_msg) {
         return -1;
     } else {
         lws_connect_info.address = acs_server_ip;
+        // link : https://www.rfc-editor.org/rfc/rfc7230#section-5.4
+        // According to RFC Host must contain the domain name and the port , but It seems that setting the host
+        // to a value different than the ip will cause the conn pipeline to stop working and that will create a new
+        // TCP for each http message which is not accepted by the ACS server, here is just a workaround
+        // A proper fix on the libwebsockets side is needed this workaround will render the functionality
+        // obsolete as a the server who serves multiple services on the same IP will not be able to distinguish
+        // between them
+        lws_connect_info.host = acs_server_ip;
         //try to send the message
         if(!lws_client_connect_via_info(&lws_connect_info)) {
             SAH_TRACEZ_ERROR("CWMPD", "Couldn't connect to %s", acs_server_ip);
