@@ -130,7 +130,8 @@ static void cwmp_app_configureDefaults() {
     cwmp_app.ssl_priv_key = NULL;
 #else
     cwmp_app.trustedCA = "/etc/ca.pem";
-    cwmp_app.ssl_priv_key = "/etc/ssl_priv_key.key";
+    cwmp_app.ssl_client_priv_key = NULL;
+    cwmp_app.ssl_client_cert = NULL;
 #endif
 }
 
