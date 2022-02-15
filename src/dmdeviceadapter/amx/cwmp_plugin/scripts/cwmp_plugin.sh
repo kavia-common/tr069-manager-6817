@@ -4,6 +4,7 @@ name="cwmp_plugin"
 
 case $1 in
     start|boot)
+        source /etc/environment
 	LD_LIBRARY_PATH=/opt/prplos/usr/lib cwmp_plugin -D
         ;;
     stop|shutdown)
