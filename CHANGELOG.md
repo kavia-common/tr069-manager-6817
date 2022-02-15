@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.11.1 - 2022-02-15(09:03:04 +0000)
+
+### Fixes
+
+- It should be possible to setup some odl default values from environment
+
 ## Release v1.11.0 - 2022-02-10(16:45:29 +0000)
 
 ### New
