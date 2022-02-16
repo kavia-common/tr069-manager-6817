@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.11.2 - 2022-02-16(17:49:37 +0000)
+
+### Other
+
+- Avoid casting const char* to char*
+
 ## Release v1.11.1 - 2022-02-15(09:03:04 +0000)
 
 ### Fixes
