@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.12.0 - 2022-02-17(15:50:57 +0000)
+
+### New
+
+- - Add subscription to data model
+
 ## Release v1.11.2 - 2022-02-16(17:49:37 +0000)
 
 ### Other
