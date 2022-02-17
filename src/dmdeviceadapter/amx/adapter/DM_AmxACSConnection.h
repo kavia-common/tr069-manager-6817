@@ -71,7 +71,7 @@ bool DM_ENG_Device_ACSConnectionInitialize(dm_amx_env_t* amx);
 void DM_ENG_Device_ACSConnectionCleanup(dm_amx_env_t* amx);
 
 
-bool DM_ENG_Device_ACSConnectionAddSubscription(dm_amx_env_t* amx, const char* subscriptionPath, int* subscriptionID);
+bool DM_ENG_Device_ACSConnectionAddSubscription(dm_amx_env_t* amx, const char* subscriptionPath, int* subscriptionID, DM_ENG_NotificationMode);
 bool DM_ENG_Device_ACSConnectionRemoveSubscription(dm_amx_env_t* amx, const char* subscriptionPath, int subscriptionID);
 bool DM_ENG_Device_ACSConnectionHandleGetwandevice(dm_amx_env_t* amx, const char* ipaddress, char** addressFound);
 bool DM_ENG_Device_ACSConnectionHandleGetwaninterface(dm_amx_env_t* amx, const char* ipaddress, char** ppWanInterface);

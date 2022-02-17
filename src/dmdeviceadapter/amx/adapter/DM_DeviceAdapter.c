@@ -895,9 +895,9 @@ int DM_ENG_Device_SaveConfig(DM_ENG_ParameterAttributesStruct* acacheArray[], DM
  *
  * @ return 0 if succesfull, -1 if an error occurred
  */
-int DM_ENG_Device_AddNotification(const char* subscriptionPath, int* subscriptionID) {
+int DM_ENG_Device_AddNotification(const char* subscriptionPath, int* subscriptionID, DM_ENG_NotificationMode mode) {
     SAH_TRACEZ_INFO("DM_DA", "Add Notification path=%s", subscriptionPath);
-    if(DM_ENG_Device_ACSConnectionAddSubscription(&da.acs, subscriptionPath, subscriptionID) == false) {
+    if(DM_ENG_Device_ACSConnectionAddSubscription(&da.acs, subscriptionPath, subscriptionID, mode) == false) {
         return -1;
     }
     return 0;

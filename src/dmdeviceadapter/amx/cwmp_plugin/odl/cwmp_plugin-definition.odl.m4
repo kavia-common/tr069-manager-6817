@@ -412,12 +412,12 @@
             * The subscription path
             * @version 1.0
             */
-            %persistent string Path;
+            string Path;
           /**
             * The type of subscription
             * @version 1.0
             */
-            %persistent string Type {
+            string Type {
                 constraint enum ["Off","Passive","Active","Forced"];
                 default "Off";
             }
@@ -425,12 +425,12 @@
             * The value last set by the ACS
             * @version 1.0
             */
-            %persistent string Value;
+            string Value;
           /**
             * The override flag
             * @version 1.0
             */
-            %persistent bool Override;
+            bool Override;
         }
       /**
         * Parameters indicating the state of the ManagementServer

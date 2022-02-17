@@ -96,6 +96,26 @@ static amxc_llist_t acsSubsList;
  */
 //---------------------------------------------------------------------------------------------
 
+static void set_subscription_new_value(const char* path, const char* value) {
+    dm_amx_env_t* amx = DM_ENG_Device_GetACSInfo();
+    amxc_string_t expr_path;
+    amxc_var_t values, ret;
+    int amx_ret;
+
+    amxc_var_init(&values);
+    amxc_var_init(&ret);
+    amxc_string_init(&expr_path, 0);
+    amxc_string_setf(&expr_path, "ManagementServer.Subscription.[ Path == '%s']", DM_ENG_Device_Common_ACSToAMXPath_noalloc(path));
+    amxc_var_set_type(&values, AMXC_VAR_ID_HTABLE);
+    amxc_var_add_key(cstring_t, &values, "Value", value);
+    if((amx_ret = amxb_set(amx->bus_ctx, amxc_string_get(&expr_path, 0), &values, &ret, 0)) != AMXB_STATUS_OK) {
+        SAH_TRACEZ_WARNING("DM_DA SUBSCRIPTION", "Couldn't set subscription new value (%d)", amx_ret);
+    }
+    amxc_var_clean(&values);
+    amxc_var_clean(&ret);
+    amxc_string_clean(&expr_path);
+}
+
 void DM_ENG_Device_ACSConnectionHandleNotification(const char* path, const amxc_var_t* const data) {
     SAH_TRACEZ_INFO("DM_DA", "notification event path is [%s]", path);
     DM_ENG_NotificationMode mode = DM_ENG_NotificationMode_OFF;
@@ -142,6 +162,8 @@ void DM_ENG_Device_ACSConnectionHandleNotification(const char* path, const amxc_
 
         parameter = amxc_var_from_htable_it(hit);
         value = amxc_var_dyncast(cstring_t, GETP_ARG(parameter, "to"));
+
+        set_subscription_new_value(acs_path, value);
 
         if(DM_ENG_ValueWasCachedInParameterAttributesCache(acs_path, value) == 0) {
             DM_ENG_GetParameterAttributesCacheEllement(acs_path, &mode, &acclist);
@@ -291,6 +313,84 @@ void DM_ENG_Device_ACSConnectionCleanup(dm_amx_env_t* amx) {
     SAH_TRACEZ_OUT("DM_DA");
 }
 
+static amxc_var_t* find_subscription_by_path(const char* path) {
+    amxc_var_t* var = NULL;
+    dm_amx_env_t* amx = DM_ENG_Device_GetACSInfo();
+    amxc_string_t path_expr;
+
+    amxc_var_new(&var);
+    amxc_string_init(&path_expr, 0);
+    amxc_string_setf(&path_expr, "ManagementServer.Subscription.[ Path == '%s' ]", path);
+    if(amxb_get(amx->bus_ctx, amxc_string_get(&path_expr, 0), 0, var, 0) != AMXB_STATUS_OK) {
+        amxc_var_delete(&var);
+        goto exit;
+    }
+    if(amxc_htable_is_empty(amxc_var_constcast(amxc_htable_t, GETP_ARG(var, "0.")))) {
+        amxc_var_delete(&var);
+    }
+exit:
+    amxc_string_clean(&path_expr);
+    return (var);
+}
+
+static amxc_var_t* get_subscription_value(const char* path) {
+    dm_amx_env_t* amx = DM_ENG_Device_GetACSInfo();
+    amxc_var_t* ret = NULL, * tmp;
+    amxc_var_t* value = NULL;
+    int amx_ret;
+
+    amxc_var_new(&ret);
+    if((amx_ret = amxb_get(amx->bus_ctx, path, 0, ret, 0)) != AMXB_STATUS_OK) {
+        SAH_TRACEZ_WARNING("DM_DA SUBSCRIPTION", "Couldn't get subscription value (%d)", amx_ret);
+        goto exit;
+    }
+    if((tmp = GETI_ARG(ret, 0)) && (tmp = GETI_ARG(tmp, 0)) && (tmp = GETI_ARG(tmp, 0))) {
+        amxc_var_new(&value);
+        amxc_var_convert(value, tmp, AMXC_VAR_ID_CSTRING);
+    }
+exit:
+    amxc_var_delete(&ret);
+    return (value);
+}
+
+static void add_subscription_to_dm(const char* path, DM_ENG_NotificationMode mode) {
+    amxc_var_t sub, ret, * value;
+    dm_amx_env_t* amx = DM_ENG_Device_GetACSInfo();
+    int amx_ret;
+
+    amxc_var_init(&sub);
+    amxc_var_init(&ret);
+    amxc_var_set_type(&sub, AMXC_VAR_ID_HTABLE);
+    amxc_var_add_new_key_cstring_t(&sub, "Path", path);
+    amxc_var_add_new_key_cstring_t(&sub, "Type", DM_ENG_NotificationModeString(mode));
+    if((value = get_subscription_value(path))) {
+        amxc_var_add_new_key_cstring_t(&sub, "Value", amxc_var_constcast(cstring_t, value));
+        amxc_var_delete(&value);
+    }
+    if((amx_ret = amxb_add(amx->bus_ctx, "ManagementServer.Subscription.", 0, NULL, &sub, &ret, 1)) != AMXB_STATUS_OK) {
+        SAH_TRACEZ_ERROR("DM_DA SUBSCRIPTION", "Couldn't add a new subscription (%d)", amx_ret);
+    }
+    amxc_var_clean(&sub);
+    amxc_var_clean(&ret);
+}
+
+static void remove_subscription_from_dm(const char* subscriptionPath) {
+    const char* internalPath = DM_ENG_Device_Common_ACSToAMXPath_noalloc(subscriptionPath);
+    dm_amx_env_t* amx = DM_ENG_Device_GetACSInfo();
+    amxc_string_t expr_path;
+    amxc_var_t ret;
+    int amx_ret;
+
+    amxc_var_init(&ret);
+    amxc_string_init(&expr_path, 0);
+    amxc_string_setf(&expr_path, "ManagementServer.Subscription.[ Path == '%s']", internalPath);
+    if((amx_ret = amxb_del(amx->bus_ctx, amxc_string_get(&expr_path, 0), 0, NULL, &ret, 0)) != AMXB_STATUS_OK) {
+        SAH_TRACEZ_WARNING("DM_DA SUBSCRIPTION", "Couldn't delete subscription %s (%d)", internalPath, amx_ret);
+    }
+    amxc_string_clean(&expr_path);
+    amxc_var_clean(&ret);
+}
+
 //---------------------------------------------------------------------------------------------
 /**
    @brief
@@ -307,7 +407,7 @@ void DM_ENG_Device_ACSConnectionCleanup(dm_amx_env_t* amx) {
    - false in case of an error
    - true if succesfull
  */
-bool DM_ENG_Device_ACSConnectionAddSubscription(dm_amx_env_t* amx, const char* subscriptionPath, int* subscriptionID) {
+bool DM_ENG_Device_ACSConnectionAddSubscription(dm_amx_env_t* amx, const char* subscriptionPath, int* subscriptionID, DM_ENG_NotificationMode mode) {
     SAH_TRACEZ_INFO("DM_DA", "Event subscription [%s]", subscriptionPath);
 
     const char* internalPath = DM_ENG_Device_Common_ACSToAMXPath_noalloc(subscriptionPath);
@@ -319,6 +419,12 @@ bool DM_ENG_Device_ACSConnectionAddSubscription(dm_amx_env_t* amx, const char* s
         SAH_TRACEZ_ERROR("DM_DA", "Could not create notification for %s", internalPath);
         return false;
     }
+
+    amxc_var_t* sub = find_subscription_by_path(internalPath);
+    if(!sub) {
+        add_subscription_to_dm(internalPath, mode);
+    }
+    amxc_var_delete(&sub);
     return true;
 }
 
@@ -340,6 +446,7 @@ bool DM_ENG_Device_ACSConnectionAddSubscription(dm_amx_env_t* amx, const char* s
  */
 bool DM_ENG_Device_ACSConnectionRemoveSubscription(dm_amx_env_t* amx, const char* subscriptionPath, int subscriptionID) {
     SAH_TRACEZ_INFO("DM_DA", "Removing subscription path=%s id=%d", subscriptionPath, subscriptionID);
+    remove_subscription_from_dm(subscriptionPath);
     return (DM_ENG_Device_Common_DeleteSubscription(&acsSubsList, amx, subscriptionID) == 0);
 }
 
