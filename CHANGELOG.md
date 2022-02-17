@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.12.1 - 2022-02-17(17:58:25 +0000)
+
+### Fixes
+
+- issue: HOP-1028 connection error when host is set
+
 ## Release v1.12.0 - 2022-02-17(15:50:57 +0000)
 
 ### New
