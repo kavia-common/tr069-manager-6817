@@ -77,6 +77,7 @@
 #define EVENT_ENG_SRV_STOP         "HTTP_SERVER_STOP"
 #define EVENT_ENG_SRV_START        "HTTP_SERVER_START"
 #define EVENT_ENG_CLEAR_ACS_IP     "CLIENT_CLEAR_ACS_IP"
+#define EVENT_ENG_URL_CHANGED      "ACS_URL_CHANGED"
 
 typedef enum server_state {INIT = 0, RUN, EXIT, ERROR } server_state_t;
 typedef enum cwmp_status {cwmp_status_ok=0, cwmp_status_ko} cwmp_status_t;
@@ -143,6 +144,12 @@ int cwmp_timer_start(const char* name, int waitTime, int intervalTime, timerHand
 unsigned int cwmp_timer_remainingTime(const char* name);
 
 //DNS Resolver
-cwmp_status_t cwmp_dns_resolve(const char* hostname, struct ares_addrinfo** dns_pool);
+cwmp_status_t cwmp_dns_init();
+
+cwmp_status_t cwmp_dns_resolve(bool send_boot_strap);
+
+cwmp_status_t cwmp_dns_stop();
+
+void cwmp_dns_getRandomIP(char** ip);
 
 #endif // !_CWMPD_H_

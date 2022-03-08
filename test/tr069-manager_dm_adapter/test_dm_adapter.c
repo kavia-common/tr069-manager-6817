@@ -274,10 +274,10 @@ void test_dmadapter_connection(UNUSED void** state) {
 
     void* systemctx = NULL;
     void* acsctx = NULL;
+    int rv = DM_ENG_DataModelConnect(acache_file, &systemctx, &acsctx);
     // connect to bus
-    int rv = DM_ENG_ActivateNotification(DM_ENG_EntityType_SYSTEM, inform, transferComplete, requestDownload,
-                                         getRPCMethods, timerStart, timerStop, timerTimeRemaining, engineEvent,
-                                         acache_file, &systemctx, &acsctx);
+    rv += DM_ENG_ActivateNotification(DM_ENG_EntityType_SYSTEM, inform, transferComplete, requestDownload,
+                                      getRPCMethods, timerStart, timerStop, timerTimeRemaining, engineEvent);
     assert_int_equal(rv, 0);
     system_bus_ctx = (amxb_bus_ctx_t*) systemctx;
     acs_bus_ctx = (amxb_bus_ctx_t*) acsctx;

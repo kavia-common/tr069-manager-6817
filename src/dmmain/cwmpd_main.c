@@ -228,7 +228,10 @@ static cwmp_status_t cwmp_app_clean() {
         SAH_TRACEZ_ERROR("CWMPD", "eventloop cleanup failed");
         status = cwmp_status_ko;
     }
-    // return no value ?
+    if(cwmp_dns_stop() != cwmp_status_ok) {
+        SAH_TRACEZ_ERROR("CWMPD", "DNS cleanup failed");
+        status = cwmp_status_ko;
+    }
     DM_ENG_Device_Unload();
     return status;
 }
@@ -258,6 +261,9 @@ int cwmp_app_engineEventHandler(const char* eventType) {
         }
     } else if(strcmp(eventType, EVENT_ENG_CLEAR_ACS_IP) == 0) {
         cwmp_client_clear_ACSIP();// clear acs ip
+    } else if(strcmp(eventType, EVENT_ENG_URL_CHANGED) == 0) {
+        SAH_TRACEZ_ERROR("CWMPD", "ACS URL changed : resolve new address");
+        cwmp_dns_resolve(true);
     } else {
         SAH_TRACEZ_INFO("CWMPD", "unhandled engine event [%s]", eventType);
     }
@@ -292,10 +298,8 @@ int main(int argc, char* argv[]) {
         SAH_TRACEZ_ERROR("CWMPD", "Failed to load adapter plugin");
         return rc;
     }
-
-    if(DM_COM_INIT(cwmp_timer_start, cwmp_timer_stop, cwmp_timer_remainingTime,
-                   cwmp_app_engineEventHandler, cwmp_app.cacheFile,
-                   (void**) &sys_bus_ctx, (void**) &acs_bus_ctx) != 0) {
+    //Connect to Data-model
+    if(DM_COM_DMCONNECT(cwmp_app.cacheFile, (void**) &sys_bus_ctx, (void**) &acs_bus_ctx) != 0) {
         SAH_TRACEZ_ERROR("CWMPD", "Failed to initialize DM_COM");
         return rc;
     }
@@ -325,11 +329,30 @@ int main(int argc, char* argv[]) {
         SAH_TRACEZ_ERROR("CWMPD", "Failed to start HTTP server");
         goto error;
     }
+    /* Init DNS service */
+    if(cwmp_dns_init() != cwmp_status_ok) {
+        SAH_TRACEZ_ERROR("CWMPD", "Failed to initialize DNS resolver");
+        goto error;
+    }
+
+    /* Resolve ACS URL before starting the cwmp_client*/
+    if(cwmp_dns_resolve(false) != cwmp_status_ok) {
+        SAH_TRACEZ_INFO("CWMPD", "Failed to start DNS resolution");
+        goto error;
+    }
 
     /* Init http Client */
     if(cwmp_client_init() != cwmp_status_ok) {
         SAH_TRACEZ_ERROR("CWMPD", "HTTP client initialization failed");
         goto error;
+    }
+
+    if(DM_COM_INIT(cwmp_timer_start,
+                   cwmp_timer_stop,
+                   cwmp_timer_remainingTime,
+                   cwmp_app_engineEventHandler) != 0) {
+        SAH_TRACEZ_ERROR("CWMPD", "Failed to initialize DM_COM");
+        return rc;
     }
 
     /* Start the main loop */

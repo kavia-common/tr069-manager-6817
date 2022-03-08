@@ -140,10 +140,11 @@ void DM_ENG_Device_SystemConnectionHandleParameterChanged(const char* path, cons
                    The specific conditions that MUST result in the BOOTSTRAP EventCode are:
                    ...
                    - First time connection of the CPE to the ACS after the ACS URL has been modified in any way. */
-                DM_ENG_InformMessageScheduler_bootstrapInform();
+                /* DNS resolution is needed before sending the bootstrap */
+                DM_ENG_NotificationInterface_engineEvent(EVENT_ENG_CLEAR_ACS_IP);
+                DM_ENG_NotificationInterface_engineEvent(EVENT_ENG_URL_CHANGED);
             } else if(strcmp("ACSIP", key) == 0) {
                 DM_ENG_NotificationInterface_engineEvent(EVENT_ENG_SRV_RESTART);
-                DM_ENG_NotificationInterface_engineEvent(EVENT_ENG_CLEAR_ACS_IP);
             } else if(strcmp("AllowConnectionRequestFromUnknownHost", key) == 0) {
                 DM_ENG_NotificationInterface_engineEvent(EVENT_ENG_SRV_RESTART);
             } else if(strcmp("AllowConnectionRequestFromAddress", key) == 0) {
@@ -424,6 +425,7 @@ static const char* DM_ENG_Device_ConvertToObjectName(DM_ENG_SystemParameter_t pa
     case DM_ENG_REBOOTCOMMANDKEY:
     case DM_ENG_ACSIPTTL:
     case DM_ENG_ACSIP:
+    case DM_ENG_ACSIPLIST:
         return "ManagementServer.State.";
     case DM_ENG_GETPARAMETERVALUEREQUESTS:
         return "ManagementServer.Stats.";
@@ -493,6 +495,7 @@ static const char* DM_ENG_Device_ConvertToParameterName(DM_ENG_SystemParameter_t
     case DM_ENG_MAXUPLOADDELAY:                    return "MaxUploadDelay";
     case DM_ENG_BOOTPERSISTENTSCHEDULEINFORM:      return "BootPersistentScheduleInform";
     case DM_ENG_ACSIP:                             return "ACSIP";
+    case DM_ENG_ACSIPLIST:                         return "ACSIPList";
     case DM_ENG_ALLOWCONNECTIONREQUESTFROMADDRESS: return "AllowConnectionRequestFromAddress";
     case DM_ENG_GETPARAMETERVALUEREQUESTS:         return "GetParameterValuesRequests";
     case DM_ENG_MAXDOWNLOADS:                      return "MaxDownloads";

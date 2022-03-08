@@ -94,11 +94,9 @@ static const unsigned char EMPTY_USTR[] = "";
 **********************************************************/
 static char* acs_server_host = NULL;              /* ACS server hostname */
 static char* acs_server_ip = NULL;                /* ACS server ip address */
-static int acs_server_ttl = 0;                    /* ACS server ip ttl */
 static int acs_server_port = -1;                  /* ACS server port */
 static char* acs_server_path = NULL;              /* ACS server path */
 static char* acs_server_scheme = NULL;            /* ACS server connection scheme */
-static char* acsip_affinity = NULL;               /* Use DNS affinity */
 int http_status = 0;                              /* ACS last http return code */
 static char* rcv_buf = NULL;                      /* Buffer for SOAP message received from ACS */
 static int rcv_buf_len = 0;                       /* SOAP buffer size */
@@ -113,10 +111,18 @@ static struct lws_context* lws_client_ctx = NULL; /* client lws context */
 static struct lws_context_creation_info lws_client_ctx_info;
 static struct lws_client_connect_info lws_connect_info;
 
-static struct ares_addrinfo* dns_cache = NULL;
-static int dns_cache_size = 0;
-static amxp_timer_t* dns_ttl_timer = NULL;
-static bool resolve_DNS = true;
+static bool is_ipaddr(const char* ip) {
+    struct in6_addr result;
+    int res = inet_pton(AF_INET, ip, &result);
+    if(res) {
+        return true;
+    }
+    res = inet_pton(AF_INET6, ip, &result);
+    if(res) {
+        return true;
+    }
+    return false;
+}
 
 static void cwmp_free(char** val) {
     if(*val) {
@@ -125,90 +131,12 @@ static void cwmp_free(char** val) {
     }
 }
 
-static int isIPAddress(const char* ip) {
-    struct in6_addr result;
-    int res = inet_pton(AF_INET, ip, &result);
-    if(res) {
-        return 1;
-    }
-    res = inet_pton(AF_INET6, ip, &result);
-    if(res) {
-        return 1;
-    }
-    return 0;
-}
-
-/* check if the given ip is in the DNS cache*/
-static bool foundInDNSCache(const char* ip) {
-    if(ip && dns_cache && dns_cache->nodes) {
-        struct ares_addrinfo_node* ai_cur;
-        char addrstr[46] = "";
-        for(ai_cur = dns_cache->nodes; ai_cur != NULL; ai_cur = ai_cur->ai_next) {
-            uint8_t* addr = NULL;
-
-            switch(ai_cur->ai_family) {
-            case AF_INET:
-                addr = (uint8_t*) &((struct sockaddr_in*) ai_cur->ai_addr)->sin_addr;
-                break;
-            case AF_INET6:
-                addr = (uint8_t*) &((struct sockaddr_in6*) ai_cur->ai_addr)->sin6_addr;
-                break;
-            }
-            ares_inet_ntop(ai_cur->ai_family, addr, addrstr, sizeof(addrstr));
-            SAH_TRACE_INFO("found ip %s with ttl = %d", addrstr, ai_cur->ai_ttl);
-            if(strcmp(ip, addrstr) == 0) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
+/*retry if this is an inform message*/
 static void cwmp_client_retry() {
-    //TODO! , write ip list into the data model
-    // proper search for next ip to try?
-    struct ares_addrinfo_node* ai_cur;
-    char addrstr[46] = "";
-    char* last_used_ip = strdup(acs_server_ip);
-    //clean the acs ip
     cwmp_free(&acs_server_ip);
-    // check ip list
-    for(ai_cur = dns_cache->nodes; ai_cur != NULL; ai_cur = ai_cur->ai_next) {
-        uint8_t* addr = NULL;
-        switch(ai_cur->ai_family) {
-        case AF_INET:
-            addr = (uint8_t*) &((struct sockaddr_in*) ai_cur->ai_addr)->sin_addr;
-            break;
-        case AF_INET6:
-            addr = (uint8_t*) &((struct sockaddr_in6*) ai_cur->ai_addr)->sin6_addr;
-            break;
-        }
-        ares_inet_ntop(ai_cur->ai_family, addr, addrstr, sizeof(addrstr));
-        if(ai_cur->ai_next && (strcmp(addrstr, last_used_ip) == 0)) {
-            struct ares_addrinfo_node* ai_next = ai_cur->ai_next;
-            // get the next one
-            switch(ai_next->ai_family) {
-            case AF_INET:
-                addr = (uint8_t*) &((struct sockaddr_in*) ai_next->ai_addr)->sin_addr;
-                break;
-            case AF_INET6:
-                addr = (uint8_t*) &((struct sockaddr_in6*) ai_next->ai_addr)->sin6_addr;
-                break;
-            }
-            memset(addrstr, 0, 46 * sizeof(char));
-            ares_inet_ntop(ai_next->ai_family, addr, addrstr, sizeof(addrstr));
-            SAH_TRACEZ_INFO("CWMPD", "retrying with address [%s]:[%d] , DNS_ttl = %d", addrstr, acs_server_port, ai_next->ai_ttl);
-            //we found us a new ip
-            acs_server_ip = strdup(addrstr);
-            acs_server_ttl = ai_cur->ai_ttl;
-        }
-    }
-
-    cwmp_free(&last_used_ip);
-
+    cwmp_dns_getRandomIP(&acs_server_ip);
     if(!acs_server_ip) {
         // just close the session
-        cwmp_free(&pending_msg);
         _closeACSSession(false);
     }
     // retry
@@ -221,26 +149,23 @@ static int cwmp_client_http_callback(struct lws* wsi, enum lws_callback_reasons 
 
     switch(reason) {
     case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
-        SAH_TRACEZ_INFO("CWMPD", "CLIENT_CONNECTION_ERROR: %s, retry with another IP if any",
-                        in ? (char*) in : "(null)");
+        SAH_TRACEZ_INFO("CWMPD", "CONNECTION_ERROR: %s, retry_count %d",
+                        in ? (char*) in : "(null)", retry_count);
         lws_client_wsi = NULL;
         retry_count++;
-        //(retry_count * connection_timeout) must stay below session timeout
-        // retry only we are sending the first inform message
-        // retry only if we have a list of IPs to chose from
-        if(!isIPAddress(acs_server_host)
+        //(retry_count * connection_timeout) must stay below session timeout default 45sec
+        // retry only we are sending an inform message
+        if(!is_ipaddr(acs_server_host)
            && pending_msg
            && strstr(pending_msg, "Inform")
-           && ((session_timeout % 5) < retry_count)
-           && (dns_cache_size > retry_count)) {
+           && ((session_timeout - (retry_count * 5) - 10) > 5)) {
             //one more shot, retry in 1 sec
-            DM_ENG_NotificationInterface_timerStart("client-retry-new-ip",
+            DM_ENG_NotificationInterface_timerStart("cwmp_client_retry",
                                                     1,
                                                     0,
                                                     cwmp_client_retry);
         } else {
             // give up
-            cwmp_free(&pending_msg);
             _closeACSSession(false);
         }
         break;
@@ -270,6 +195,10 @@ static int cwmp_client_http_callback(struct lws* wsi, enum lws_callback_reasons 
             //closing free any message
             cwmp_free(&pending_msg);
         } else if(http_status == HTTP_OK) {
+            //store ACSIP in persistent storage,need to optimize?
+            if(DM_ENG_SetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ACSIP, acs_server_ip) != 0) {
+                SAH_TRACEZ_ERROR("CWMPD", "ACSIP : failed to update data model");
+            }
             // first message contains set-cookie
             int cookie_len = lws_hdr_custom_length(wsi, "Set-Cookie:", 11);
             if(cookie_len > 0) {
@@ -512,73 +441,43 @@ static cwmp_status_t cwmp_client_prepare_session() {
 static cwmp_status_t cwmp_client_get_acsip() {
     cwmp_status_t ret = cwmp_status_ko;
 
-    if(isIPAddress(acs_server_host)) {
-        if(acs_server_ip) {
-            free(acs_server_ip);
-            acs_server_ip = NULL;
-        }
+    if(is_ipaddr(acs_server_host)) {
+        cwmp_free(&acs_server_ip);
         acs_server_ip = strdup(acs_server_host);
-    } else if(resolve_DNS || (acs_server_ip == NULL)) {
-        //free DNS cache
-        if(dns_cache) {
-            ares_freeaddrinfo(dns_cache);
-            dns_cache = NULL;
+    } else {
+        //try to reuse the same ip from the last session
+        if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM,
+                                           DM_ENG_ACSIP,
+                                           &acs_server_ip) != 0) {
+            SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the ACS SERVER URL");
         }
-        // To prevent impacting the libdmengine internal
-        // Behavior, DNS resolution should done in sync mode
-        // when we starting a new session
-        if(cwmp_dns_resolve(acs_server_host, &dns_cache) != cwmp_status_ok) {
-            ret = cwmp_status_ko;
-            goto error;
-        }
+
         /* check if the last used IP still part of the DNS pool*/
-        if(foundInDNSCache(acs_server_ip) == false) {
-            //if we have old IP but no longer part of the dns pool
-            cwmp_free(&acs_server_ip);
-            //get a new one
-            if(dns_cache && dns_cache->nodes) {
-                struct ares_addrinfo_node* ai_cur;
-                char addrstr[46] = "";
-                //count the num entry in the dns cache
-                ai_cur = dns_cache->nodes;
-                while(ai_cur) {
-                    dns_cache_size++;
-                    ai_cur = ai_cur->ai_next;
-                }
-                ai_cur = NULL;
-
-                if(dns_cache_size > 0) {
-                    //just use the first one
-                    uint8_t* addr = NULL;
-                    ai_cur = dns_cache->nodes;
-                    switch(ai_cur->ai_family) {
-                    case AF_INET:
-                        addr = (uint8_t*) &((struct sockaddr_in*) ai_cur->ai_addr)->sin_addr;
-                        break;
-                    case AF_INET6:
-                        addr = (uint8_t*) &((struct sockaddr_in6*) ai_cur->ai_addr)->sin6_addr;
-                        break;
-                    }
-                    ares_inet_ntop(ai_cur->ai_family, addr, addrstr, sizeof(addrstr));
-                    SAH_TRACEZ_INFO("CWMPD", "Found address [%s]:[%d] , DNS_ttl = %d", addrstr, acs_server_port, ai_cur->ai_ttl);
-
-                    acs_server_ip = strdup(addrstr);
-                    acs_server_ttl = ai_cur->ai_ttl;
-                    resolve_DNS = false;
-
-                    if((strcmp(acsip_affinity, "0") == 0) &&
-                       (amxp_timer_remaining_time(dns_ttl_timer) <= 0) &&
-                       (ai_cur->ai_ttl != 0)) {
-                        acs_server_ttl = ai_cur->ai_ttl;//cache ttl value
-                        /* update ttl_timer */
-                        amxp_timer_start(dns_ttl_timer, acs_server_ttl * 1000);
-                    }
-                }
+        if(acs_server_ip && (strlen(acs_server_ip) != 0)) {
+            char* ip_list = NULL;
+            if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM,
+                                               DM_ENG_ACSIPLIST,
+                                               &ip_list) != 0) {
+                SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the ACS SERVER URL");
             }
+            SAH_TRACEZ_ERROR("CWMPD", "ACSIP LIST is %s", ip_list);
+            if(!(ip_list && strstr(ip_list, acs_server_ip))) {
+                //if we have old IP but no longer part of the dns_pool
+                //try to get a new one
+                cwmp_free(&acs_server_ip);
+                cwmp_dns_getRandomIP(&acs_server_ip);
+            }
+            cwmp_free(&ip_list);
+        } else {//No last ip find a new one
+            cwmp_free(&acs_server_ip);
+            cwmp_dns_getRandomIP(&acs_server_ip);
         }
     }
-    ret = cwmp_status_ok;
-error:
+
+    if(acs_server_ip) {
+        ret = cwmp_status_ok;
+    }
+
     return ret;
 }
 
@@ -629,14 +528,6 @@ static void cwmp_client_sessionTimedOut(UNUSED char* name) {
     _closeACSSession(false);
 }
 
-static void cwmp_client_dnsTTLTimeout_handler(UNUSED amxp_timer_t* timer, UNUSED void* priv) {
-    if(strcmp(acsip_affinity, "0") == 0) {
-        resolve_DNS = true; // force DNS resolution if affinity is enabled
-        // dont free acs_server_ip as it maybe reused if it's still
-        // a valid IP
-    }
-}
-
 /* fetch all client info from data model and feed them to server info struct*/
 cwmp_status_t cwmp_client_init() {
     SAH_TRACEZ_INFO("CWMPD", "Client initialize");
@@ -663,18 +554,10 @@ cwmp_status_t cwmp_client_init() {
     //Create lws context
     lws_client_ctx = lws_create_context(&lws_client_ctx_info);
     if(lws_client_ctx == NULL) {
-        SAH_TRACEZ_ERROR("CWMPD", "lws client context creation failed");
+        SAH_TRACEZ_ERROR("CWMPD", "lws_client context creation failed");
         return cwmp_status_ko;
     }
 
-    amxp_timer_new(&dns_ttl_timer, cwmp_client_dnsTTLTimeout_handler, NULL);
-    resolve_DNS = true;
-
-    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM,
-                                       DM_ENG_ACSIPAFFINITY,
-                                       &acsip_affinity) != 0) {
-        SAH_TRACEZ_ERROR("CWMPD", "DM_ENGINE: Cannot fetch ACSIPAffinity parameter");
-    }
     return cwmp_status_ok;
 }
 
@@ -682,20 +565,11 @@ cwmp_status_t cwmp_client_stop() {
 
     lws_context_destroy(lws_client_ctx);
     DM_CloseHttpSession(true);
-    cwmp_free(&acs_server_ip);
-
-    if(dns_cache) {
-        ares_freeaddrinfo(dns_cache);
-        dns_cache = NULL;
-    }
-
     return cwmp_status_ok;
 }
 
 void cwmp_client_clear_ACSIP() {
     cwmp_free(&acs_server_ip);
-    // force new DNS resolution when next session kicks in
-    resolve_DNS = true;
 }
 
 /** libtr069-engine callbacks **/
@@ -710,6 +584,7 @@ int DM_CloseHttpSession(bool closeMode) {
     cwmp_free(&acs_server_host);
     cwmp_free(&acs_server_path);
     cwmp_free(&acs_server_scheme);
+    cwmp_free(&acs_server_ip);
     cwmp_free(&pending_msg);
     cwmp_free(&session_cookie);
     cwmp_free(&rcv_buf);
@@ -724,10 +599,12 @@ int DM_SendHttpMessage(const char* soap_msg) {
                     "sending soap message :\n ----------> \n%s\n ----------> ",
                     (msg_len == 0) ? "EMPTY_HTTP_MESSAGE" : soap_msg);
 
-    cwmp_free(&pending_msg);
-    pending_msg = strdup(soap_msg);
+    if(pending_msg != soap_msg) {
+        cwmp_free(&pending_msg);
+        pending_msg = strdup(soap_msg);
+        DM_UpdateRetryBuffer(soap_msg, msg_len);
+    }
 
-    DM_UpdateRetryBuffer(soap_msg, msg_len);
     if(acs_server_ip == NULL) {
         return -1;
     } else {
@@ -743,7 +620,7 @@ int DM_SendHttpMessage(const char* soap_msg) {
         //try to send the message
         if(!lws_client_connect_via_info(&lws_connect_info)) {
             SAH_TRACEZ_ERROR("CWMPD", "Couldn't connect to %s", acs_server_ip);
-            free(pending_msg);
+            cwmp_free(&pending_msg);
             return -1;
         }
     }
@@ -774,17 +651,17 @@ int client_startSession() {
     free(crhost);
 
     if(cwmp_client_parse_url() == cwmp_status_ko) {
-        SAH_TRACEZ_NOTICE("CWMPD", "Cannot parse ACS url");
+        SAH_TRACEZ_ERROR("CWMPD", "Cannot parse ACS url");
         return -1;
     }
 
     if(cwmp_client_get_acsip() == cwmp_status_ko) {
-        SAH_TRACEZ_NOTICE("CWMPD", "Cannot get a valid ACS ip");
+        SAH_TRACEZ_ERROR("CWMPD", "Cannot get a valid ACS ip");
         return -1;
     }
 
     if(cwmp_client_prepare_session() == cwmp_status_ko) {
-        SAH_TRACEZ_NOTICE("CWMPD", "failed to prepare connection info");
+        SAH_TRACEZ_ERROR("CWMPD", "failed to prepare connection info");
         return -1;
     }
 

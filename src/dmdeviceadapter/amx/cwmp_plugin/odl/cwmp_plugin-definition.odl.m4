@@ -472,10 +472,16 @@
             }
 
           /**
-            * The ACS IP that was detected
+            * The ACS IP currently used to contact ACS
             * @version 1.0
             */
-            %read-only string ACSIP;
+            %persistent string ACSIP;
+
+          /**
+            * List of ACS IPs returned by DNS service
+            * @version 1.0
+            */
+            string ACSIPList;
 
           /**
             * The remaining time before TTL expiration.
