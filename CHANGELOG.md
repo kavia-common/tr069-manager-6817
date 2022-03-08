@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.12.2 - 2022-03-08(17:26:57 +0000)
+
+### Changes
+
+- Make DNS fully async
+
 ## Release v1.12.1 - 2022-02-17(17:58:25 +0000)
 
 ### Fixes
