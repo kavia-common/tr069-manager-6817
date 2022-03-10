@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.13.0 - 2022-03-10(09:53:14 +0000)
+
+### New
+
+- Use netmodel to get wan interface info
+
 ## Release v1.12.2 - 2022-03-08(17:26:57 +0000)
 
 ### Changes
