@@ -6,7 +6,14 @@ SOURCES += $(wildcard $(PLUGIN_SRCDIR)/*.c)
 TARGET = run_test
 SOURCES += $(wildcard ./*.c)
 OBJECTS = $(addprefix $(OBJDIR)/,$(notdir $(SOURCES:.c=.o)))
-LDFLAGS += -Wl,--wrap=start_cwmpd -Wl,--wrap=stop_cwmpd -lsahtrace -luriparser
+LDFLAGS += -Wl,--wrap=start_cwmpd \
+		   -Wl,--wrap=stop_cwmpd \
+		   -Wl,--wrap=netmodel_cleanup \
+		   -Wl,--wrap=netmodel_initialize \
+		   -Wl,--wrap=netmodel_openQuery_luckyAddrAddress \
+		   -Wl,--wrap=netmodel_closeQuery \
+		   -Wl,--wrap=ipv4address_changed_cb \
+		   -lsahtrace -luriparser
 
 
 include ../test_targets.mk

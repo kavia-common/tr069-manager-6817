@@ -65,6 +65,8 @@
 #include <setjmp.h>
 #include <stdarg.h>
 #include <ctype.h>
+#include <string.h>
+
 #include <cmocka.h>
 #include <amxc/amxc.h>
 #include <amxp/amxp.h>
@@ -76,8 +78,9 @@
 #include <amxo/amxo.h>
 #include <amxb/amxb.h>
 #include <amxb/amxb_register.h>
-#include "test_cwmp_plugin.h"
 #include <amxc/amxc_macros.h>
+
+#include "test_cwmp_plugin.h"
 #include "cwmp_plugin.h"
 
 void __wrap_start_cwmpd();
@@ -90,6 +93,44 @@ void __wrap_start_cwmpd() {
 void __wrap_stop_cwmpd() {
     //Does nothing
 }
+
+bool __wrap_netmodel_initialize(void) {
+    return true;
+}
+
+void __wrap_netmodel_cleanup(void) {
+    return;
+}
+
+netmodel_query_t* __wrap_netmodel_openQuery_luckyAddrAddress(const char* intf,
+                                                             const char* subscriber,
+                                                             const char* flag,
+                                                             const char* traverse,
+                                                             amxp_slot_fn_t handler,
+                                                             UNUSED void* userdata) {
+    assert_non_null(intf);
+    assert_non_null(subscriber);
+    assert_non_null(flag);
+    assert_non_null(traverse);
+    assert_non_null(handler);
+    assert_true(strncmp(intf, "Device.IP.Interface.", 20) == 0);
+
+    amxc_var_t result;
+    assert_int_equal(amxc_var_init(&result), 0);
+    assert_int_equal(amxc_var_set_type(&result, AMXC_VAR_ID_CSTRING), 0);
+    amxc_var_set_cstring_t(&result, "172.17.0.2");
+
+    handler(NULL, &result, NULL);
+
+    amxc_var_clean(&result);
+    return NULL;
+}
+
+void __wrap_netmodel_closeQuery(netmodel_query_t* query) {
+    assert_non_null(query);
+    free(query);
+}
+
 
 static const char* odl_defs = "test.odl";
 
@@ -170,13 +211,13 @@ void test_cwmp_plugin_write_interface(UNUSED void** state) {
     amxc_var_set_type(&data, AMXC_VAR_ID_HTABLE);
     parameters = amxc_var_add_key(amxc_htable_t, &data, "parameters", NULL);
     values = amxc_var_add_key(amxc_htable_t, parameters, "Interface", NULL);
-    amxc_var_add_key(cstring_t, values, "to", "lo");
+    amxc_var_add_key(cstring_t, values, "to", "Device.IP.Interface.2.");
     _writeInterface(NULL, &data, NULL);
 
     amxd_object_t* conn_request = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer.ConnRequest");
     const char* local_ip = amxd_object_get_cstring_t(conn_request, "LocalIPAddress", &ret);
     assert_non_null(local_ip);
-    assert_string_equal(local_ip, "127.0.0.1");
+    assert_string_equal(local_ip, "172.17.0.2");
 
     amxc_var_clean(&data);
 }

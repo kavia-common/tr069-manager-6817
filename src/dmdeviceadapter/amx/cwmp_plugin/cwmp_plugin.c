@@ -65,14 +65,9 @@
 
 #include <debug/sahtrace.h>
 
-static cwmp_plugin_app_t app;
+#include <netmodel/client.h>
 
-static void wait_done(UNUSED const char* const sig_name,
-                      UNUSED const amxc_var_t* const data,
-                      UNUSED void* const priv) {
-    SAH_TRACEZ_INFO(ME, "Wait done for required objects before starting cwmpd");
-    findWanInterface();
-}
+static cwmp_plugin_app_t app;
 
 static void cwmp_plugin_init(amxd_dm_t* dm, amxo_parser_t* parser) {
     SAH_TRACEZ_INFO(ME, "cwmp_plugin started");
@@ -83,29 +78,7 @@ static void cwmp_plugin_init(amxd_dm_t* dm, amxo_parser_t* parser) {
     // Load previous config
     amxo_parser_parse_file(parser, GET_CHAR(&parser->config, "save_file"), (amxd_object_t*) dm);
 
-    // Waiting for required objects.
-    SAH_TRACEZ_INFO(ME, "Waiting for required objects before starting cwmpd");
-    int rv = -1;
-    rv = amxb_wait_for_object("Time.");
-    if(rv != AMXB_STATUS_OK) {
-        SAH_TRACEZ_ERROR(ME, "Wait failed for Time object");
-    }
-    rv = amxb_wait_for_object("Device.");
-    if(rv != AMXB_STATUS_OK) {
-        SAH_TRACEZ_ERROR(ME, "Wait failed for Device object");
-    }
-    rv = amxb_wait_for_object("DeviceInfo.");
-    if(rv != AMXB_STATUS_OK) {
-        SAH_TRACEZ_ERROR(ME, "Wait failed for DeviceInfo object");
-    }
-    rv = amxb_wait_for_object("IP.Interface.");
-    if(rv != AMXB_STATUS_OK) {
-        SAH_TRACEZ_ERROR(ME, "Wait failed for IP.Interface object");
-    }
-
-    // When all objects are available,
-    // The signal "wait:done" is emitted on the global signal manager.
-    amxp_slot_connect(NULL, "wait:done", NULL, wait_done, NULL);
+    cwmp_plugin_netmodel_init();
 
     amxp_sigmngr_add_signal(NULL, "proc:stopped");
     amxp_slot_connect(NULL, "proc:stopped", NULL, cwmpd_proc_stopped, NULL);
@@ -116,14 +89,19 @@ static void cwmp_plugin_exit(UNUSED amxd_dm_t* dm,
     app.dm = NULL;
     app.parser = NULL;
     app.amxb_bus_ctx = NULL;
-    amxb_bus_ctx_t* ctx = amxb_be_who_has("IP.");
-    SAH_TRACEZ_INFO(ME, "Removing subscription for wan interface");
-    amxb_unsubscribe(ctx,
-                     "IP.Interface.wan.",
-                     wanIPAddressChanged,
-                     NULL);
     stop_cwmpd();
+    cwmp_plugin_netmodel_cleanup();
     SAH_TRACEZ_INFO(ME, "cwmp_plugin stopped");
+}
+
+void cwmp_plugin_netmodel_init(void) {
+    netmodel_initialize();
+    cwmp_plugin_netmodel_find_ip();
+}
+
+void cwmp_plugin_netmodel_cleanup(void) {
+    cwmp_plugin_netmodel_clean_intf_info();
+    netmodel_cleanup();
 }
 
 amxd_dm_t* cwmp_plugin_get_dm(void) {

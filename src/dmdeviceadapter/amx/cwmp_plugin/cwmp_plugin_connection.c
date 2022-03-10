@@ -71,6 +71,7 @@
 #include <debug/sahtrace_macros.h>
 
 #include <amxc/amxc.h>
+#include <amxc/amxc_macros.h>
 #include <amxp/amxp.h>
 #include "cwmp_plugin.h"
 
@@ -92,6 +93,8 @@ typedef enum {
     IPV4ANDIPV6
 } wan_ip_mode_t;
 
+netmodel_query_t* query_ipv4 = NULL;
+
 // Declaration of DM functions
 static void updateLocalIP(void);
 
@@ -99,7 +102,8 @@ static void updateLocalIP(void);
 uri_t* uri_parse(const char* uri);
 static bool isAddressIpV6(const char* address);
 static bool assembleConnectionRequestURL(amxd_object_t* object, amxc_string_t* url, const char* host, uint16_t port);
-static void findAndUpdateLocalIP(const char* interface);
+UNUSED static void findAndUpdateLocalIP(const char* interface);
+static void ipv4address_changed_cb(const char* sig_name, const amxc_var_t* data, void* priv);
 
 // Static variables
 static amxc_string_t ipv4address; // CPE WAN IPv4
@@ -112,6 +116,8 @@ static void updateLocalIP(void) {
     SAH_TRACEZ_INFO(ME, "cwmp_plugin updateLocalIP");
     amxd_object_t* conn_request = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer.ConnRequest");
     amxc_string_t* crh_value = NULL;
+    amxc_string_new(&crh_value, 8);
+    amxc_string_append(crh_value, "0.0.0.0", 7); // Default CRH
     bool delete_crh = false;
     amxd_status_t ret;
 
@@ -129,8 +135,6 @@ static void updateLocalIP(void) {
         }
         break;
     default:
-        amxc_string_new(&crh_value, 8);
-        amxc_string_append(crh_value, "0.0.0.0", 7);
         delete_crh = true;
         break;
     }
@@ -190,7 +194,7 @@ void _updateConnectionRequestURL(UNUSED const char* const sig_name,
     amxd_status_t ret = amxd_status_ok;
 
     if(!management_server || !conn_request) {
-        SAH_TRACEZ_ERROR(ME, "Couldn't access dm ManagementServer\n");
+        SAH_TRACEZ_ERROR(ME, "Couldn't access dm ManagementServer");
         goto clean;
     }
     update = amxd_object_get_bool(conn_request, "UpdateConnRequestURL", &ret);
@@ -211,169 +215,94 @@ void _updateConnectionRequestURL(UNUSED const char* const sig_name,
         }
         amxd_object_set_cstring_t(management_server, "ConnectionRequestURL", url->buffer);
     }
+
+    if((NULL != host) && (strcmp("0.0.0.0", host) != 0) && !cwmpd_proc) {
+        start_cwmpd();
+    }
+
 clean:
     amxc_string_delete(&url);
     SAH_TRACEZ_OUT(ME);
 }
 
 void _writeInterface(UNUSED const char* const sig_name,
-                     UNUSED const amxc_var_t* const data,
+                     const amxc_var_t* const data,
                      UNUSED void* const priv) {
-    findAndUpdateLocalIP(GETP_CHAR(data, "parameters.Interface.to"));
-}
-
-void wanIPAddressChanged(UNUSED const char* const sig_name,
-                         const amxc_var_t* const data,
-                         UNUSED void* const priv) {
-    const char* newAddress = NULL;
-    const amxc_var_t* parameters = GETP_ARG(data, "parameters");
-    const char* notification = GETP_CHAR(data, "notification");
-    if(strcmp("dm:instance-added", notification) == 0) {
-        newAddress = GETP_CHAR(parameters, "IPAddress");
-    } else {
-        newAddress = GETP_CHAR(parameters, "IPAddress.to");
-    }
-    SAH_TRACEZ_INFO(ME, "WAN address changed to (%s)", newAddress ? newAddress : "nil");
-
-    when_null_trace(newAddress, exit, ERROR, "New WAN IP should not be NULL");
-    when_str_empty_trace(newAddress, exit, ERROR, "New WAN IP address is empty");
-
-    if(isAddressIpV6(newAddress)) {
-        amxc_string_clean(&ipv6address);
-        amxc_string_init(&ipv6address, 64);
-        amxc_string_append(&ipv6address, newAddress, strlen(newAddress));
-        SAH_TRACEZ_INFO(ME, "new IPv6 address : %s", amxc_string_get(&ipv6address, 0));
-    } else {
-        amxc_string_clean(&ipv4address);
-        amxc_string_init(&ipv4address, 64);
-        amxc_string_append(&ipv4address, newAddress, strlen(newAddress));
-        SAH_TRACEZ_INFO(ME, "new IPv4 address : %s", amxc_string_get(&ipv4address, 0));
-    }
-
-    switch(wanipmode) {
-    case IPV4ONLY:
-    case IPV4ANDIPV6:
-        updateLocalIP();
-        if(!cwmpd_proc) {
-            // start cwmpd after get wan ip
-            start_cwmpd();
-        }
-        break;
-    default:
-        break;
-    }
-
-exit:
-    return;
-}
-
-static void get_IP_address(void) {
-    amxc_string_t path;
-    amxc_string_init(&path, 0);
-    amxc_var_t result;
-    amxc_var_init(&result);
-    int retval = -1;
-    amxd_status_t ret = amxd_status_unknown_error;
-
-    SAH_TRACEZ_NOTICE(ME, "Find and update WAN IP address");
-    amxb_bus_ctx_t* ctx = amxb_be_who_has("IP.");
-
-    amxc_string_setf(&path, "IP.Interface.[Alias=='wan'].IPv4Address.");
-    retval = amxb_get(ctx, amxc_string_get(&path, 0), 0, &result, 1);
-
-    if((retval == 0) && !amxc_var_is_null(&result)) {
-        const char* ipv4Addr = GETP_CHAR(&result, "0.0.IPAddress");
-        if(ipv4Addr && (ipv4Addr[0] != '\0')) {
-            SAH_TRACEZ_INFO(ME, "WAN IP address : %s", ipv4Addr);
-            amxc_string_clean(&ipv4address);
-            amxc_string_init(&ipv4address, 64);
-            amxc_string_append(&ipv4address, ipv4Addr, strlen(ipv4Addr));
-            updateLocalIP();
-        }
-    }
-
-    if(wanipmode == IPV4ANDIPV6) {
-        SAH_TRACEZ_NOTICE(ME, "Find and update WAN IPv6 address");
-        amxc_string_clean(&path);
-        amxc_var_clean(&result);
-        amxc_string_setf(&path, "IP.Interface.[Alias=='wan'].IPv6Address.");
-        retval = amxb_get(ctx, amxc_string_get(&path, 0), 0, &result, 1);
-        if((retval == 0) || !amxc_var_is_null(&result)) {
-            const char* ipv6Addr = GETP_CHAR(&result, "0.0.IPAddress");
-            if(ipv6Addr && (ipv6Addr[0] != '\0')) {
-                amxc_string_clean(&ipv6address);
-                amxc_string_init(&ipv6address, 64);
-                SAH_TRACEZ_INFO(ME, "WAN IPv6 address : %s", ipv6Addr);
-                amxc_string_append(&ipv6address, ipv6Addr, strlen(ipv6Addr));
-                updateLocalIP();
-            }
-        }
-    }
-
-    amxd_object_t* conn_request = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer.ConnRequest");
-    when_null_trace(conn_request, exit, ERROR, "Couldn't access dm ConnRequest");
-
-    const char* ip = amxd_object_get_cstring_t(conn_request, "ConnRequestHost", &ret);
-    if(ip && (strlen(ip) > 0)) {
-        SAH_TRACEZ_NOTICE(ME, "ConnRequestHost = %s", ip);
-        if((strcmp("0.0.0.0", ip) != 0) && !cwmpd_proc) {
-            start_cwmpd();
-        }
-    }
-
-    // subscribe for IPAddress.
-    SAH_TRACEZ_NOTICE(ME, "Subscribe for WAN IP");
-    amxc_string_clean(&path);
-    amxc_string_setf(&path, "IP.Interface.[Alias=='wan'].");
-    const char* filter = "contains('parameters.IPAddress')";
-    retval = amxb_subscribe(ctx,
-                            amxc_string_get(&path, 0),
-                            filter,
-                            wanIPAddressChanged,
-                            NULL);
-    if(retval != AMXB_STATUS_OK) {
-        SAH_TRACEZ_ERROR(ME, "Failed to subscribe for IPAddress");
-    }
-
-exit:
-    amxc_string_clean(&path);
-    amxc_var_clean(&result);
-    return;
-}
-
-void findWanInterface(void) {
-    SAH_TRACEZ_NOTICE(ME, "Find and update WAN Interface and IP address");
-    const char* intf_name = NULL;
-    amxc_string_t path;
-    amxc_string_init(&path, 0);
-    amxc_var_t result;
-    amxc_var_init(&result);
-    int retval = -1;
-
-    amxb_bus_ctx_t* ctx = amxb_be_who_has("IP.");
-    amxc_string_setf(&path, "IP.Interface.[Alias=='wan'].");
-    retval = amxb_get(ctx, amxc_string_get(&path, 0), 0, &result, 1);
-
-    if((retval != 0) || amxc_var_is_null(&result)) {
-        SAH_TRACEZ_ERROR(ME, "Couldn't find wan interface");
+    SAH_TRACEZ_IN(ME);
+    const cstring_t intf = GETP_CHAR(data, "parameters.Interface.to");
+    if(STRING_EMPTY(intf)) {
+        SAH_TRACEZ_ERROR(ME, "Interface parameter is empty");
         goto exit;
     }
 
-    // TODO : to be replaced by netmodel open query to get Netdevname.
-    intf_name = GETP_CHAR(&result, "0.0.Name");
-    SAH_TRACEZ_INFO(ME, "wan interface name = %s", intf_name);
-    when_null_trace(intf_name, exit, ERROR, "Interface name should not be NULL");
-    when_str_empty_trace(intf_name, exit, ERROR, "Interface name should not be empty");
+    // Close the existing query.
+    if(NULL != query_ipv4) {
+        netmodel_closeQuery(query_ipv4);
+        query_ipv4 = NULL;
+        SAH_TRACEZ_INFO(ME, "Close exiting query for ipv4");
+    }
 
-    amxd_object_t* managementServer = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer");
-    amxd_object_set_cstring_t(managementServer, "Interface", intf_name);
-
-    // TODO : to be replaced by netmodel : open ip query
-    get_IP_address();
+    query_ipv4 = netmodel_openQuery_luckyAddrAddress(intf,
+                                                     ME,
+                                                     "ipv4",
+                                                     netmodel_traverse_down,
+                                                     ipv4address_changed_cb,
+                                                     NULL);
 
 exit:
-    amxc_string_clean(&path);
-    amxc_var_clean(&result);
+    SAH_TRACEZ_OUT(ME);
+    return;
+}
+
+void cwmp_plugin_netmodel_clean_intf_info(void) {
+    SAH_TRACEZ_IN(ME);
+    if(NULL != query_ipv4) {
+        netmodel_closeQuery(query_ipv4);
+        query_ipv4 = NULL;
+    }
+    SAH_TRACEZ_OUT(ME);
+}
+
+static void ipv4address_changed_cb(UNUSED const char* sig_name,
+                                   const amxc_var_t* data,
+                                   UNUSED void* priv) {
+    SAH_TRACEZ_IN(ME);
+    const cstring_t new_ip = amxc_var_constcast(cstring_t, data);
+    SAH_TRACEZ_INFO(ME, "WAN IP Address changed to %s", new_ip ? new_ip : "");
+
+    amxc_string_clean(&ipv4address);
+    amxc_string_init(&ipv4address, 64);
+    // When new_ip is null or empty (if IPAddress was cleared ) should update crh.
+    amxc_string_append(&ipv4address, new_ip ? new_ip : "", new_ip ? strlen(new_ip) : 0);
+    updateLocalIP();
+    SAH_TRACEZ_OUT(ME);
+}
+
+void cwmp_plugin_netmodel_find_ip(void) {
+    SAH_TRACEZ_IN(ME);
+    cstring_t interface = NULL;
+    amxd_object_t* managementServer = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer");
+    when_null(managementServer, exit);
+    interface = amxd_object_get_cstring_t(managementServer, "Interface", NULL);
+
+    if(STRING_EMPTY(interface)) {
+        SAH_TRACEZ_ERROR(ME, "Interface parameter is empty");
+        goto exit;
+    }
+
+    // TODO : add a query for ipv6-up
+    SAH_TRACEZ_NOTICE(ME, "Opening queries to get wan interface info");
+    query_ipv4 = netmodel_openQuery_luckyAddrAddress(interface,
+                                                     ME,
+                                                     "ipv4",
+                                                     netmodel_traverse_down,
+                                                     ipv4address_changed_cb,
+                                                     NULL);
+exit:
+    SAH_TRACEZ_OUT(ME);
+    if(interface) {
+        free(interface);
+    }
     return;
 }
 

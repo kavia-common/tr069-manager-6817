@@ -101,7 +101,9 @@
         * The name of the interface on which to listen for connection requests.
         * @version 1.0
         */
-        %persistent string Interface;
+        %persistent %protected string Interface {
+            default "Device.IP.Interface.2.";
+        }
 
       /**
         * HTTP URL, as defined in [8], for an ACS to make a Connection Request notification to the CPE.

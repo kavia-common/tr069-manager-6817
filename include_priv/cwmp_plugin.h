@@ -79,11 +79,13 @@ extern "C"
 #include <amxo/amxo.h>
 #include <amxo/amxo_save.h>
 
+#include <netmodel/common_api.h>
+#include <netmodel/client.h>
+
 #define PRIVATE __attribute__ ((visibility("hidden")))
 #define UNUSED __attribute__((unused))
 
-#define when_null(x, l) if(x == NULL) { goto l; }
-#define when_failed(x, l) if(x != 0) { goto l; }
+#define STRING_EMPTY(TEXT) ((TEXT == NULL) || (*TEXT == 0))
 
 #define ME "CWMP_PLUGIN"
 
@@ -99,6 +101,11 @@ amxd_dm_t* PRIVATE cwmp_plugin_get_dm(void);
 amxo_parser_t* PRIVATE cwmp_plugin_get_parser(void);
 amxc_var_t* PRIVATE cwmp_plugin_get_config(void);
 amxb_bus_ctx_t* PRIVATE cwmp_plugin_get_bus(void);
+
+void cwmp_plugin_netmodel_init(void);
+void cwmp_plugin_netmodel_find_ip(void);
+void cwmp_plugin_netmodel_clean_intf_info(void);
+void cwmp_plugin_netmodel_cleanup(void);
 
 //Dm functions
 amxd_status_t _ManagementServer_save(amxd_object_t* object,
@@ -127,12 +134,6 @@ void _updateConnectionRequestURL(const char* const sig_name,
 void _writeInterface(const char* const sig_name,
                      const amxc_var_t* const data,
                      void* const priv);
-
-void findWanInterface(void);
-
-void wanIPAddressChanged(const char* const sig_name,
-                         const amxc_var_t* const data,
-                         void* const priv);
 
 void start_cwmpd(void);
 
