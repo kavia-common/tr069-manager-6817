@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.13.1 - 2022-03-16(12:05:44 +0000)
+
+### Other
+
+- support for a http stateless mode
+
 ## Release v1.13.0 - 2022-03-10(09:53:14 +0000)
 
 ### New
