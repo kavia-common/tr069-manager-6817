@@ -397,7 +397,7 @@ static int cwmp_server_handleRequest(struct lws* wsi, char* in, int len) {
         lws_return_http_status(wsi, HTTP_STATUS_NOT_FOUND, "Service Not Found");
     } else if(httpCode == HTTP_STATUS_OK) {
         // Send a HTTP response with either the code 200 or 204
-        lws_return_http_status(wsi, HTTP_STATUS_OK, HTTP_STRING_OK);
+        lws_return_http_status(wsi, HTTP_NO_CONTENT, NULL);
     }
     // 3.2.2: The CPE MUST NOT reject a properly authenticated Connection Request for any reason other than
     //        those described above. If the CPE rejects a Connection Request for any of the reasons described

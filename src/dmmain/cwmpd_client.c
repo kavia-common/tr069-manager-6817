@@ -85,13 +85,22 @@
 
 static const unsigned char USER_AGENT[] = "prpl_user_agent";
 static const unsigned char CONTENT_TYPE[] = "text/xml; charset=ISO-8859-1";
-static const unsigned char CONNECTION_KEEP_ALIVE[] = "keep-alive";
 static const unsigned char SOAP_HEADER[] = "SOAPAction:";
 static const unsigned char EMPTY_USTR[] = "";
 
 /**********************************************************
 * Variable declarations
 **********************************************************/
+
+typedef enum auth_e {
+    auth_basic = 0,
+    //auth_digest_SAH256, //not to be supported (required by the RFC?)
+    auth_digest_MD5,
+    auth_unsupported,
+    auth_none
+} auth_t;
+
+auth_t auth_type = auth_none;                     /* Auth method */
 static char* acs_server_host = NULL;              /* ACS server hostname */
 static char* acs_server_ip = NULL;                /* ACS server ip address */
 static int acs_server_port = -1;                  /* ACS server port */
@@ -103,9 +112,9 @@ static int rcv_buf_len = 0;                       /* SOAP buffer size */
 static int retry_count = 0;                       /* retry counter */
 static int session_timeout = 0;                   /* session timeout  */
 static char* pending_msg = NULL;                  /* SOAP message waiting to be sent to ACS */
-// TODO : proper cookie parser/handler
 static char* session_cookie = NULL;               /* HTTP session Cookie if any */
-
+static char* auth_hdr = NULL;                     /* Auth headers */
+static bool connected = false;
 static struct lws* lws_client_wsi = NULL;         /* client ws interface */
 static struct lws_context* lws_client_ctx = NULL; /* client lws context */
 static struct lws_context_creation_info lws_client_ctx_info;
@@ -131,6 +140,136 @@ static void cwmp_free(char** val) {
     }
 }
 
+//lws can't handle session cookie for us
+static void cwmp_client_parse_session_cookie(char* cookies) {
+    char* tok = strtok(cookies, ";");
+    int total_len = 0;
+    int buff_len = 256;
+    if(cookies && !tok) {
+        //one cookie no end mark
+        session_cookie = strdup(cookies);
+    } else {
+        session_cookie = calloc(1, buff_len * sizeof(char));
+        if(!session_cookie) {
+            SAH_TRACEZ_ERROR("CWMPD", "malloc failed for session cookies!!");
+            return;
+        }
+    }
+
+    while(tok) {
+        char* p = strchr((char*) tok, '=');
+        char* start = tok;
+        char* end = p;
+        int len = 0;
+        //skip white spaces
+        if(p) {
+            while(start && (start + 1) && (*start) == ' ') {
+                start++;
+            }
+            while(end && (end - 1) && (*end) == ' ') {
+                end--;
+            }
+            len = end - start;
+        }
+
+        //we only get the cookie pair name=value
+        //if we need to handle more than just session
+        //cookie lws can do that for us check LWS_WITH_CACHE_NSCOOKIEJAR
+        //but we stil need to handle session cookies here
+        if((len > 0) && (strncasecmp(start, "Path", len) != 0)
+           && (strncasecmp(start, "Max-Age", len) != 0)
+           && (strncasecmp(start, "Expires", len) != 0)
+           && (strncasecmp(start, "SameSite", len) != 0)
+           && (strncasecmp(start, "Domain", len) != 0)) {
+
+            total_len += (len + 1);
+            if(total_len >= buff_len) {
+                session_cookie = (char*) realloc(session_cookie, (buff_len + 256 + 1) * sizeof(char));
+                buff_len += 256;
+                session_cookie[buff_len] = '\0';
+                if(!session_cookie) {
+                    SAH_TRACEZ_ERROR("CWMPD", "Couldn't realloc");
+                    return;
+                }
+            }
+            strcat(session_cookie, start);
+            strcat(session_cookie, ";");
+        }
+        tok = strtok(NULL, ";");
+    }
+}
+
+/*generate Basic auth data*/
+static cwmp_status_t cwmp_client_auth_basic() {
+    cwmp_status_t ret = cwmp_status_ko;
+    char* username = NULL;
+    char* passwd = NULL;
+    char* credentials = NULL;
+    int len = 0;
+    int auth_hdr_size = 0;
+
+
+    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM,
+                                       DM_ENG_USERNAME,
+                                       &username) != 0) {
+        SAH_TRACEZ_ERROR("CWMPD", "failed to fetch acs username");
+        goto stop;
+    }
+    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM,
+                                       DM_ENG_PASSWORD,
+                                       &passwd) != 0) {
+        SAH_TRACEZ_ERROR("CWMPD", "failed to fetch acs password");
+        goto stop;
+    }
+    len = strlen(username) + strlen(passwd);
+    //generate credentials
+    credentials = malloc(len + 1);
+    if(!credentials) {
+        goto stop;
+    }
+
+    auth_hdr_size = 6 + ((4 * (len + 1)) / 3) + 1;
+    auth_hdr = malloc(auth_hdr_size * sizeof(char));
+    if(!auth_hdr) {
+        goto stop;
+    }
+
+    credentials[len] = '\0';
+    sprintf(auth_hdr, "Basic ");
+    sprintf(credentials, "%s:%s", username, passwd);
+    //base64 encode
+    if(lws_b64_encode_string(credentials,
+                             len,
+                             auth_hdr + 6,
+                             auth_hdr_size - 6) < 0) {
+        SAH_TRACEZ_ERROR("CWMPD", "Failed to encode user/passwd to base64");
+        cwmp_free(&auth_hdr);
+        goto stop;
+    }
+    auth_hdr[auth_hdr_size - 1] = '\0';
+    ret = cwmp_status_ok;
+
+stop:
+    cwmp_free(&username);
+    cwmp_free(&passwd);
+    cwmp_free(&credentials);
+    return ret;
+}
+
+/* generate authentication headers */
+static cwmp_status_t cwmp_client_gen_auth_hdr(auth_t type, char* auth_d) {
+    cwmp_status_t ret = cwmp_status_ko;
+
+    if(type == auth_basic) {
+        ret = cwmp_client_auth_basic();
+    } else {
+        SAH_TRACEZ_ERROR("CWMPD", "Acs requested unsupported auth method [%s]", auth_d);
+        ret = cwmp_status_ko;
+    }
+
+    return ret;
+}
+
 /*retry if this is an inform message*/
 static void cwmp_client_retry() {
     cwmp_free(&acs_server_ip);
@@ -141,6 +280,16 @@ static void cwmp_client_retry() {
     }
     // retry
     DM_SendHttpMessage(pending_msg);
+}
+
+/* resend the message with authentication*/
+static void cwmp_client_auth_retry() {
+    DM_SendHttpMessage(pending_msg);
+}
+
+static void cwmp_client_sessionTimedOut(UNUSED char* name) {
+    SAH_TRACEZ_WARNING("CWMPD", "session timed out, Force closing session");
+    _closeACSSession(false);
 }
 
 /* http callback */
@@ -189,33 +338,62 @@ static int cwmp_client_http_callback(struct lws* wsi, enum lws_callback_reasons 
         /* only on this callback we can get the http status code
            returned by the server save it for later use*/
         http_status = lws_http_client_http_response(wsi);
-        SAH_TRACEZ_INFO("CWMPD", "Server return code is %d", http_status);
+        SAH_TRACEZ_INFO("CWMPD", "Server return code [%d]", http_status);
 
         if(http_status == HTTP_NO_CONTENT) {
             //closing free any message
             cwmp_free(&pending_msg);
-        } else if(http_status == HTTP_OK) {
-            //store ACSIP in persistent storage,need to optimize?
-            if(DM_ENG_SetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ACSIP, acs_server_ip) != 0) {
-                SAH_TRACEZ_ERROR("CWMPD", "ACSIP : failed to update data model");
-            }
-            // first message contains set-cookie
-            int cookie_len = lws_hdr_custom_length(wsi, "Set-Cookie:", 11);
-            if(cookie_len > 0) {
-                if(session_cookie) {
-                    free(session_cookie);
+        } else if(http_status == HTTP_STATUS_UNAUTHORIZED) {
+            //get the WWW-Authenticate headers
+            char auth_d[1024];
+            memset(auth_d, 0, 1024);
+            auth_type = auth_unsupported;
+
+            int auth_len = lws_hdr_total_length(wsi, WSI_TOKEN_HTTP_WWW_AUTHENTICATE);
+
+            if(lws_hdr_copy(wsi, auth_d, auth_len + 1,
+                            WSI_TOKEN_HTTP_WWW_AUTHENTICATE) < 0) {
+                SAH_TRACEZ_ERROR("CWMPD", "error when copying auth data");
+                //do nothing , going to close the session
+            } else {
+                if(strstr(auth_d, "Basic")) {//for now only basic is supported
+                    auth_type = auth_basic;
                 }
-                session_cookie = malloc(cookie_len + 1);
-                if(!session_cookie) {
+
+                if(cwmp_client_gen_auth_hdr(auth_type, auth_d) != cwmp_status_ok) {
+                    SAH_TRACEZ_ERROR("CWMPD", "failed to generate auth headers");
+                }
+            }
+            //jump to LWS_CALLBACK_CLOSED_CLIENT_HTTP
+            lws_wsi_close(wsi, LWS_TO_KILL_SYNC);
+
+        } else if((http_status == HTTP_OK) && !connected) {
+            connected = true;
+            //store ACSIP in persistent storage
+            if(DM_ENG_SetManagementServerValue(DM_ENG_EntityType_SYSTEM,
+                                               DM_ENG_ACSIP,
+                                               acs_server_ip) != 0) {
+                SAH_TRACEZ_ERROR("CWMPD", "ACSIP failed to update data model");
+            }
+
+            int cookie_len = lws_hdr_total_length(wsi, WSI_TOKEN_HTTP_SET_COOKIE);
+            if(cookie_len > 0) {
+                //try to get session cookies
+                char* server_cookie = malloc(cookie_len + 1);
+                if(!server_cookie) {
                     SAH_TRACEZ_ERROR("CWMPD", "malloc fail !!!");
                     return -1;
                 }
-                memset(session_cookie, 0, cookie_len + 1);
+                memset(server_cookie, 0, cookie_len + 1);
 
-                if(lws_hdr_custom_copy(wsi, session_cookie, cookie_len,
-                                       "Set-Cookie:", 11) < 0) {
-                    SAH_TRACEZ_ERROR("CWMPD", "error when copying cookie ???");
+                if(lws_hdr_copy(wsi, server_cookie, cookie_len + 1,
+                                WSI_TOKEN_HTTP_SET_COOKIE) < 0) {
+                    SAH_TRACEZ_ERROR("CWMPD", "error when copying cookies ???");
                 }
+                //rebuild session cookie
+                cwmp_free(&session_cookie);
+                cwmp_client_parse_session_cookie(server_cookie);
+                cwmp_free(&server_cookie);
             }
         }
 
@@ -226,7 +404,7 @@ static int cwmp_client_http_callback(struct lws* wsi, enum lws_callback_reasons 
     case LWS_CALLBACK_RECEIVE_CLIENT_HTTP:
     {
         //receive raw data
-        char buffer[512 + LWS_PRE];
+        char buffer[1024 + LWS_PRE];
         char* px = buffer + LWS_PRE;
         int lenx = sizeof(buffer) - LWS_PRE;
 
@@ -236,7 +414,7 @@ static int cwmp_client_http_callback(struct lws* wsi, enum lws_callback_reasons 
         }
     }
         return 0; /* don't passthru otherwise lws_callback_http_dummy will call us again*/
-    /* chunks of chunked content, without headers */
+    /* chunks without headers */
     case LWS_CALLBACK_RECEIVE_CLIENT_HTTP_READ:
     {
         int rlen = (int) len;
@@ -307,16 +485,20 @@ static int cwmp_client_http_callback(struct lws* wsi, enum lws_callback_reasons 
                                             WSI_TOKEN_HTTP_CONTENT_TYPE,
                                             CONTENT_TYPE,
                                             28, p, end);
-        //ADD cookie if any
+        //Handle cookie if any
         if(session_cookie) {
             ret += lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_COOKIE,
                                                 (const unsigned char*) session_cookie,
                                                 strlen(session_cookie),
                                                 p, end);
         }
-        ret += lws_add_http_header_by_token(wsi, WSI_TOKEN_CONNECTION,
-                                            CONNECTION_KEEP_ALIVE,
-                                            10, p, end);
+        //Handle Authentication
+        if(auth_hdr) {
+            ret += lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_AUTHORIZATION,
+                                                (unsigned char*) auth_hdr,
+                                                strlen(auth_hdr),
+                                                p, end);
+        }
 
         ret += lws_add_http_header_by_name(wsi, SOAP_HEADER,
                                            EMPTY_USTR,
@@ -342,15 +524,31 @@ static int cwmp_client_http_callback(struct lws* wsi, enum lws_callback_reasons 
             lws_client_http_body_pending(wsi, 0);// stop calling on_writable_cb
         }
         break;
-    /* this client is closing , check its state and inform dmengine */
+    /* this client is closing , check its state and update dmengine */
     case LWS_CALLBACK_CLOSED_CLIENT_HTTP:
         if(http_status == HTTP_NO_CONTENT) {
-            _closeACSSession(true);
-        } else {
-            //error code received from server
+            _closeACSSession(true);//ACS session finished OK
+        } else if(http_status == HTTP_STATUS_UNAUTHORIZED) {
+
+            if((auth_type != auth_unsupported) && auth_hdr) {
+                //schedule reconnect with auth
+                DM_ENG_NotificationInterface_timerStart("Session-timer",
+                                                        session_timeout,
+                                                        0,
+                                                        cwmp_client_sessionTimedOut);
+                SAH_TRACEZ_INFO("CWMPD", "Retry with auth in 1 sec");
+                DM_ENG_NotificationInterface_timerStart("cwmp_client_auth_retry",
+                                                        1,
+                                                        0,
+                                                        cwmp_client_auth_retry);
+            } else {
+                SAH_TRACEZ_INFO("CWMPD", "Authentication requested is not supported");
+                _closeACSSession(false);
+            }
+        } else if(http_status != HTTP_OK) {
             SAH_TRACEZ_ERROR("CWMPD", "ACS Session failed error [%d]", http_status);
             _closeACSSession(false);
-        }
+        }//else HTTP_OK session still in progress more messages are comming
         break;
     default:
         break;
@@ -363,7 +561,7 @@ static int cwmp_client_http_callback(struct lws* wsi, enum lws_callback_reasons 
 static const struct lws_protocols protocols[] =
 {
     {"http", cwmp_client_http_callback, 0, 0, 0, NULL, 0},
-    { NULL, NULL, 0, 0, 0, NULL, 0} /* mark protocol end  needed by lws */
+    { NULL, NULL, 0, 0, 0, NULL, 0} /* mark protocol end */
 };
 
 static cwmp_status_t cwmp_client_prepare_session() {
@@ -373,6 +571,11 @@ static cwmp_status_t cwmp_client_prepare_session() {
     lws_connect_info.context = lws_client_ctx;
     lws_connect_info.method = "POST";
     lws_connect_info.protocol = protocols[0].name;
+
+    //LCCSCF_PIPELINE break if we set the host name
+    //https://github.com/warmcat/libwebsockets/issues/2575
+    //this is because we use IP instead of an URL?
+    //the only solution is to use lws internal dns handler
     lws_connect_info.ssl_connection = LCCSCF_PIPELINE;
 
     /* https stuff */
@@ -383,7 +586,8 @@ static cwmp_status_t cwmp_client_prepare_session() {
         //secure connection
         lws_connect_info.ssl_connection |= LCCSCF_USE_SSL;
 
-        //should we validate hosnames ?
+        //check : LWS_CALLBACK_OPENSSL_LOAD_EXTRA_CLIENT_VERIFY_CERTS
+        //for the problem of no hostname validation
         if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM,
                                            DM_ENG_SSLVERIFYHOSTNAME,
                                            &ssl_validate_hosname) == 0) {
@@ -523,17 +727,11 @@ error:
     return ret;
 }
 
-static void cwmp_client_sessionTimedOut(UNUSED char* name) {
-    SAH_TRACEZ_WARNING("CWMPD", "session timed out, Force closing session");
-    _closeACSSession(false);
-}
-
 /* fetch all client info from data model and feed them to server info struct*/
 cwmp_status_t cwmp_client_init() {
     SAH_TRACEZ_INFO("CWMPD", "Client initialize");
     //static struct lws_context_creation_info lws_client_ctx_info;
     memset(&lws_client_ctx_info, 0, sizeof(lws_client_ctx_info));
-    // memset(&lws_connection_info, 0, sizeof(lws_connection_info));
     void* main_loop[1] = { cwmp_evlp_get() };
     application_t app_conf = cwmp_app_getconf();
     lws_client_ctx_info.protocols = protocols;
@@ -581,6 +779,8 @@ int DM_CloseHttpSession(bool closeMode) {
         SAH_TRACEZ_ERROR("CWMPD", "ERROR ACS session corrupted");
     }
     http_status = 0;
+    auth_type = auth_none;
+    connected = false;
     cwmp_free(&acs_server_host);
     cwmp_free(&acs_server_path);
     cwmp_free(&acs_server_scheme);
@@ -588,6 +788,7 @@ int DM_CloseHttpSession(bool closeMode) {
     cwmp_free(&pending_msg);
     cwmp_free(&session_cookie);
     cwmp_free(&rcv_buf);
+    cwmp_free(&auth_hdr);
     rcv_buf_len = 0;
     return 0;
 }
@@ -610,13 +811,12 @@ int DM_SendHttpMessage(const char* soap_msg) {
     } else {
         lws_connect_info.address = acs_server_ip;
         // link : https://www.rfc-editor.org/rfc/rfc7230#section-5.4
-        // According to RFC Host must contain the domain name and the port , but It seems that setting the host
-        // to a value different than the ip will cause the conn pipeline to stop working and that will create a new
-        // TCP for each http message which is not accepted by the ACS server, here is just a workaround
-        // A proper fix on the libwebsockets side is needed this workaround will render the functionality
-        // obsolete as a the server who serves multiple services on the same IP will not be able to distinguish
-        // between them
+        //work arround the problem of the broken pipelining
+        //on TLS this work around doesnt work?
+        //again the only solution is to use lws internal DNS handler
+        //check https://github.com/warmcat/libwebsockets/issues/2575
         lws_connect_info.host = acs_server_ip;
+        lws_connect_info.origin = acs_server_ip;
         //try to send the message
         if(!lws_client_connect_via_info(&lws_connect_info)) {
             SAH_TRACEZ_ERROR("CWMPD", "Couldn't connect to %s", acs_server_ip);
