@@ -70,6 +70,7 @@
 #include <debug/sahtrace_macros.h>
 
 #include <amxc/amxc.h>
+#include <amxc/amxc_macros.h>
 #include <amxp/amxp.h>
 #include <amxd/amxd_dm.h>
 #include <amxb/amxb.h>
@@ -221,6 +222,7 @@ bool DM_ENG_Device_ACSConnectionHandleGetwaninterface(UNUSED dm_amx_env_t* amx, 
     }
 
     amxb_bus_ctx_t* ctx = amxb_be_who_has("IP.");
+    when_null(ctx, exit);
 
     // Check if IPv6 Address
     struct in6_addr res;
@@ -229,7 +231,7 @@ bool DM_ENG_Device_ACSConnectionHandleGetwaninterface(UNUSED dm_amx_env_t* amx, 
         isIPv6 = true;
     }
 
-    amxc_string_setf(&path, "IP.Interface.[Alias=='wan'].%s.[IPAddress=='%s']",
+    amxc_string_setf(&path, "IP.Interface.*.%s.[IPAddress=='%s']",
                      isIPv6 ? "IPv6Address" : "IPv4Address", ipaddress);
 
     int rv = amxb_get(ctx, amxc_string_get(&path, 0), 0, &result, 0);

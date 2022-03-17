@@ -80,6 +80,8 @@
     #define NI_MAXHOST 1025
 #endif
 
+#define DEFAULT_CRH "0.0.0.0"
+
 typedef struct uri_s {
     const char* uri;
     char* scheme;
@@ -115,40 +117,35 @@ static amxp_timer_t* restart_timer = NULL;
 static void updateLocalIP(void) {
     SAH_TRACEZ_INFO(ME, "cwmp_plugin updateLocalIP");
     amxd_object_t* conn_request = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer.ConnRequest");
-    amxc_string_t* crh_value = NULL;
-    amxc_string_new(&crh_value, 8);
-    amxc_string_append(crh_value, "0.0.0.0", 7); // Default CRH
-    bool delete_crh = false;
+    const char* crh_value = DEFAULT_CRH;
     amxd_status_t ret;
-
     switch(wanipmode) {
     case IPV4ONLY:
         if(amxc_string_text_length(&ipv4address)) {
-            crh_value = &ipv4address;
+            crh_value = amxc_string_get(&ipv4address, 0);
         }
+        SAH_TRACEZ_INFO(ME, "updateLocalIP (%s)", crh_value ? crh_value : "");
         break;
     case IPV4ANDIPV6:
         if(amxc_string_text_length(&ipv6address)) {
-            crh_value = &ipv6address;
+            crh_value = amxc_string_get(&ipv6address, 0);
         } else if(amxc_string_text_length(&ipv4address)) {
-            crh_value = &ipv4address;
+            crh_value = amxc_string_get(&ipv4address, 0);
         }
+        SAH_TRACEZ_INFO(ME, "updateLocalIP (%s)", crh_value ? crh_value : "");
         break;
     default:
-        delete_crh = true;
         break;
     }
-    amxd_object_set_cstring_t(conn_request, "LocalIPAddress", amxc_string_get(crh_value, 0));
+
+    amxd_object_set_cstring_t(conn_request, "LocalIPAddress", crh_value);
     bool updateCRH = amxd_object_get_bool(conn_request, "UpdateConnRequestURL", &ret);
     if((ret == amxd_status_ok) && updateCRH) {
         amxd_trans_t trans;
         amxd_trans_init(&trans);
         amxd_trans_select_object(&trans, conn_request);
-        amxd_trans_set_cstring_t(&trans, "ConnRequestHost", amxc_string_get(crh_value, 0));
+        amxd_trans_set_cstring_t(&trans, "ConnRequestHost", crh_value);
         amxd_trans_apply(&trans, cwmp_plugin_get_dm());
-    }
-    if(delete_crh) {
-        amxc_string_delete(&crh_value);
     }
     _updateConnectionRequestURL(NULL, NULL, NULL);
 }
@@ -216,8 +213,12 @@ void _updateConnectionRequestURL(UNUSED const char* const sig_name,
         amxd_object_set_cstring_t(management_server, "ConnectionRequestURL", url->buffer);
     }
 
-    if((NULL != host) && (strcmp("0.0.0.0", host) != 0) && !cwmpd_proc) {
+    if((!STRING_EMPTY(host)) && (strcmp(DEFAULT_CRH, host) != 0)) {
+        // IPAddress changed so it should start cwmpd here when not already started
         start_cwmpd();
+    } else {
+        // IPAddress was cleared, it should stop cwmpd.
+        stop_cwmpd();
     }
 
 clean:

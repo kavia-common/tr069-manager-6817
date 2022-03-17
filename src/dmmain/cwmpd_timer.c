@@ -203,7 +203,7 @@ int cwmp_timer_start(const char* name, int waitTime, int intervalTime, timerHand
         timer->handler = handler;
         timer_append(timer);
     }
-    SAH_TRACEZ_INFO("CWMPD", "Starting timer %s with %d seconds\n", name, waitTime);
+    SAH_TRACEZ_INFO("CWMPD", "Starting timer %s with %d seconds", name, waitTime);
     amxp_timer_start(timer->timer, waitTime * 1000);
     return cwmp_status_ok;
 }
