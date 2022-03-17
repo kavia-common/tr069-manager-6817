@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.14.0 - 2022-03-17(13:32:53 +0000)
+
+### New
+
+- Open the port for connection request
+
+### Fixes
+
+- Fix cwmpd crash if DHCP Client instance goes down
+
 ## Release v1.13.1 - 2022-03-16(12:05:44 +0000)
 
 ### Other
