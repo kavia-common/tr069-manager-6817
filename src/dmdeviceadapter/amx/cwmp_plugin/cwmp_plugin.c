@@ -61,6 +61,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <amxc/amxc.h>
+#include <amxc/amxc_macros.h>
+#include <amxm/amxm.h>
 #include "cwmp_plugin.h"
 
 #include <debug/sahtrace.h>
@@ -68,6 +71,19 @@
 #include <netmodel/client.h>
 
 static cwmp_plugin_app_t app;
+static amxm_shared_object_t* fw_module = NULL;
+
+static void load_fw_controller(void) {
+    const char* controller = GETP_CHAR(cwmp_plugin_get_config(), "firewall.controller");
+
+    when_null(controller, exit);
+    if(amxm_so_open(&fw_module, "fw", controller)) {
+        SAH_TRACEZ_ERROR(ME, "Couldn't open fw controller (%s)", controller);
+        goto exit;
+    }
+exit:
+    return;
+}
 
 static void cwmp_plugin_init(amxd_dm_t* dm, amxo_parser_t* parser) {
     SAH_TRACEZ_INFO(ME, "cwmp_plugin started");
@@ -77,7 +93,7 @@ static void cwmp_plugin_init(amxd_dm_t* dm, amxo_parser_t* parser) {
 
     // Load previous config
     amxo_parser_parse_file(parser, GET_CHAR(&parser->config, "save_file"), (amxd_object_t*) dm);
-
+    load_fw_controller();
     cwmp_plugin_netmodel_init();
 
     amxp_sigmngr_add_signal(NULL, "proc:stopped");
@@ -92,6 +108,9 @@ static void cwmp_plugin_exit(UNUSED amxd_dm_t* dm,
     stop_cwmpd();
     cwmp_plugin_netmodel_cleanup();
     SAH_TRACEZ_INFO(ME, "cwmp_plugin stopped");
+    if(fw_module) {
+        amxm_so_close(&fw_module);
+    }
 }
 
 void cwmp_plugin_netmodel_init(void) {

@@ -73,6 +73,7 @@
 #include <amxc/amxc.h>
 #include <amxc/amxc_macros.h>
 #include <amxp/amxp.h>
+#include <amxm/amxm.h>
 #include "cwmp_plugin.h"
 
 // NI_MAXHOST normally defined in netdb.h but if it's not defined we redefine here
@@ -81,6 +82,7 @@
 #endif
 
 #define DEFAULT_CRH "0.0.0.0"
+#define FIREWALL_CONN_REQUEST_ID "cwmpd_conn_request"
 
 typedef struct uri_s {
     const char* uri;
@@ -106,6 +108,8 @@ static bool isAddressIpV6(const char* address);
 static bool assembleConnectionRequestURL(amxd_object_t* object, amxc_string_t* url, const char* host, uint16_t port);
 UNUSED static void findAndUpdateLocalIP(const char* interface);
 static void ipv4address_changed_cb(const char* sig_name, const amxc_var_t* data, void* priv);
+static void open_cwmpd_listening_port(void);
+static void close_cwmpd_listening_port(void);
 
 // Static variables
 static amxc_string_t ipv4address; // CPE WAN IPv4
@@ -119,6 +123,7 @@ static void updateLocalIP(void) {
     amxd_object_t* conn_request = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer.ConnRequest");
     const char* crh_value = DEFAULT_CRH;
     amxd_status_t ret;
+
     switch(wanipmode) {
     case IPV4ONLY:
         if(amxc_string_text_length(&ipv4address)) {
@@ -172,6 +177,10 @@ amxd_status_t _ManagementServer_updateConnectionRequestURL(amxd_object_t* object
             goto error;
         }
         amxd_object_set_cstring_t(object, "ConnectionRequestURL", url->buffer);
+        if(cwmpd_proc) {
+            close_cwmpd_listening_port();
+            open_cwmpd_listening_port();
+        }
     }
 error:
     amxc_string_delete(&url);
@@ -211,6 +220,10 @@ void _updateConnectionRequestURL(UNUSED const char* const sig_name,
             goto clean;
         }
         amxd_object_set_cstring_t(management_server, "ConnectionRequestURL", url->buffer);
+        if(cwmpd_proc) {
+            close_cwmpd_listening_port();
+            open_cwmpd_listening_port();
+        }
     }
 
     if((!STRING_EMPTY(host)) && (strcmp(DEFAULT_CRH, host) != 0)) {
@@ -507,11 +520,52 @@ static int build_cwmpd_proc_args(amxc_array_t* cmd, UNUSED amxc_var_t* settings)
     return 0;
 }
 
+static void open_cwmpd_listening_port(void) {
+    amxd_object_t* mgmt_server = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer");
+    amxd_object_t* conn_req = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer.ConnRequest");
+    amxd_object_t* internal_settings = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer.InternalSettings");
+    int conn_req_port;
+    const char* interface, * allowed_address;
+    amxc_var_t args, ret;
+
+    conn_req_port = amxc_var_constcast(uint32_t, amxd_object_get_param_value(conn_req, "ConnRequestPort"));
+    allowed_address = amxc_var_constcast(cstring_t, amxd_object_get_param_value(internal_settings, "AllowConnectionRequestFromAddress"));
+    interface = amxc_var_constcast(cstring_t, amxd_object_get_param_value(mgmt_server, "Interface"));
+    amxc_var_init(&args);
+    amxc_var_init(&ret);
+    amxc_var_set_type(&args, AMXC_VAR_ID_HTABLE);
+    amxc_var_add_key(cstring_t, &args, "id", FIREWALL_CONN_REQUEST_ID);
+    amxc_var_add_key(cstring_t, &args, "protocol", "TCP");
+    amxc_var_add_key(cstring_t, &args, "interface", interface);
+    amxc_var_add_key(uint32_t, &args, "destination_port", conn_req_port);
+    amxc_var_add_key(cstring_t, &args, "source_prefix", allowed_address);
+    amxc_var_add_key(bool, &args, "enable", true);
+    SAH_TRACEZ_INFO("FIREWALL", "Opening cwmpd listening port %d for %s", conn_req_port, ((allowed_address[0]) ? allowed_address : "all"));
+    if(amxm_execute_function("fw", "fw", "set_service", &args, &ret)) {
+        SAH_TRACEZ_ERROR("FIREWALL", "Couldn't execute set_service from firewall controller");
+    }
+    amxc_var_clean(&ret);
+    amxc_var_clean(&args);
+}
+
+static void close_cwmpd_listening_port(void) {
+    amxc_var_t args, ret;
+
+    amxc_var_init(&args);
+    amxc_var_init(&ret);
+    amxc_var_set_type(&args, AMXC_VAR_ID_HTABLE);
+    amxc_var_add_key(cstring_t, &args, "id", FIREWALL_CONN_REQUEST_ID);
+    amxm_execute_function("fw", "fw", "delete_service", &args, &ret);
+    amxc_var_clean(&ret);
+    amxc_var_clean(&args);
+}
+
 void start_cwmpd(void) {
     if(cwmpd_proc) {
         SAH_TRACEZ_WARNING(ME, "cwmpd already started");
         return;
     }
+    open_cwmpd_listening_port();
     SAH_TRACEZ_INFO(ME, "Starting cwmpd");
     amxp_proc_ctrl_new(&cwmpd_proc, build_cwmpd_proc_args);
     amxp_proc_ctrl_start(cwmpd_proc, 0, NULL);
@@ -521,6 +575,7 @@ void stop_cwmpd(void) {
     if(cwmpd_proc) {
         amxp_proc_ctrl_stop(cwmpd_proc);
         amxp_proc_ctrl_delete(&cwmpd_proc);
+        close_cwmpd_listening_port();
         cwmpd_proc = NULL;
     }
 }

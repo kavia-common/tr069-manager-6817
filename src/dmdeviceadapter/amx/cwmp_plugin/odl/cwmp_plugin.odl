@@ -32,6 +32,10 @@
         cwmpd_adapter_path = "/usr/lib/libdmda_amx.so"
     };
 
+    firewall = {
+        controller = "/usr/lib/amx/modules/mod-fw-amx.so"
+    };
+
     trace-zones = {CWMP_PLUGIN = 200, CWMPD = 200, DM_DA = 200, DM_ENGINE = 200,
                    DM_COM = 200, DM_COMMON = 200, DM_HS = 200};
 }
