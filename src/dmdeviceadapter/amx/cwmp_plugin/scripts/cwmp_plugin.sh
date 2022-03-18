@@ -1,5 +1,6 @@
 #!/bin/sh
 
+ulimit -c unlimited
 name="cwmp_plugin"
 
 case $1 in
