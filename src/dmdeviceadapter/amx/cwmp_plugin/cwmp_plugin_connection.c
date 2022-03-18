@@ -155,6 +155,23 @@ static void updateLocalIP(void) {
     _updateConnectionRequestURL(NULL, NULL, NULL);
 }
 
+
+static void transac_new_connection_request_url(amxc_string_t* url) {
+    amxd_object_t* management_server = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer");
+    amxd_trans_t* trans = NULL;
+
+    if(!management_server) {
+        SAH_TRACEZ_ERROR(ME, "Couldn't access dm ManagementServer");
+        return;
+    }
+    amxd_trans_new(&trans);
+    amxd_trans_select_object(trans, management_server);
+    amxd_trans_set_attr(trans, amxd_tattr_change_ro, true);
+    amxd_trans_set_value(cstring_t, trans, "ConnectionRequestURL", amxc_string_get(url, 0));
+    amxd_trans_apply(trans, cwmp_plugin_get_dm());
+    amxd_trans_delete(&trans);
+}
+
 amxd_status_t _ManagementServer_updateConnectionRequestURL(amxd_object_t* object,
                                                            UNUSED amxd_function_t* func,
                                                            amxc_var_t* args,
@@ -176,7 +193,7 @@ amxd_status_t _ManagementServer_updateConnectionRequestURL(amxd_object_t* object
             retval = amxd_status_invalid_value;
             goto error;
         }
-        amxd_object_set_cstring_t(object, "ConnectionRequestURL", url->buffer);
+        transac_new_connection_request_url(url);
         if(cwmpd_proc) {
             close_cwmpd_listening_port();
             open_cwmpd_listening_port();
