@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.14.2 - 2022-03-23(13:51:23 +0000)
+
+### Fixes
+
+- send notif when connrequrl is changed
+
 ## Release v1.14.1 - 2022-03-18(15:20:33 +0000)
 
 ### Changes
