@@ -14,7 +14,7 @@ case $1 in
         fi
         ;;
     debuginfo)
-	echo "TODO debuginfo"
+	ubus-cli "ManagementServer.?"
         ;;
     restart)
         $0 stop
