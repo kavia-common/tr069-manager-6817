@@ -48,7 +48,7 @@ else
 endif
 
 LDFLAGS += -ldl $(STAGING_LIBDIR) -lwebsockets -levent \
-		  -lamxc -lamxd -lamxo -lamxb -lamxp -lsahtrace \
+		  -lamxc -lamxd -lamxo -lamxb -lamxp -lamxa -lsahtrace \
 		  -ldmcom -ldmcommon -ldmengine -ldmxml_ixml -lcares
 # helper functions - used in multiple targets
 define install_to

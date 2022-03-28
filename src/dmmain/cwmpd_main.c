@@ -75,13 +75,14 @@
 #include <tr069key/tr069key.h>
 #endif
 #include <event2/event.h>
-#include <amxc/amxc.h>
-#include <amxp/amxp.h>
-#include <amxd/amxd_dm.h>
-#include <amxb/amxb.h>
+
 #include "dmmain/cwmpd.h"
 #include "dmcom/dm_com.h"
 #include "dmengine/DM_ENG_Device.h"
+
+#include <debug/sahtrace.h>
+#include <debug/sahtrace_macros.h>
+
 /*PID FILE*/
 #ifndef CFG_PID_FILE
 #define CFG_PID_FILE "/var/run/cwmpd.pid"
@@ -90,7 +91,8 @@
 application_t cwmp_app;// app instance
 amxb_bus_ctx_t* sys_bus_ctx = NULL;
 amxb_bus_ctx_t* acs_bus_ctx = NULL;
-
+amxo_parser_t parser;
+amxd_object_t* root = NULL;
 
 static void cwmp_app_handleSignal(int signal) {
     SAH_TRACEZ_WARNING("CWMPD", "handling signal %d", signal);
@@ -106,10 +108,56 @@ static void app_usage() {
            "  -h        --help           this help screen\n"
            "  -o        --public-port    the port to listen on (public)\n"
            "  -f        --foreground     do not daemonize, log to stdout\n"
-           "  -t        --trustedCA      Trusted CA certificates\n"
-           "  -d        --da_path        device adapter path\n"
-           "  -s        --sahtracelvl    set sahtrace level of log\n");
+           "  -c        --odl-config     odl config file\n");
     exit(0);
+}
+
+void cwmp_add_sahtrace_zones(amxc_var_t* trace_zones) {
+    SAH_TRACE_IN();
+    if(amxc_var_type_of(trace_zones) == AMXC_VAR_ID_HTABLE) {
+        const amxc_htable_t* zones = amxc_var_constcast(amxc_htable_t, trace_zones);
+        amxc_htable_for_each(it, zones) {
+            const char* zone_name = amxc_htable_it_get_key(it);
+            amxc_var_t* var_level = amxc_var_from_htable_it(it);
+            uint32_t zone_level = amxc_var_dyncast(uint32_t, var_level);
+            sahTraceAddZone(zone_level, zone_name);
+        }
+    }
+    SAH_TRACE_OUT();
+}
+
+static cwmp_status_t cwmp_app_parse_config(void) {
+    cwmp_status_t ret = cwmp_status_ko;
+    amxo_parser_init(&parser);
+    amxd_object_new(&root, amxd_object_singleton, "root");
+    int retval = amxo_parser_parse_file(&parser, cwmp_app.odl_config, root);
+    when_false_trace(retval != -1, exit, ERROR, "CWMPD: ODL parsing failed - message = %s", amxo_parser_get_message(&parser));
+    amxc_var_t* config = &parser.config;
+    when_null_trace(config, exit, ERROR, "CWMPD: cwmpd configs should not be NULL");
+
+    // tr069-service configs
+    amxc_var_t* tr069_config = amxc_var_get_key(config, "tr069-service", AMXC_VAR_FLAG_DEFAULT);
+    cwmp_app.da_path = GETP_CHAR(tr069_config, "cwmpd_adapter_path");
+    cwmp_app.cacheFile = GETP_CHAR(tr069_config, "cwmpd_cache_file");
+    cwmp_app.trustedCA = GETP_CHAR(tr069_config, "cwmpd_certs_file");
+    cwmp_app.pidFile = GETP_CHAR(tr069_config, "cwmpd_pid_file");
+
+    // Set tracelevel
+    amxc_var_t* trace = amxc_var_get_key(config, "sahtrace", AMXC_VAR_FLAG_DEFAULT);
+    cwmp_app.traceLevel = GET_UINT32(trace, "level");
+    sahTraceSetLevel(cwmp_app.traceLevel);
+
+    // Add sahtrace zones
+    amxc_var_t* trace_zones = amxc_var_get_key(config, "trace-zones", AMXC_VAR_FLAG_DEFAULT);
+    if(trace_zones) {
+        cwmp_add_sahtrace_zones(trace_zones);
+    }
+
+    // ODL parsing config OK
+    ret = cwmp_status_ok;
+exit:
+    amxd_object_delete(&root);
+    return ret;
 }
 
 static void cwmp_app_configureDefaults() {
@@ -143,14 +191,11 @@ static void cwmp_app_configureOptions(int argc, char* argv[]) {
             {"", 1, 0, 0},
             {"foreground", 1, 0, 'f'},
             {"help", 1, 0, 'h'},
-            {"trustedCA", 1, 0, 't'},
-            {"da_path", 1, 0, 'd'},
-            {"sahtracelvl", 1, 0, 's'},
-            {"pidfile", 1, 0, 'p'},
+            {"odl-config", 1, 0, 'c'},
             {0, 0, 0, 0}
         };
 
-        int c = getopt_long(argc, argv, "hDfit:a:s:p:q:", long_options, &option_index);
+        int c = getopt_long(argc, argv, "hDfit:c:", long_options, &option_index);
         if(c == -1) {
             break;
         }
@@ -163,20 +208,8 @@ static void cwmp_app_configureOptions(int argc, char* argv[]) {
         case 'h':
             app_usage();
             break;
-        case 't':
-            cwmp_app.trustedCA = optarg;
-            break;
-        case 'a':
-            cwmp_app.da_path = optarg;
-            break;
-        case 'q':
-            cwmp_app.cacheFile = optarg;
-            break;
-        case 'p':
-            cwmp_app.pidFile = optarg;
-            break;
-        case 's':
-            cwmp_app.traceLevel = atoi(optarg);
+        case 'c':
+            cwmp_app.odl_config = optarg;
             break;
         case 'D':
             //Do not deamonize cwmpd is
@@ -233,6 +266,7 @@ static cwmp_status_t cwmp_app_clean() {
         status = cwmp_status_ko;
     }
     DM_ENG_Device_Unload();
+
     return status;
 }
 
@@ -273,13 +307,6 @@ int cwmp_app_engineEventHandler(const char* eventType) {
 void init_sahtrace() {
     sahTraceOpen("cwmpd", cwmp_app.traceType);
     sahTraceSetLevel(cwmp_app.traceLevel);
-    //TODO! set zone level according to odl?
-    sahTraceAddZone(cwmp_app.traceLevel, "CWMPD");
-    sahTraceAddZone(cwmp_app.traceLevel, "DM_DA");
-    sahTraceAddZone(cwmp_app.traceLevel, "DM_ENGINE");
-    sahTraceAddZone(cwmp_app.traceLevel, "DM_COM");
-    sahTraceAddZone(cwmp_app.traceLevel, "DM_COMMON");
-    sahTraceAddZone(cwmp_app.traceLevel, "DM_HS");
 }
 
 int main(int argc, char* argv[]) {
@@ -290,9 +317,14 @@ int main(int argc, char* argv[]) {
 
     /* Configure APP*/
     cwmp_app_configureDefaults();
+    init_sahtrace();
     cwmp_app_configureOptions(argc, argv);
 
-    init_sahtrace();
+    if(cwmp_status_ko == cwmp_app_parse_config()) {
+        SAH_TRACEZ_ERROR("CWMPD", "Failed to parse cwmpd config");
+        amxo_parser_clean(&parser);
+        return rc;
+    }
 
     if(!DM_ENG_Device_Load(cwmp_app.da_path)) {
         SAH_TRACEZ_ERROR("CWMPD", "Failed to load adapter plugin");

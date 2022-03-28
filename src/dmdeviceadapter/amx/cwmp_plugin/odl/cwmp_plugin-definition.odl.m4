@@ -17,12 +17,6 @@
         %persistent bool EnableCWMP=1;
 
       /**
-        * Load and save functions for ambiorix consistancy
-        */
-        void load(%in bool reset = true);
-        void save();
-
-      /**
         * The [URL] for the CPE to connect to the ACS using the CPE WAN Management Protocol.
         * This parameter MUST be in the form of a valid HTTP or HTTPS URL.
         * The host portion of this URL is used by the CPE for validating the ACS certificate when using SSL or TLS.

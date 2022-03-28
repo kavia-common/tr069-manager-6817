@@ -68,11 +68,6 @@
 #include <dmengine/DM_ENG_RPCInterface.h>
 #include <stdlib.h>
 
-#include <amxc/amxc.h>
-#include <amxp/amxp.h>
-#include <amxd/amxd_types.h>
-#include <amxb/amxb.h>
-
 #include <ares.h>
 #include <arpa/inet.h>
 #include <event2/event.h>

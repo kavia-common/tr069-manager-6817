@@ -57,9 +57,6 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 **
 ****************************************************************************/
-
-#include <amxc/amxc.h>
-#include <amxp/amxp.h>
 #include <debug/sahtrace.h>
 
 #include "dmmain/cwmpd.h"

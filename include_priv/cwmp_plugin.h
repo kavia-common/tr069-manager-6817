@@ -108,16 +108,6 @@ void cwmp_plugin_netmodel_clean_intf_info(void);
 void cwmp_plugin_netmodel_cleanup(void);
 
 //Dm functions
-amxd_status_t _ManagementServer_save(amxd_object_t* object,
-                                     amxd_function_t* func,
-                                     amxc_var_t* args,
-                                     amxc_var_t* ret);
-
-amxd_status_t _ManagementServer_load(amxd_object_t* object,
-                                     amxd_function_t* func,
-                                     amxc_var_t* args,
-                                     amxc_var_t* ret);
-
 amxd_status_t _ManagementServer_updateConnectionRequestURL(amxd_object_t* object,
                                                            amxd_function_t* func,
                                                            amxc_var_t* args,

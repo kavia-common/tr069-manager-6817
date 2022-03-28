@@ -63,13 +63,19 @@
 #include <libwebsockets.h>
 #include <event2/event.h>
 #include <debug/sahtrace.h>
+
 #include <amxc/amxc.h>
 #include <amxp/amxp.h>
 #include <amxd/amxd_dm.h>
+#include <amxd/amxd_object.h>
 #include <amxb/amxb.h>
+#include <amxo/amxo.h>
+#include <amxa/amxa_merger.h>
+
 #include <dmengine/DM_ENG_NotificationInterface.h>
-#include <debug/sahtrace.h>
 #include <ares.h>
+
+#define ME "CWMPD"
 
 #define COPY_BUFFER_SIZE 4 * 1024
 
@@ -84,6 +90,7 @@ typedef enum cwmp_status {cwmp_status_ok=0, cwmp_status_ko} cwmp_status_t;
 
 struct application {
     const char* name;
+    const char* odl_config;
     int daemonize;
     int traceLevel;
     sah_trace_type traceType;

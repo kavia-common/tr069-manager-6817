@@ -72,10 +72,6 @@
 #include <netinet/in.h>
 
 #include <debug/sahtrace.h>
-
-#include <amxc/amxc.h>
-#include <amxp/amxp.h>
-
 #include "dmmain/cwmpd.h"
 #include <dmcom/dm_com_digest.h>
 #include <dmengine/DM_ENG_RPCInterface.h>

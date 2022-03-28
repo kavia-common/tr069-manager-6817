@@ -58,7 +58,6 @@
 **
 ****************************************************************************/
 #include "dmmain/cwmpd.h"
-#include <amxp/amxp.h>
 #include <stdio.h>
 
 static struct event_base* main_loop = NULL;

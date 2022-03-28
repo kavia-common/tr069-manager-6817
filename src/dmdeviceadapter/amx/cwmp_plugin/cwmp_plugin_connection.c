@@ -76,6 +76,8 @@
 #include <amxm/amxm.h>
 #include "cwmp_plugin.h"
 
+#include <amxa/amxa_merger.h>
+
 // NI_MAXHOST normally defined in netdb.h but if it's not defined we redefine here
 #ifndef NI_MAXHOST
     #define NI_MAXHOST 1025
@@ -492,48 +494,15 @@ void cwmpd_proc_stopped(UNUSED const char* const event_name,
 
 static int build_cwmpd_proc_args(amxc_array_t* cmd, UNUSED amxc_var_t* settings) {
     SAH_TRACEZ_NOTICE(ME, "preparing cwmpd");
-
-    amxc_array_init(cmd, 4);
-    amxc_string_t adapter_opt;
-    amxc_string_init(&adapter_opt, 0);
-    // cwmpd cache file name
-    amxc_string_t cache_opt;
-    amxc_string_init(&cache_opt, 0);
-    // cwmpd trustedCA
-    amxc_string_t trustedCA_opt;
-    amxc_string_init(&trustedCA_opt, 0);
-    // pid file
-    amxc_string_t pid_file_opt;
-    amxc_string_init(&pid_file_opt, 0);
-
-    // trace file
-    amxc_string_t trace_level;
-    amxc_string_init(&trace_level, 0);
-
-    amxc_var_t* tr069_config = amxc_var_get_key(cwmp_plugin_get_config(), "tr069-service", AMXC_VAR_FLAG_DEFAULT);
-    amxc_var_t* trace = amxc_var_get_key(cwmp_plugin_get_config(), "sahtrace", AMXC_VAR_FLAG_DEFAULT);
-    amxc_var_dump(tr069_config, 0);
-    amxc_string_setf(&adapter_opt, "-a%s", GETP_CHAR(tr069_config, "cwmpd_adapter_path"));
-    amxc_string_setf(&cache_opt, "-q%s", GETP_CHAR(tr069_config, "cwmpd_cache_file"));
-    amxc_string_setf(&trustedCA_opt, "-t%s", GETP_CHAR(tr069_config, "cwmpd_certs_file"));
-    amxc_string_setf(&pid_file_opt, "-p%s", GETP_CHAR(tr069_config, "cwmpd_pid_file"));
-    amxc_string_setf(&trace_level, "-s%d", GET_UINT32(trace, "level"));
-
+    amxc_array_init(cmd, 2);
+    amxc_string_t odl_config_opt;
+    amxc_string_init(&odl_config_opt, 0);
     amxc_array_append_data(cmd, strdup("cwmpd"));
-    amxc_array_append_data(cmd, strdup(amxc_string_get(&adapter_opt, 0)));
-    amxc_array_append_data(cmd, strdup(amxc_string_get(&trace_level, 0)));
-    amxc_array_append_data(cmd, strdup(amxc_string_get(&cache_opt, 0)));
-    amxc_array_append_data(cmd, strdup(amxc_string_get(&trustedCA_opt, 0)));
-    amxc_array_append_data(cmd, strdup(amxc_string_get(&pid_file_opt, 0)));
-
-    //always keep this at last
+    amxc_string_setf(&odl_config_opt, "-c%s", GETP_CHAR(cwmp_plugin_get_config(), "odl_config"));
+    amxc_array_append_data(cmd, strdup(amxc_string_get(&odl_config_opt, 0)));
     amxc_array_append_data(cmd, strdup("-D"));
     //clean up
-    amxc_string_clean(&adapter_opt);
-    amxc_string_clean(&trace_level);
-    amxc_string_clean(&cache_opt);
-    amxc_string_clean(&trustedCA_opt);
-    amxc_string_clean(&pid_file_opt);
+    amxc_string_clean(&odl_config_opt);
     return 0;
 }
 
