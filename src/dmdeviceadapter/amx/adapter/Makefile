@@ -9,7 +9,12 @@ OUTPUT_DIR = $(ROOT)/output
 # build destination directories
 OBJDIR = $(ROOT)/output/$(MACHINE)/$(COMPONENT)
 
-SRCDIR = $(realpath ./)
+ifeq ($(COVERAGE), y)
+	SRCDIR = $(realpath ./)
+else
+	SRCDIR = ./
+endif
+
 INCDIR_PRIV = $(ROOT)/include_priv -I$(ROOT)/libs/include_priv
 # files
 SOURCES = $(wildcard $(SRCDIR)/*.c)

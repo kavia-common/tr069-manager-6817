@@ -238,7 +238,7 @@ void _updateConnectionRequestURL(UNUSED const char* const sig_name,
         if(!assembleConnectionRequestURL(conn_request, url, host, port)) {
             goto clean;
         }
-        amxd_object_set_cstring_t(management_server, "ConnectionRequestURL", url->buffer);
+        transac_new_connection_request_url(url);
         if(cwmpd_proc) {
             close_cwmpd_listening_port();
             open_cwmpd_listening_port();
