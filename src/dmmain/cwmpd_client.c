@@ -66,6 +66,7 @@
 #include <dmcom/dm_com.h>
 #include "dmmain/cwmpd.h"
 #include <dmengine/DM_ENG_RPCInterface.h>
+#include <dmcom/dm_com_digest.h>
 #include <stdlib.h>
 
 #include <ares.h>
@@ -89,8 +90,7 @@ static const unsigned char EMPTY_USTR[] = "";
 
 typedef enum auth_e {
     auth_basic = 0,
-    //auth_digest_SAH256, //not to be supported (required by the RFC?)
-    auth_digest_MD5,
+    auth_digest,
     auth_unsupported,
     auth_none
 } auth_t;
@@ -195,14 +195,46 @@ static void cwmp_client_parse_session_cookie(char* cookies) {
 }
 
 /*generate Basic auth data*/
-static cwmp_status_t cwmp_client_auth_basic() {
+static char* cwmp_client_auth_basic(const char* username, const char* passwd) {
+    char* credentials = NULL;
+    char* result = NULL;
+    int len = strlen(username) + strlen(passwd);
+    int hdr_size = 6 + ((4 * (len + 2)) / 3) + 2;
+
+    credentials = calloc(1, (len + 1) * sizeof(char));
+    if(!credentials) {
+        goto stop;
+    }
+
+    result = calloc(1, hdr_size * sizeof(char));
+    if(!result) {
+        goto stop;
+    }
+
+    sprintf(result, "Basic ");
+    sprintf(credentials, "%s:%s", username, passwd);
+
+    //base64 encode
+    if(lws_b64_encode_string(credentials,
+                             len,
+                             result + 6,
+                             hdr_size - 6) < 0) {
+        SAH_TRACEZ_ERROR("CWMPD", "Failed to encode user/passwd to base64 %s", result);
+        cwmp_free(&result);
+        goto stop;
+    }
+    result[hdr_size - 1] = '\0';
+
+stop:
+    cwmp_free(&credentials);
+    return result;
+}
+
+/* generate authentication headers */
+static cwmp_status_t cwmp_client_gen_auth_hdr(auth_t type, char* auth_d) {
     cwmp_status_t ret = cwmp_status_ko;
     char* username = NULL;
     char* passwd = NULL;
-    char* credentials = NULL;
-    int len = 0;
-    int auth_hdr_size = 0;
-
 
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM,
                                        DM_ENG_USERNAME,
@@ -216,52 +248,23 @@ static cwmp_status_t cwmp_client_auth_basic() {
         SAH_TRACEZ_ERROR("CWMPD", "failed to fetch acs password");
         goto stop;
     }
-    len = strlen(username) + strlen(passwd);
-    //generate credentials
-    credentials = malloc(len + 1);
-    if(!credentials) {
-        goto stop;
-    }
-
-    auth_hdr_size = 6 + ((4 * (len + 1)) / 3) + 1;
-    auth_hdr = malloc(auth_hdr_size * sizeof(char));
-    if(!auth_hdr) {
-        goto stop;
-    }
-
-    credentials[len] = '\0';
-    sprintf(auth_hdr, "Basic ");
-    sprintf(credentials, "%s:%s", username, passwd);
-    //base64 encode
-    if(lws_b64_encode_string(credentials,
-                             len,
-                             auth_hdr + 6,
-                             auth_hdr_size - 6) < 0) {
-        SAH_TRACEZ_ERROR("CWMPD", "Failed to encode user/passwd to base64");
-        cwmp_free(&auth_hdr);
-        goto stop;
-    }
-    auth_hdr[auth_hdr_size - 1] = '\0';
-    ret = cwmp_status_ok;
-
-stop:
-    cwmp_free(&username);
-    cwmp_free(&passwd);
-    cwmp_free(&credentials);
-    return ret;
-}
-
-/* generate authentication headers */
-static cwmp_status_t cwmp_client_gen_auth_hdr(auth_t type, char* auth_d) {
-    cwmp_status_t ret = cwmp_status_ko;
+    cwmp_free(&auth_hdr);
 
     if(type == auth_basic) {
-        ret = cwmp_client_auth_basic();
+        auth_hdr = cwmp_client_auth_basic(username, passwd);
+    } else if(type == auth_digest) {
+        auth_hdr = DM_COM_GenerateDigestResponse_MD5(auth_d, acs_server_path, "POST", username, passwd);
     } else {
-        SAH_TRACEZ_ERROR("CWMPD", "Acs requested unsupported auth method [%s]", auth_d);
+        SAH_TRACEZ_ERROR("CWMPD", "ACS requested an unsupported auth method [%s]", auth_d);
         ret = cwmp_status_ko;
     }
 
+    if(auth_hdr) {
+        ret = cwmp_status_ok;
+    }
+stop:
+    cwmp_free(&username);
+    cwmp_free(&passwd);
     return ret;
 }
 
@@ -340,8 +343,8 @@ static int cwmp_client_http_callback(struct lws* wsi, enum lws_callback_reasons 
             cwmp_free(&pending_msg);
         } else if(http_status == HTTP_STATUS_UNAUTHORIZED) {
             //get the WWW-Authenticate headers
-            char auth_d[1024];
-            memset(auth_d, 0, 1024);
+            char auth_d[512];
+            memset(auth_d, 0x00, 512);
             auth_type = auth_unsupported;
 
             int auth_len = lws_hdr_total_length(wsi, WSI_TOKEN_HTTP_WWW_AUTHENTICATE);
@@ -353,6 +356,8 @@ static int cwmp_client_http_callback(struct lws* wsi, enum lws_callback_reasons 
             } else {
                 if(strstr(auth_d, "Basic")) {//for now only basic is supported
                     auth_type = auth_basic;
+                } else if(strstr(auth_d, "Digest")) {
+                    auth_type = auth_digest;
                 }
 
                 if(cwmp_client_gen_auth_hdr(auth_type, auth_d) != cwmp_status_ok) {
@@ -537,7 +542,7 @@ static int cwmp_client_http_callback(struct lws* wsi, enum lws_callback_reasons 
                                                         0,
                                                         cwmp_client_auth_retry);
             } else {
-                SAH_TRACEZ_INFO("CWMPD", "Authentication requested is not supported");
+                SAH_TRACEZ_ERROR("CWMPD", "Authentication requested is not supported");
                 _closeACSSession(false);
             }
         } else if(http_status != HTTP_OK) {
