@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.16.1 - 2022-03-29(14:58:53 +0000)
+
+### Fixes
+
+- Shutdown Notif interface when exit, Fix errors
+
 ## Release v1.16.0 - 2022-03-29(11:27:46 +0000)
 
 ### New
