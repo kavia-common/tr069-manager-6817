@@ -446,7 +446,7 @@ static int cwmp_client_http_callback(struct lws* wsi, enum lws_callback_reasons 
             // check if we have a soap message
             if(strstr(rcv_buf, DM_COM_ENV_TAG)) {
                 DM_SoapXml SoapMsg;
-                DM_HttpCheckNamespace(rcv_buf, len);
+                DM_HttpCheckNamespace(rcv_buf, rcv_buf_len);
                 DM_InitSoapMsgReceived(&SoapMsg);
                 if(DM_OK == DM_AnalyseSoapMessage(&SoapMsg, rcv_buf, TYPE_ACS, false)) {
                     DM_ParseSoapEnveloppe(SoapMsg.pBody, SoapMsg.pSoapID, SoapMsg.nHoldRequest);
@@ -706,7 +706,17 @@ static cwmp_status_t cwmp_client_parse_url() {
     }
 
     acs_server_host = strdup(host);
-    acs_server_path = strdup(path);
+
+    if(path) {
+        if(*path != '/') {
+            //insert "/" in the front of path lws remove it by default
+            acs_server_path = calloc(1, sizeof(char) * (strlen(path) + 2));
+            sprintf(acs_server_path, "/%s", path);
+        } else {
+            acs_server_path = strdup(path);
+        }
+    }
+
     acs_server_port = port;
     acs_server_scheme = strdup(scheme);
 

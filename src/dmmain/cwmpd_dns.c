@@ -503,6 +503,7 @@ cwmp_status_t cwmp_dns_resolve(bool send_boot_strap) {
     }
 
     if(is_ipaddr(host)) {
+        amxc_llist_clean(&ainfo_list, ainfo_list_clean);//clean old ips
         addr_info_t* new_addrinfo = (addr_info_t*) calloc(1, sizeof(addr_info_t));
         new_addrinfo->ip = strdup(host);
         new_addrinfo->ttl = 0;
@@ -579,9 +580,7 @@ void cwmp_dns_getRandomIP(char** ip) {
     if((ainfo_count <= 0) && (dns_clean_timer == NULL)) {
         //No DNS cache, start a new DNS query
         cwmp_dns_resolve(false);
-    }
-
-    if(ainfo_count > 0) {
+    } else {
         // the CPE SHOULD randomly choose an IP address from the list. When the CPE is unable to reach the ACS,
         // it SHOULD randomly select a different IP address from the list and attempt to contact the ACS at the
         // new IP address. This behavior ensures that CPEs will balance their requests between different ACSs
@@ -613,6 +612,7 @@ void cwmp_dns_getRandomIP(char** ip) {
         random_ip = amxc_llist_it_get_data(addr, addr_info_t, it);
         if(!addr || !random_ip) {
             SAH_TRACEZ_ERROR("CWMPD", "Failed to get new ACS IP");
+            return;
         }
         SAH_TRACEZ_INFO("CWMPD", "trying ACS ip [%s]", random_ip->ip);
         *ip = strdup(random_ip->ip);

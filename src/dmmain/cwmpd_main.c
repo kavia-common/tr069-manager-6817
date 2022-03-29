@@ -265,6 +265,7 @@ static cwmp_status_t cwmp_app_clean() {
         SAH_TRACEZ_ERROR("CWMPD", "DNS cleanup failed");
         status = cwmp_status_ko;
     }
+    DM_COM_STOP();
     DM_ENG_Device_Unload();
 
     return status;
