@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.16.2 - 2022-03-30(08:43:37 +0000)
+
+### Fixes
+
+- Notify cwmpd when connectionRequestURL is modified
+
 ## Release v1.16.1 - 2022-03-29(14:58:53 +0000)
 
 ### Fixes
