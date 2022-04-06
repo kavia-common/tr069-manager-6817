@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.16.3 - 2022-04-06(13:48:25 +0000)
+
+### Fixes
+
+- Fix SIGFPE when DNS resolution fail
+
 ## Release v1.16.2 - 2022-03-30(08:43:37 +0000)
 
 ### Fixes
