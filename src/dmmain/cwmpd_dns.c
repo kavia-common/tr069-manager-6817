@@ -577,9 +577,11 @@ cwmp_status_t cwmp_dns_stop() {
 
 void cwmp_dns_getRandomIP(char** ip) {
 
-    if((ainfo_count <= 0) && (dns_clean_timer == NULL)) {
-        //No DNS cache, start a new DNS query
-        cwmp_dns_resolve(false);
+    if(ainfo_count <= 0) {
+        if(dns_clean_timer == NULL) {
+            //No DNS cache, start a new DNS query
+            cwmp_dns_resolve(false);
+        }
     } else {
         // the CPE SHOULD randomly choose an IP address from the list. When the CPE is unable to reach the ACS,
         // it SHOULD randomly select a different IP address from the list and attempt to contact the ACS at the
