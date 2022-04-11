@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.16.4 - 2022-04-11(15:35:03 +0000)
+
+### Fixes
+
+- Gitlab pipeline: complexity-check warnings
+
 ## Release v1.16.3 - 2022-04-06(13:48:25 +0000)
 
 ### Fixes
