@@ -88,11 +88,11 @@
 #define CFG_PID_FILE "/var/run/cwmpd.pid"
 #endif
 
-application_t cwmp_app;// app instance
-amxb_bus_ctx_t* sys_bus_ctx = NULL;
-amxb_bus_ctx_t* acs_bus_ctx = NULL;
-amxo_parser_t parser;
-amxd_object_t* root = NULL;
+static application_t cwmp_app;// app instance
+static amxb_bus_ctx_t* sys_bus_ctx = NULL;
+static amxb_bus_ctx_t* acs_bus_ctx = NULL;
+static amxo_parser_t parser;
+static amxd_object_t* root = NULL;
 
 static void cwmp_app_handleSignal(int signal) {
     SAH_TRACEZ_WARNING("CWMPD", "handling signal %d", signal);
@@ -226,9 +226,6 @@ application_t cwmp_app_getconf(void) {
 }
 
 static cwmp_status_t cwmp_app_http_server_restart() {
-    // Since lws dosen't support dynamic vhost creation/deletion so we
-    // need to destroy the whole server context and then create a new one
-
     /* Stop http Server */
     if(cwmp_server_stop() != cwmp_status_ok) {
         SAH_TRACEZ_WARNING("CWMPD", "failed to stop HTTP server");
@@ -305,20 +302,16 @@ int cwmp_app_engineEventHandler(const char* eventType) {
     return DM_ENG_COMPLETED;
 }
 
-void init_sahtrace() {
-    sahTraceOpen("cwmpd", cwmp_app.traceType);
-    sahTraceSetLevel(cwmp_app.traceLevel);
-}
 
-int main(int argc, char* argv[]) {
-    int rc = 1;
-
+static cwmp_status_t cwmp_app_settings(int argc, char** argv) {
+    cwmp_status_t rc = cwmp_status_ko;
     signal(SIGINT, cwmp_app_handleSignal);
     signal(SIGTERM, cwmp_app_handleSignal);
 
     /* Configure APP*/
     cwmp_app_configureDefaults();
-    init_sahtrace();
+    sahTraceOpen("cwmpd", cwmp_app.traceType);
+    sahTraceSetLevel(cwmp_app.traceLevel);
     cwmp_app_configureOptions(argc, argv);
 
     if(cwmp_status_ko == cwmp_app_parse_config()) {
@@ -326,7 +319,19 @@ int main(int argc, char* argv[]) {
         amxo_parser_clean(&parser);
         return rc;
     }
+    /* Daemonize if needed */
+    if(cwmp_app.daemonize) {
+        if(daemon(0, 0) < 0) {
+            SAH_TRACEZ_ERROR("CWMPD", "unable to daemonize: %s", strerror(errno));
+            return rc;
+        }
+    }
+    rc = cwmp_status_ok;
+    return rc;
+}
 
+static cwmp_status_t cwmp_app_init_dmengine() {
+    cwmp_status_t rc = cwmp_status_ko;
     if(!DM_ENG_Device_Load(cwmp_app.da_path)) {
         SAH_TRACEZ_ERROR("CWMPD", "Failed to load adapter plugin");
         return rc;
@@ -342,15 +347,12 @@ int main(int argc, char* argv[]) {
         SAH_TRACEZ_ERROR("CWMPD", "Failed to initialize evlp");
         return rc;
     }
+    rc = cwmp_status_ok;
+    return rc;
+}
 
-    /* Daemonize if needed */
-    if(cwmp_app.daemonize) {
-        if(daemon(0, 0) < 0) {
-            SAH_TRACEZ_ERROR("CWMPD", "unable to daemonize: %s", strerror(errno));
-            goto error;
-        }
-    }
-
+static cwmp_status_t cwmp_app_init_services() {
+    cwmp_status_t rc = cwmp_status_ko;
     /* Init http Server */
     if(cwmp_server_init() != cwmp_status_ok) {
         SAH_TRACEZ_ERROR("CWMPD", "Failed to initialize HTTP server");
@@ -379,13 +381,20 @@ int main(int argc, char* argv[]) {
         SAH_TRACEZ_ERROR("CWMPD", "HTTP client initialization failed");
         goto error;
     }
+    rc = cwmp_status_ok;
+error:
+    return rc;
+}
+
+static cwmp_status_t cwmp_app_enable_notifications() {
+    cwmp_status_t rc = cwmp_status_ok;
 
     if(DM_COM_INIT(cwmp_timer_start,
                    cwmp_timer_stop,
                    cwmp_timer_remainingTime,
                    cwmp_app_engineEventHandler) != 0) {
         SAH_TRACEZ_ERROR("CWMPD", "Failed to initialize DM_COM");
-        return rc;
+        rc = cwmp_status_ko;
     }
 
     /* Start the main loop */
@@ -394,6 +403,27 @@ int main(int argc, char* argv[]) {
     /* Start the main event loop and wait for events*/
     if(cwmp_evlp_start() != cwmp_status_ok) {
         SAH_TRACEZ_ERROR("CWMPD", "eventloop start failed going to exit");
+        rc = cwmp_status_ko;
+    }
+    return rc;
+}
+
+int main(int argc, char* argv[]) {
+    int rc = 1;
+
+    if(cwmp_status_ko == cwmp_app_settings(argc, argv)) {
+        return rc;
+    }
+
+    if(cwmp_status_ko == cwmp_app_init_dmengine()) {
+        return rc;
+    }
+
+    if(cwmp_app_init_services() != cwmp_status_ok) {
+        goto error;
+    }
+
+    if(cwmp_app_enable_notifications() != cwmp_status_ok) {
         goto error;
     }
 

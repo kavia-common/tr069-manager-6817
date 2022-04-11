@@ -87,13 +87,21 @@ void cwmp_server_maxConnectionsAdd(void) {
     amxc_llist_append(&connection_timestamp_list, &item->it);
 }
 
+// 3.2.2: The CPE SHOULD restrict the number of Connection Requests it accepts during a given period of
+//        time in order to further reduce the possibility of a denial of service attack. If the CPE chooses to reject
+//        a Connection Request for this reason, the CPE MUST respond to that Connection Request with an
+//        HTTP 503 status code (Service Unavailable). In this case, the CPE SHOULD NOT include the HTTP
+//        Retry-After header in the response.
 bool cwmp_server_maxConnectionsReached(void) {
     time_t now;
     time(&now);
-
-    // get the DM_ENG_MAXCONNECTIONREQUEST
     char* maxconnectionrequest = NULL;
     unsigned int mc = DEFAULT_MAX_CONNECTIONREQUEST;
+    char* freqconnectionrequest = NULL;
+    unsigned int fc = DEFAULT_FREQ_CONNECTION_REQUEST;
+    amxc_llist_it_t* cur = NULL;
+    amxc_llist_it_t* next = NULL;
+
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_MAXCONNECTIONREQUEST, &maxconnectionrequest) != 0) {
         SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the MaxConnectionRequest");
     }
@@ -102,9 +110,6 @@ bool cwmp_server_maxConnectionsReached(void) {
         free(maxconnectionrequest);
     }
 
-    // get the DM_ENG_FREQCONNECTIONREQUEST
-    char* freqconnectionrequest = NULL;
-    unsigned int fc = DEFAULT_FREQ_CONNECTION_REQUEST;
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_FREQCONNECTIONREQUEST, &freqconnectionrequest) != 0) {
         SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the FreqConnectionRequest");
     }
@@ -113,9 +118,7 @@ bool cwmp_server_maxConnectionsReached(void) {
         free(freqconnectionrequest);
     }
 
-    // remove all outdated and invalid timestamps (in case the system clock has been changed)
-    amxc_llist_it_t* cur = amxc_llist_get_first(&connection_timestamp_list);
-    amxc_llist_it_t* next = NULL;
+    cur = amxc_llist_get_first(&connection_timestamp_list);
     while(cur != NULL) {
         next = amxc_llist_it_get_next(cur);
         time_list_item_t* value = amxc_llist_it_get_data(cur, time_list_item_t, it);
@@ -145,6 +148,5 @@ void cwmp_server_maxConnectionsCleanup(void) {
         free(value);
         cur = next;
     }
-
     amxc_llist_clean(&connection_timestamp_list, NULL);
 }

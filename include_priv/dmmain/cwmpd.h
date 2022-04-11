@@ -119,8 +119,6 @@ cwmp_status_t cwmp_client_init(void);
 
 cwmp_status_t cwmp_client_stop(void);
 
-void cwmp_client_dns_resolved(struct ares_addrinfo* dns_result);
-
 void cwmp_client_clear_ACSIP();
 
 // This routine is used to check the connection acceptance policy
@@ -157,6 +155,6 @@ cwmp_status_t cwmp_dns_resolve(bool send_boot_strap);
 
 cwmp_status_t cwmp_dns_stop();
 
-void cwmp_dns_getRandomIP(char** ip);
+void cwmp_dns_get_random_ip(char** ip);
 
 #endif // !_CWMPD_H_

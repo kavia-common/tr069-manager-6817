@@ -110,7 +110,7 @@ static void set_subscription_new_value(const char* path, const char* value) {
     amxc_var_set_type(&values, AMXC_VAR_ID_HTABLE);
     amxc_var_add_key(cstring_t, &values, "Value", value);
     if((amx_ret = amxb_set(amx->bus_ctx, amxc_string_get(&expr_path, 0), &values, &ret, 0)) != AMXB_STATUS_OK) {
-        SAH_TRACEZ_WARNING("DM_DA SUBSCRIPTION", "Couldn't set subscription new value (%d)", amx_ret);
+        SAH_TRACEZ_WARNING("DM_DA", "Couldn't set subscription new value (%d)", amx_ret);
     }
     amxc_var_clean(&values);
     amxc_var_clean(&ret);
@@ -343,7 +343,7 @@ static amxc_var_t* get_subscription_value(const char* path) {
 
     amxc_var_new(&ret);
     if((amx_ret = amxb_get(amx->bus_ctx, path, 0, ret, 0)) != AMXB_STATUS_OK) {
-        SAH_TRACEZ_WARNING("DM_DA SUBSCRIPTION", "Couldn't get subscription value (%d)", amx_ret);
+        SAH_TRACEZ_WARNING("DM_DA", "Couldn't get subscription value (%d)", amx_ret);
         goto exit;
     }
     if((tmp = GETI_ARG(ret, 0)) && (tmp = GETI_ARG(tmp, 0)) && (tmp = GETI_ARG(tmp, 0))) {
@@ -370,7 +370,7 @@ static void add_subscription_to_dm(const char* path, DM_ENG_NotificationMode mod
         amxc_var_delete(&value);
     }
     if((amx_ret = amxb_add(amx->bus_ctx, "ManagementServer.Subscription.", 0, NULL, &sub, &ret, 1)) != AMXB_STATUS_OK) {
-        SAH_TRACEZ_ERROR("DM_DA SUBSCRIPTION", "Couldn't add a new subscription (%d)", amx_ret);
+        SAH_TRACEZ_ERROR("DM_DA", "Couldn't add a new subscription (%d)", amx_ret);
     }
     amxc_var_clean(&sub);
     amxc_var_clean(&ret);
@@ -387,7 +387,7 @@ static void remove_subscription_from_dm(const char* subscriptionPath) {
     amxc_string_init(&expr_path, 0);
     amxc_string_setf(&expr_path, "ManagementServer.Subscription.[ Path == '%s']", internalPath);
     if((amx_ret = amxb_del(amx->bus_ctx, amxc_string_get(&expr_path, 0), 0, NULL, &ret, 0)) != AMXB_STATUS_OK) {
-        SAH_TRACEZ_WARNING("DM_DA SUBSCRIPTION", "Couldn't delete subscription %s (%d)", internalPath, amx_ret);
+        SAH_TRACEZ_WARNING("DM_DA", "Couldn't delete subscription %s (%d)", internalPath, amx_ret);
     }
     amxc_string_clean(&expr_path);
     amxc_var_clean(&ret);

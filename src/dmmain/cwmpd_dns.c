@@ -101,9 +101,9 @@ static int dns_ttl_val = 0;
 
 static amxp_timer_t* dns_clean_timer = NULL;
 // list of ACS addresses with ttl.
-amxc_llist_t ainfo_list;
-int ainfo_count = 0;
-int last_ip_index = -1;
+static amxc_llist_t ainfo_list;
+static int ainfo_count = 0;
+static int last_ip_index = -1;
 
 static bool is_ipaddr(const char* ip) {
     struct in6_addr result;
@@ -207,17 +207,15 @@ static void cwmp_dns_update_dm() {
     amxc_string_clean(&addr_list_str);
 }
 
-/*schedule next dns query*/
+//3.1 ACS Discovery
+//...........
+//The CPE SHOULD continue to perform DNS queries as normal, but SHOULD continue using the same IP address
+//for as long as it can contact the ACS and for as long as the list of IP addresses returned by the DNS does
+//not change. The CPE SHOULD select a new IP address whenever the list of IP addresses changes or when
+//it cannot contact the ACS. This provides an opportunity for service providers to reconfigure their network.
 static void cwmp_dns_schedule() {
-    //3.1 ACS Discovery
-    //...........
-    //The CPE SHOULD continue to perform DNS queries as normal, but SHOULD continue using the same IP address
-    //for as long as it can contact the ACS and for as long as the list of IP addresses returned by the DNS does
-    //not change. The CPE SHOULD select a new IP address whenever the list of IP addresses changes or when
-    //it cannot contact the ACS. This provides an opportunity for service providers to reconfigure their network.
-
     if((dns_ttl_val <= 0) || (dns_ttl_val == INT_MAX)) {
-        //TTL=0 mean the IP will never expire, but we will keep performing
+        //TTL=0 means the IP will never expire, but we will keep performing
         //DNS resolution each periodicinform interval, in case network configuration
         //has changed
         dns_ttl_val = 300;//default to 300 sec
@@ -374,8 +372,7 @@ static void cwmp_dns_ares_sock_cb(UNUSED void* data, int fd, int read, int write
     }
 
     ev_pair->fd_event = event_new(cwmp_evlp_get(), fd, events,
-                                  cwmp_dns_fd_event_cb,
-                                  (void*) resolver);
+                                  cwmp_dns_fd_event_cb, (void*) resolver);
 
     if(!ev_pair->fd_event) {
         SAH_TRACEZ_ERROR("CWMPD", "event_new failed");
@@ -421,19 +418,33 @@ static void cwmp_dns_resolve_cb(void* data, int status, int timeouts, struct are
     }
 }
 
-static resolver_context_t* cwmp_dns_resolver_create() {
+static int cwmp_dns_get_aifamily() {
     int ai_family = AF_UNSPEC;
     char* ai_family_str = NULL;
+    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM,
+                                       DM_ENG_ACSADDRFAMILY,
+                                       &ai_family_str) == 0) {
+        if(ai_family_str) {
+            if(atoi(ai_family_str) == 4) {
+                ai_family = AF_INET;
+            } else if(atoi(ai_family_str) == 6) {
+                ai_family = AF_INET6;
+            }
+            free(ai_family_str);
+        }
+    }
+    return ai_family;
+}
+
+static resolver_context_t* cwmp_dns_resolver_create() {
     int optmask = 0;
     int status = 0;
-    resolver_context_t* resolver_ctx = malloc(sizeof(resolver_context_t));
+    resolver_context_t* resolver_ctx = calloc(1, sizeof(resolver_context_t));
 
     if(!resolver_ctx) {
         SAH_TRACEZ_ERROR("CWMPD", "malloc failed, cannot create a new dns resolver");
         return NULL;
     }
-    //init resolver
-    memset(resolver_ctx, 0, sizeof(resolver_context_t));
     amxc_llist_init(&resolver_ctx->event_list);
 
     //cares init options
@@ -454,23 +465,56 @@ static resolver_context_t* cwmp_dns_resolver_create() {
     }
 
     //setup hints
-    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM,
-                                       DM_ENG_ACSADDRFAMILY,
-                                       &ai_family_str) == 0) {
-        if(ai_family_str) {
-            if(atoi(ai_family_str) == 4) {
-                ai_family = AF_INET;
-            } else if(atoi(ai_family_str) == 6) {
-                ai_family = AF_INET6;
-            }
-            free(ai_family_str);
-        }
-    }
-    resolver_ctx->hints.ai_family = ai_family;
+    resolver_ctx->hints.ai_family = cwmp_dns_get_aifamily();
     resolver_ctx->hints.ai_socktype = SOCK_DGRAM;
     resolver_ctx->hints.ai_flags = ARES_AI_CANONNAME | ARES_AI_ENVHOSTS | ARES_AI_NOSORT;
 
     return resolver_ctx;
+}
+
+static const char* cwmp_dns_get_host(char* acsurl) {
+    const char* host = NULL;
+    const char* scheme = NULL;
+    int port = 0;
+    const char* path = NULL;
+
+    if(lws_parse_uri(acsurl, &scheme, &host, &port, &path)) {
+        SAH_TRACEZ_INFO("CWMPD", "Couldn't parse URL (%s)", acsurl);
+        host = NULL;
+    }
+    return (host);
+}
+
+static void cwmp_dns_set_static_ip(const char* host) {
+    addr_info_t* new_addrinfo = (addr_info_t*) calloc(1, sizeof(addr_info_t));
+
+    new_addrinfo->ip = strdup(host);
+    new_addrinfo->ttl = 0;
+    amxc_llist_clean(&ainfo_list, ainfo_list_clean);//clean old ips
+    amxc_llist_it_init(&new_addrinfo->it);
+    amxc_llist_append(&ainfo_list, &new_addrinfo->it);
+    ainfo_count++;
+
+    if(DM_ENG_SetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ACSIPLIST, host) != 0) {
+        SAH_TRACEZ_ERROR("CWMPD", "ACSIP : failed to update data model");
+    }
+}
+
+static cwmp_status_t cwmp_dns_ares_resolution(bool send_boot_strap, const char* host) {
+    resolver_context_t* resolver = cwmp_dns_resolver_create();
+    if(!resolver) {
+        return cwmp_status_ko;
+    }
+    //keep track of the url changed event
+    resolver->send_boot_strap = send_boot_strap;
+    cwmp_dns_resolver_settimeout(resolver, 10);
+    // initiate a new DNS query
+    ares_getaddrinfo(resolver->ares_chann,
+                     host, NULL,
+                     &resolver->hints,
+                     cwmp_dns_resolve_cb,
+                     (void*) resolver);
+    return cwmp_status_ok;
 }
 
 /* start dns resolution for ACS host */
@@ -478,62 +522,33 @@ cwmp_status_t cwmp_dns_resolve(bool send_boot_strap) {
     cwmp_status_t ret = cwmp_status_ko;
     char* acsurl = NULL;
     const char* host = NULL;
-    const char* scheme = NULL;
-    int port = 0;
-    const char* path = NULL;
 
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_URL, &acsurl) != 0) {
         SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the ACS SERVER URL");
         goto error;
     }
-
-    if(lws_parse_uri(acsurl, &scheme, &host, &port, &path)) {
-        SAH_TRACEZ_ERROR("CWMPD", "Couldn't parse URL (%s)", acsurl);
-        goto error;
-    }
-
+    host = cwmp_dns_get_host(acsurl);
     if(!host) {
         SAH_TRACEZ_ERROR("CWMPD", "ACS HOST is NULL, exit");
         goto error;
     }
-
     //stop any scheduled DNS
     if(amxp_timer_remaining_time(dns_ttl_timer) > 0) {
         amxp_timer_stop(dns_ttl_timer);
     }
 
     if(is_ipaddr(host)) {
-        amxc_llist_clean(&ainfo_list, ainfo_list_clean);//clean old ips
-        addr_info_t* new_addrinfo = (addr_info_t*) calloc(1, sizeof(addr_info_t));
-        new_addrinfo->ip = strdup(host);
-        new_addrinfo->ttl = 0;
-        amxc_llist_it_init(&new_addrinfo->it);
-        amxc_llist_append(&ainfo_list, &new_addrinfo->it);
-        ainfo_count++;
-        if(DM_ENG_SetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ACSIPLIST, host) != 0) {
-            SAH_TRACEZ_ERROR("CWMPD", "ACSIP : failed to update data model");
-        }
+        cwmp_dns_set_static_ip(host);
         if(send_boot_strap) {
-            //URL chenged tell dmengine to send a bootstrap
+            //URL changed tell dmengine to send a bootstrap
             DM_ENG_InformMessageScheduler_bootstrapInform();
         }
     } else {
         SAH_TRACEZ_INFO("CWMPD", "Starting NEW DNS lookup [%s]", host);
-        resolver_context_t* resolver = cwmp_dns_resolver_create();
-
-        if(!resolver) {
+        if(cwmp_dns_ares_resolution(send_boot_strap, host) == cwmp_status_ko) {
+            SAH_TRACEZ_ERROR("CWMPD", "Failed to send DNS query");
             goto error;
         }
-        //keep track of the url changed event
-        resolver->send_boot_strap = send_boot_strap;
-
-        cwmp_dns_resolver_settimeout(resolver, 10);
-        // initiate a new DNS query
-        ares_getaddrinfo(resolver->ares_chann,
-                         host, NULL,
-                         &resolver->hints,
-                         cwmp_dns_resolve_cb,
-                         (void*) resolver);
     }
     ret = cwmp_status_ok;
 error:
@@ -575,7 +590,11 @@ cwmp_status_t cwmp_dns_stop() {
     return cwmp_status_ok;
 }
 
-void cwmp_dns_getRandomIP(char** ip) {
+// the CPE SHOULD randomly choose an IP address from the list. When the CPE is unable to reach the ACS,
+// it SHOULD randomly select a different IP address from the list and attempt to contact the ACS at the
+// new IP address. This behavior ensures that CPEs will balance their requests between different ACSs
+// if multiple IP addresses represent different ACSs.
+void cwmp_dns_get_random_ip(char** ip) {
 
     if(ainfo_count <= 0) {
         if(dns_clean_timer == NULL) {
@@ -583,26 +602,14 @@ void cwmp_dns_getRandomIP(char** ip) {
             cwmp_dns_resolve(false);
         }
     } else {
-        // the CPE SHOULD randomly choose an IP address from the list. When the CPE is unable to reach the ACS,
-        // it SHOULD randomly select a different IP address from the list and attempt to contact the ACS at the
-        // new IP address. This behavior ensures that CPEs will balance their requests between different ACSs
-        // if multiple IP addresses represent different ACSs.
         int count = 0;
         addr_info_t* random_ip = NULL;
         amxc_llist_it_t* addr = NULL;
         srand(time(0));
         int rand_ip = (rand() % ainfo_count);//stupid, but enought for our use case
         if((rand_ip == last_ip_index) && (ainfo_count > 1)) {
-            //-1
-            if((rand_ip + 1) >= ainfo_count) {
-                rand_ip -= 1;
-            } else {//+1
-                rand_ip += 1;
-            }
-
-            if(rand_ip < 0) {
-                rand_ip = 0;
-            }
+            rand_ip = ((rand_ip + 1) >= ainfo_count) ? (rand_ip - 1) : (rand_ip + 1);
+            rand_ip = (rand_ip < 0) ? 0 : rand_ip;
         }
         last_ip_index = rand_ip;
         //find a new IP

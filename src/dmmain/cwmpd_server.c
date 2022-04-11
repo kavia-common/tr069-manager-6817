@@ -78,14 +78,16 @@
 #include <dmcommon/DM_GlobalDefs.h>
 #include <dmcom/dm_com.h>
 
+// Size of the CPE URL
+#define CPE_URL_SIZE (16)
+
 extern dm_com_struct g_DmComData;
 
 amxc_string_t buffer;
 
 char* g_randomCpeUrl = NULL;
-static int httpCode = 0;
 
-struct lws_context_creation_info lws_server_ctx_info;
+static struct lws_context_creation_info lws_server_ctx_info;
 static struct lws_context* lws_server_ctx = NULL; /* server lws context */
 static struct lws_vhost* lws_server_vhost = NULL; /* server vhost */
 
@@ -120,9 +122,6 @@ static int server_getHWAddressFromIp(const char* ip, char* macbuf, size_t buflen
         struct ifreq* item = &ifr[i];
         struct sockaddr_in* sa = (struct sockaddr_in*) &item->ifr_addr;
         switch(sa->sin_family) {
-        case 0xFFFF:
-        case 0:
-            break;
         case AF_INET:
         case AF_INET6:
             if(inet_ntop(sa->sin_family, &sa->sin_addr, ipbuf, sizeof(ipbuf)) == NULL) {
@@ -139,16 +138,10 @@ static int server_getHWAddressFromIp(const char* ip, char* macbuf, size_t buflen
                 close(sock);
                 return 1;
             }
-            int rc = snprintf(macbuf, buflen, "%02x:%02x:%02x:%02x:%02x:%02x\n",
-                              (unsigned int) (unsigned char) item->ifr_hwaddr.sa_data[0],
-                              (unsigned int) (unsigned char) item->ifr_hwaddr.sa_data[1],
-                              (unsigned int) (unsigned char) item->ifr_hwaddr.sa_data[2],
-                              (unsigned int) (unsigned char) item->ifr_hwaddr.sa_data[3],
-                              (unsigned int) (unsigned char) item->ifr_hwaddr.sa_data[4],
-                              (unsigned int) (unsigned char) item->ifr_hwaddr.sa_data[5]);
-            if(rc < 0) {
-                SAH_TRACEZ_ERROR("CWMPD", "snprintf failed");
-            }
+            snprintf(macbuf, buflen, "%02hhx:%02hhx:%02hhx:%02hhx:%02x:%02hhx\n",
+                     item->ifr_hwaddr.sa_data[0], item->ifr_hwaddr.sa_data[1],
+                     item->ifr_hwaddr.sa_data[2], item->ifr_hwaddr.sa_data[3],
+                     item->ifr_hwaddr.sa_data[4], item->ifr_hwaddr.sa_data[5]);
         }
     }
     close(sock);
@@ -159,11 +152,10 @@ static char* server_generateMacBasedPath(const char* ip) {
     char token[] = "ABCDE67FGHqrtuvwSTU48VWabcdefIJKL39MNPQRghijkmnpxyz2";
     unsigned char nb_tokens = strlen(token);
     unsigned short rnd_idx = 59;
-    char* path = (char*) calloc(17, sizeof(char));
-    uint i;
-    char macAddress[40];
+    char* path = (char*) calloc(1, sizeof(char) * (CPE_URL_SIZE + 1));
+    char macAddress[40] = {0};
     char* seed = macAddress;
-    char tmp[40];
+    char tmp[40] = {0};
 
     // Use MACAddress as Connection Request Path
     memset(macAddress, 0, sizeof(macAddress));
@@ -171,23 +163,20 @@ static char* server_generateMacBasedPath(const char* ip) {
     sprintf(tmp, "%.2X:%.2X:%.2X:%.2X:%.2X:%.2X", macAddress[0], macAddress[1], macAddress[2], macAddress[3], macAddress[4], macAddress[5]);
     SAH_TRACEZ_INFO("CWMPD", "MACAddress: %s", tmp);
 
-    for(i = 0; i < (sizeof(path) - 1); i++) {
+    for(uint i = 0; i < CPE_URL_SIZE; i++) {
         if(!*seed) { // end of seed string reached, recommence from start
             seed = macAddress;
         }
         rnd_idx = (rnd_idx << 1) ^ *seed++;
         path[i] = token[rnd_idx % nb_tokens];
     }
-    path[i] = '\0';
     return path;
 }
 
-// Size of the CPE URL
-#define CPE_URL_SIZE (16)
-static int server_createURL() {
-    // Create the randomly chosen CPE URL (This URL is provided in the inform message
-    // and is used by the ACS to connect to the CPE HTTP Server). The Randomly Chosen
-    // URL must be used by the DM_ENGINE to build the inform message.
+// Create the randomly chosen CPE URL (This URL is provided in the inform message
+// and is used by the ACS to connect to the CPE HTTP Server). The Randomly Chosen
+// URL must be used by the DM_ENGINE to build the inform message.
+static int cwmp_server_create_url() {
     char* random_cpe_url = NULL;
     char* url_env = getenv("TR069_URL_PATH");
     if(url_env) {
@@ -228,85 +217,101 @@ static int server_createURL() {
         free(random_cpe_url);
         return -1;
     }
-
-    g_randomCpeUrl = (char*) malloc(CPE_URL_SIZE + 1);
-    strcpy(g_randomCpeUrl, random_cpe_url);
+    free(g_randomCpeUrl);
+    g_randomCpeUrl = strdup(random_cpe_url);
     SAH_TRACEZ_INFO("CWMPD", "CPE URL: %s", g_randomCpeUrl);
     free(random_cpe_url);
     return 0;
 }
 
-static int cwmp_server_handleRequest(struct lws* wsi, char* in, int len) {
-    unsigned char buf[LWS_PRE + 2048],
-        * start = &buf[LWS_PRE],
-        * p = start,
-        * end = &buf[sizeof(buf) - LWS_PRE - 1];
-    const char* requested_uri = (char*) in;
-    SAH_TRACEZ_INFO("CWMPD", "Handling request %s", requested_uri);
+// 3.2.2: The Connection Request MUST use an HTTP 1.1 GET to a specific URL designated by the CPE. The
+//URL value is available as read-only Parameter on the CPE. The path of this URL value SHOULD be
+//randomly generated by the CPE so that it is unique per CPE.
+static cwmp_status_t cwmp_server_validate_uri(struct lws* wsi, const char* requested_uri) {
 
-    if(len < 1) {
-        httpCode = HTTP_STATUS_BAD_REQUEST;
+    if(!lws_hdr_total_length(wsi, WSI_TOKEN_GET_URI) || !lws_hdr_total_length(wsi, WSI_TOKEN_HTTP)) {
+        return cwmp_status_ko;
     }
-
-    // 3.2.2: The CPE SHOULD restrict the number of Connection Requests it accepts during a given period of
-    //        time in order to further reduce the possibility of a denial of service attack. If the CPE chooses to reject
-    //        a Connection Request for this reason, the CPE MUST respond to that Connection Request with an
-    //        HTTP 503 status code (Service Unavailable). In this case, the CPE SHOULD NOT include the HTTP
-    //        Retry-After header in the response.
-    if(cwmp_server_maxConnectionsReached()) {
-        SAH_TRACEZ_WARNING("CWMPD", "Maximum number of connections reached return HTTP 503");
-        lws_return_http_status(wsi, HTTP_STATUS_SERVICE_UNAVAILABLE, NULL);
+    //+1 because we need to skip the initial slash
+    if(( requested_uri == NULL) || ( g_randomCpeUrl == NULL) || ( strcmp(requested_uri + 1, g_randomCpeUrl) != 0)) {
+        SAH_TRACEZ_ERROR("CWMPD", "Not a valid path (%s != %s)", requested_uri + 1, g_randomCpeUrl);
+        return cwmp_status_ko;
     }
-    cwmp_server_maxConnectionsAdd(); // add a new entry in the list
+    return cwmp_status_ok;
+}
 
-    // 3.2.2: If the CPE is already in a session with the ACS when it receives one or more Connection Requests, it
-    //        MUST NOT terminate that session prematurely as a result. The CPE MUST instead take one of the
-    //        following alternative actions:
-    //        (a)  Reject each Connection Request by responding with an HTTP 503 status code (Service
-    //             Unavailable). In this case, the CPE SHOULD NOT include the HTTP Retry-After header in the response.
-    //        (b)  Following the completion of the session, initiate exactly one new session (regardless of how many
-    //             Connection Requests had been received during the previous session) in which it includes the
-    //             “6 CONNECTION REQUEST” EventCode in the Inform. In this case, the CPE MUST initiate
-    //             the session immediately after the existing session is complete and all changes from that session
-    //             have been applied.
-    //       This requirement holds for Connection Requests received any time during the interval that the CPE
-    //       considers itself in a session, including the period in which the CPE is in the process of establishing the session.
-
+// 3.2.2: If the CPE is already in a session with the ACS when it receives one or more Connection Requests, it
+//        MUST NOT terminate that session prematurely as a result. The CPE MUST instead take one of the
+//        following alternative actions:
+//        (a)  Reject each Connection Request by responding with an HTTP 503 status code (Service
+//             Unavailable). In this case, the CPE SHOULD NOT include the HTTP Retry-After header in the response.
+//        (b)  Following the completion of the session, initiate exactly one new session (regardless of how many
+//             Connection Requests had been received during the previous session) in which it includes the
+//             “6 CONNECTION REQUEST” EventCode in the Inform. In this case, the CPE MUST initiate
+//             the session immediately after the existing session is complete and all changes from that session
+//             have been applied.
+//       This requirement holds for Connection Requests received any time during the interval that the CPE
+//       considers itself in a session, including the period in which the CPE is in the process of establishing the session.
+// 3.2.2: The CPE SHOULD restrict the number of Connection Requests it accepts during a given period of
+//        time in order to further reduce the possibility of a denial of service attack. If the CPE chooses to reject
+//        a Connection Request for this reason, the CPE MUST respond to that Connection Request with an
+//        HTTP 503 status code (Service Unavailable). In this case, the CPE SHOULD NOT include the HTTP
+//        Retry-After header in the response.
+static cwmp_status_t cwmp_server_check_availability() {
     if(g_DmComData.bSession == true) { // we implement action (a)
         SAH_TRACEZ_INFO("CWMPD", "Session is active, return HTTP 503");
-        httpCode = HTTP_SERVICE_UNAVAILABLE;
+        return cwmp_status_ko;
+    }
+    if(cwmp_server_maxConnectionsReached()) {
+        SAH_TRACEZ_WARNING("CWMPD", "Maximum number of connections reached return HTTP 503");
+        return cwmp_status_ko;
+    }
+    cwmp_server_maxConnectionsAdd(); // add a new entry in the list
+    return cwmp_status_ok;
+}
+
+static cwmp_status_t cwmp_server_reply_http_unauthaurized(struct lws* wsi) {
+    unsigned char buf[LWS_PRE + 1024];
+    unsigned char* start = &buf[LWS_PRE];
+    unsigned char* p = start;
+    unsigned char* end = &buf[sizeof(buf) - LWS_PRE - 1];
+
+    char* requestDigestMsg = _getRandomString();
+    if(lws_add_http_header_status(wsi, HTTP_STATUS_UNAUTHORIZED, &p, end)) {
+        return cwmp_status_ko;
     }
 
-    // 3.2.2: The Connection Request MUST use an HTTP 1.1 GET to a specific URL designated by the CPE. The
-    //        URL value is available as read-only Parameter on the CPE. The path of this URL value SHOULD be
-    //        randomly generated by the CPE so that it is unique per CPE.
-    if(!lws_hdr_total_length(wsi, WSI_TOKEN_GET_URI)
-       || !lws_hdr_total_length(wsi, WSI_TOKEN_HTTP)) {
-        httpCode = HTTP_STATUS_NOT_FOUND;
+    if(lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_WWW_AUTHENTICATE,
+                                    (const unsigned char*) requestDigestMsg,
+                                    strlen(requestDigestMsg),
+                                    &p, end)) {
+        return cwmp_status_ko;
     }
 
-    char* random_cpe_url;
-    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_CONNECTIONREQUESTPATH, &random_cpe_url) != 0) {
-        SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the ACS connection request path");
-        httpCode = HTTP_STATUS_NOT_FOUND;
+    if(lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_CONTENT_TYPE,
+                                    (const unsigned char*) "text/html", 9,
+                                    &p, end)) {
+        return cwmp_status_ko;
     }
 
-    if(( requested_uri == NULL) || ( random_cpe_url == NULL) || ( strcmp(requested_uri + 1, random_cpe_url) != 0)) { //+1 because we need to skip the initial slash
-        SAH_TRACEZ_ERROR("CWMPD", "Not a valid path (%s != %s)", requested_uri + 1, random_cpe_url);
-        httpCode = HTTP_STATUS_NOT_FOUND;
+    if(lws_finalize_write_http_header(wsi, start, &p, end)) {
+        return cwmp_status_ko;
     }
-    free(random_cpe_url);
+    DM_ENG_FREE(requestDigestMsg);
+    return cwmp_status_ok;
+}
 
-    // 3.2.2: The CPE MUST accept Connection Requests from any source that has the correct authentication parameters for the target CPE.
-    // OK: we do not check on the source address
+// 3.2.2: The CPE MUST accept Connection Requests from any source that has the correct authentication parameters for the target CPE.
+// OK: we do not check on the source address
 
-    // 3.2.2: The CPE MUST use digest-authentication to authenticate the ACS before proceeding—the CPE
-    //        MUST NOT initiate a connection to the ACS due to an unsuccessfully authenticated request.
-    // If this HTTP Message do not contain DIGEST Authentication data, send
-    // an authentication request.
+// 3.2.2: The CPE MUST use digest-authentication to authenticate the ACS before proceeding—the CPE
+//        MUST NOT initiate a connection to the ACS due to an unsuccessfully authenticated request.
+// If this HTTP Message do not contain DIGEST Authentication data, send
+// an authentication request.
+static cwmp_status_t cwmp_server_validate_authentication(struct lws* wsi, const char* requested_uri) {
+    cwmp_status_t ret = cwmp_status_ko;
     if(!lws_hdr_total_length(wsi, WSI_TOKEN_HTTP_AUTHORIZATION)) {
         SAH_TRACEZ_ERROR("CWMPD", "Received a request without authentication data");
-        httpCode = HTTP_STATUS_UNAUTHORIZED;
     } else {
         char auth_data[1024];
         char* httpMethod = (char*) "";
@@ -319,107 +324,70 @@ static int cwmp_server_handleRequest(struct lws* wsi, char* in, int len) {
         amxc_string_setf(&buffer, "%s %s\n\r%s %s", httpMethod, requested_uri, AuthorizationToken, auth_data);
 
         tmp = amxc_string_dup(&buffer, 0, amxc_string_text_length(&buffer));
-        // Check if all the digest authentication data are in the message.
         if(_checkDigestAuthMessageContent(tmp)) {
             if(false == performClientDigestAuthentication(tmp)) {
-                SAH_TRACEZ_ERROR("CWMPD", "DIGEST AUTHENTICATION: FAILED.");
-                httpCode = HTTP_STATUS_UNAUTHORIZED;
+                SAH_TRACEZ_ERROR("CWMPD", "Digest authentication failed");
+                ret = cwmp_status_ko;
             } else {
-                SAH_TRACEZ_INFO("CWMPD", "DIGEST AUTHENTICATION: SUCCESS.");
-                httpCode = 0;
+                SAH_TRACEZ_INFO("CWMPD", "Digest authentication OK");
+                ret = cwmp_status_ok;
             }
         } else {
-            SAH_TRACEZ_ERROR("CWMPD", "can not reterive all tokens");
+            SAH_TRACEZ_ERROR("CWMPD", "cannot reterive all tokens");
         }
         DM_ENG_FREE(tmp);
     }
+    return ret;
+}
 
-    // 3.2.2: The CPE’s response to a successfully authenticated Connection Request MUST use either a “200
-    //        (OK)” or a “204 (No Content)” HTTP status code. The CPE MUST send this response immediately
-    //        upon successful authentication, prior to it initiating the resulting session. The length of the message-
-    //        body in the HTTP response MUST be zero.
+static int cwmp_server_handle_request(struct lws* wsi, char* in, int len) {
+    const char* requested_uri = (char*) in;
+    int rc = 0;
+    SAH_TRACEZ_INFO("CWMPD", "Handling request %s", requested_uri);
 
-    // 3.2.2: If the CPE successfully authenticates and responds to a Connection Request as described above, and if
-    //        it is not already in a session, then it MUST, within 30 seconds of sending the response, attempt to
-    //        establish a session with the pre-determined ACS address (see section 3.1) in which it includes the
-    //        “6 CONNECTION REQUEST” EventCode in the Inform.
-    // 3.2.2: If the ACS receives a successful response to a Connection Request but after at least 30 seconds the
-    //        CPE has not successfully established a session that includes the “6 CONNECTION REQUEST”
-    //        EventCode in the Inform, the ACS MAY retry the Connection Request to that CPE.
-    // 3.2.2: If, once the CPE successfully authenticates and responds to a Connection Request, but before it
-    //        establishes a session to the ACS, it receives one or more successfully authenticated Connection
-    //        Requests, the CPE MUST return a successful response for each of those Connection Requests, but
-    //        MUST NOT initiate any additional sessions as a result of these additional Connection Requests,
-    //        regardless of how many it receives during this time.
-    if(httpCode == 0) {
-        // As to analyse and valid the content received
-        // TODO : check the content received.
-        if(DM_ENG_RequestConnection(DM_ENG_EntityType_ACS) == 0) {
-            httpCode = HTTP_OK;
-        } else {
-            httpCode = HTTP_SERVICE_UNAVAILABLE;
-        }
+    if(len < 1) {
+        lws_return_http_status(wsi, HTTP_STATUS_BAD_REQUEST, "Bad REQUEST");
+        goto exit;
     }
 
-    if(httpCode == HTTP_STATUS_UNAUTHORIZED) {
-        SAH_TRACEZ_INFO("CWMPD", "Request the ACS to provide Authentication Data.");
-
-        char* requestDigestMsg = _getRandomString();
-        if(lws_add_http_header_status(wsi, HTTP_STATUS_UNAUTHORIZED, &p, end)) {
-            return -1;
-        }
-
-        if(lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_WWW_AUTHENTICATE,
-                                        (const unsigned char*) requestDigestMsg,
-                                        strlen(requestDigestMsg),
-                                        &p, end)) {
-            return -1;
-        }
-
-        if(lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_CONTENT_TYPE,
-                                        (const unsigned char*) "text/html", 9,
-                                        &p, end)) {
-            return -1;
-        }
-
-        if(lws_finalize_write_http_header(wsi, start, &p, end)) {
-            return -1;
-        }
-
-        DM_ENG_FREE(requestDigestMsg);
-    } else if(httpCode == HTTP_SERVICE_UNAVAILABLE) {
+    if(cwmp_server_check_availability() != 0) {
         lws_return_http_status(wsi, HTTP_STATUS_SERVICE_UNAVAILABLE, HTTP_STRING_SVR_BUSY);
-    } else if(httpCode == HTTP_STATUS_NOT_FOUND) {
-        lws_return_http_status(wsi, HTTP_STATUS_NOT_FOUND, "Service Not Found");
-    } else if(httpCode == HTTP_STATUS_OK) {
-        // Send a HTTP response with either the code 200 or 204
-        lws_return_http_status(wsi, HTTP_NO_CONTENT, NULL);
+        goto exit;
     }
-    // 3.2.2: The CPE MUST NOT reject a properly authenticated Connection Request for any reason other than
-    //        those described above. If the CPE rejects a Connection Request for any of the reasons described
-    //        above, it MUST NOT initiate a session with the ACS as a result of that Connection Request.
-    // OK, as we only implemented the specified reasons
-    return httpCode;
+
+    if(cwmp_server_validate_uri(wsi, requested_uri) != 0) {
+        lws_return_http_status(wsi, HTTP_STATUS_NOT_FOUND, "Service Not Found");
+        goto exit;
+    }
+
+    if(cwmp_server_validate_authentication(wsi, requested_uri) == cwmp_status_ko) {
+        SAH_TRACEZ_INFO("CWMPD", "Ask ACS to provide authentication headers");
+        cwmp_server_reply_http_unauthaurized(wsi);
+    } else {
+        //authentication OK, schedule a new session
+        if(DM_ENG_RequestConnection(DM_ENG_EntityType_ACS) == 0) {
+            // Send a HTTP response with either the code 200 or 204
+            lws_return_http_status(wsi, HTTP_STATUS_NO_CONTENT, NULL);
+            rc = -1;//close TCP connection immediately
+        } else {
+            lws_return_http_status(wsi, HTTP_STATUS_SERVICE_UNAVAILABLE, HTTP_STRING_SVR_BUSY);
+        }
+    }
+exit:
+    return rc;
 }
 
 /* http server callback */
 static int cwmp_server_http_callback(struct lws* wsi, enum lws_callback_reasons reason,
                                      void* user, void* in, size_t len) {
 
-    /* protocol logic goes here */
     switch(reason) {
     case LWS_CALLBACK_ESTABLISHED:
         lws_set_timer_usecs(wsi, 20 * LWS_USEC_PER_SEC);
         lws_set_timeout(wsi, PENDING_TIMEOUT_AWAITING_PROXY_RESPONSE, 60);
         break;
     case LWS_CALLBACK_HTTP:
-        if(cwmp_server_handleRequest(wsi, (char*) in, len) == HTTP_STATUS_OK) {
-            return -1; //close this connection imediately after sending the reply
-        }
-        // dont proceed otherwise lws_callback_http_dummy
-        // will send a 404 NOT FOUND message, this may lead
-        // to an unwanted behavior
-        return 0;
+        return cwmp_server_handle_request(wsi, (char*) in, len);
     case LWS_CALLBACK_HTTP_BODY_COMPLETION:
         /* the expected amount of http request body has been delivered */
         lws_return_http_status(wsi, HTTP_STATUS_OK, NULL);
@@ -436,13 +404,7 @@ static const struct lws_protocols protocols[] = {
     { NULL, NULL, 0, 0, 0, NULL, 0} /* needed by lws */
 };
 
-/* fetch all server info from data model and feed them to server info struct*/
-cwmp_status_t cwmp_server_init() {
-    cwmp_status_t ret = cwmp_status_ko;
-    char* server_host = NULL;
-    char* server_port = NULL;
-    char* acsip = NULL;
-    SAH_TRACEZ_INFO("CWMPD", "lws init server");
+static cwmp_status_t cwmp_server_init_lws(const char* server_host, int port) {
     memset(&lws_server_ctx_info, 0, sizeof lws_server_ctx_info);
     void* main_loop[1] = { cwmp_evlp_get() };
     /* this will attach our server to our main evlp */
@@ -457,43 +419,45 @@ cwmp_status_t cwmp_server_init() {
     /* there is No ssl on the server */
     lws_server_ctx_info.ssl_cert_filepath = NULL;
     lws_server_ctx_info.ssl_private_key_filepath = NULL;
-
-    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_LOCALIPADDRESS, &server_host) != 0) {
-        SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the local ip address");
-        return ret;
-    }
-    SAH_TRACEZ_INFO("CWMPD", "Connection request host = %s", server_host);
-
-    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_CONNECTIONREQUESTPORT, &server_port) != 0) {
-        SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the local connection request port #");
-        return ret;
-    }
-    SAH_TRACEZ_INFO("CWMPD", "Connection request port # = %s", server_port);
-
     // set server info struct.
     lws_server_ctx_info.vhost_name = server_host;
-    lws_server_ctx_info.port = atoi(server_port);
-
-    cwmp_server_initConnectionTimestampList();
-
-    // Create the randomly chosen CPE URL
-    if(server_createURL() != 0) {
-        goto error;
-    }
-
+    lws_server_ctx_info.port = port;
     if(!lws_server_ctx_info.vhost_name || !(*lws_server_ctx_info.vhost_name)) {
-        SAH_TRACEZ_NOTICE("CWMPD", "No Connection request host is set, stop initializing server");
-        goto error;
+        SAH_TRACEZ_ERROR("CWMPD", "No Connection request host is set, stop initializing server");
+        return cwmp_status_ko;
     }
     // Create the lws context
     lws_server_ctx = lws_create_context(&lws_server_ctx_info);
 
     if(!lws_server_ctx) {
         SAH_TRACEZ_ERROR("CWMPD", "lws init failed");
+        return cwmp_status_ko;
+    }
+    return cwmp_status_ok;
+}
+/* fetch all server info from data model and feed them to server info struct*/
+cwmp_status_t cwmp_server_init() {
+    cwmp_status_t ret = cwmp_status_ko;
+    char* server_host = NULL;
+    char* server_port = NULL;
+
+    SAH_TRACEZ_INFO("CWMPD", "lws init server");
+    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_LOCALIPADDRESS, &server_host) != 0) {
+        SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the local ip address");
+        goto error;
+    }
+    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_CONNECTIONREQUESTPORT, &server_port) != 0) {
+        SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the local connection request port #");
+        goto error;
+    }
+    SAH_TRACEZ_INFO("CWMPD", "Connection request host %s, port = %s", server_host, server_port);
+    // Create the randomly chosen CPE URL
+    if(cwmp_server_create_url() != 0) {
         goto error;
     }
 
-    ret = cwmp_status_ok;
+    cwmp_server_initConnectionTimestampList();
+    ret = cwmp_server_init_lws(server_host, atoi(server_port));
 error:
     if(server_host) {
         free(server_host);
@@ -501,15 +465,11 @@ error:
     if(server_port) {
         free(server_port);
     }
-    if(acsip) {
-        free(acsip);
-    }
     return ret;
 }
 
 /* Start the main server */
 cwmp_status_t cwmp_server_start() {
-    httpCode = 0;
     char* cpe_enabled = NULL;
     bool cpe_enabled_b = false;
 

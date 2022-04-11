@@ -5,18 +5,6 @@ NOW = $(shell date +"%Y-%m-%d(%H:%M:%S %z)")
 # Extra destination directories
 PKGDIR = ./output/$(MACHINE)/pkg/
 
-# helper functions - used in multiple targets
-define install_to
-	$(INSTALL) -D -p -m 0644 output/$(MACHINE)/cwmp_plugin/cwmp_plugin.so $(1)/usr/lib/amx/cwmp_plugin/cwmp_plugin.so
-	$(INSTALL) -d -m 0755 $(1)$(BINDIR)
-	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin.odl $(1)/etc/amx/cwmp_plugin/cwmp_plugin.odl
-	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-defaults.odl $(1)/etc/amx/cwmp_plugin/cwmp_plugin-defaults.odl
-	$(INSTALL) -D -p -m 0644 output/$(MACHINE)/cwmp_plugin/cwmp_plugin-definition.odl $(1)/etc/amx/cwmp_plugin/cwmp_plugin-definition.odl
-	$(INSTALL) -D -p -m 0755 src/dmdeviceadapter/amx/cwmp_plugin/scripts/cwmp_plugin.sh $(1)$(INITDIR)/cwmp_plugin
-	$(INSTALL) -D -p -m 0755 output/$(MACHINE)/libdmda_amx/libdmda_amx.so $(1)$(LIBDIR)/libdmda_amx.so
-	$(INSTALL) -D -p -m 0755 output/$(MACHINE)/cwmpd/cwmpd $(1)$(BINDIR)/cwmpd
-endef
-
 define create_changelog
 	@$(ECHO) "Update changelog"
 	mv CHANGELOG.md CHANGELOG.md.bak
@@ -41,11 +29,25 @@ clean:
 	$(MAKE) -C test clean
 
 install: all
-	$(call install_to,$(DEST))
+	$(INSTALL) -D -p -m 0644 output/$(MACHINE)/cwmp_plugin/cwmp_plugin.so $(DEST)/usr/lib/amx/cwmp_plugin/cwmp_plugin.so
+	$(INSTALL) -d -m 0755 $(DEST)$(BINDIR)
+	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin.odl $(DEST)/etc/amx/cwmp_plugin/cwmp_plugin.odl
+	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-defaults.odl $(DEST)/etc/amx/cwmp_plugin/cwmp_plugin-defaults.odl
+	$(INSTALL) -D -p -m 0644 output/$(MACHINE)/cwmp_plugin/cwmp_plugin-definition.odl $(DEST)/etc/amx/cwmp_plugin/cwmp_plugin-definition.odl
+	$(INSTALL) -D -p -m 0755 src/dmdeviceadapter/amx/cwmp_plugin/scripts/cwmp_plugin.sh $(DEST)$(INITDIR)/cwmp_plugin
+	$(INSTALL) -D -p -m 0755 output/$(MACHINE)/libdmda_amx/libdmda_amx.so $(DEST)$(LIBDIR)/libdmda_amx.so
+	$(INSTALL) -D -p -m 0755 output/$(MACHINE)/cwmpd/cwmpd $(DEST)$(BINDIR)/cwmpd
 	ln -sfr $(DEST)$(BINDIR)/amxrt $(DEST)$(BINDIR)/cwmp_plugin
 
 package: all
-	$(call install_to,$(PKGDIR))
+	$(INSTALL) -D -p -m 0644 output/$(MACHINE)/cwmp_plugin/cwmp_plugin.so $(PKGDIR)/usr/lib/amx/cwmp_plugin/cwmp_plugin.so
+	$(INSTALL) -d -m 0755 $(PKGDIR)$(BINDIR)
+	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin.odl $(PKGDIR)/etc/amx/cwmp_plugin/cwmp_plugin.odl
+	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-defaults.odl $(PKGDIR)/etc/amx/cwmp_plugin/cwmp_plugin-defaults.odl
+	$(INSTALL) -D -p -m 0644 output/$(MACHINE)/cwmp_plugin/cwmp_plugin-definition.odl $(PKGDIR)/etc/amx/cwmp_plugin/cwmp_plugin-definition.odl
+	$(INSTALL) -D -p -m 0755 src/dmdeviceadapter/amx/cwmp_plugin/scripts/cwmp_plugin.sh $(PKGDIR)$(INITDIR)/cwmp_plugin
+	$(INSTALL) -D -p -m 0755 output/$(MACHINE)/libdmda_amx/libdmda_amx.so $(PKGDIR)$(LIBDIR)/libdmda_amx.so
+	$(INSTALL) -D -p -m 0755 output/$(MACHINE)/cwmpd/cwmpd $(PKGDIR)$(BINDIR)/cwmpd
 	cd $(PKGDIR) && $(TAR) -czvf ../$(COMPONENT)-$(VERSION).tar.gz .
 	cp $(PKGDIR)../$(COMPONENT)-$(VERSION).tar.gz .
 	make -C packages
