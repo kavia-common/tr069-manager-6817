@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.16.5 - 2022-04-13(15:35:55 +0000)
+
+### Fixes
+
+- Fix cwmpd crash when excuting DHCP renew
+
 ## Release v1.16.4 - 2022-04-11(15:35:03 +0000)
 
 ### Fixes
