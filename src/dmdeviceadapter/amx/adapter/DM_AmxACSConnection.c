@@ -132,14 +132,13 @@ void DM_ENG_Device_ACSConnectionHandleNotification(const char* path, const amxc_
     }
 
     htable = amxc_var_constcast(amxc_htable_t, parameters);
-
+    char* acs_path = NULL;
+    char* value = NULL;
     amxc_htable_iterate(hit, htable) {
-        const char* acs_path = NULL;
-        char* value = NULL;
         amxc_var_t* parameter = NULL;
         const char* key = amxc_htable_it_get_key(hit);
         if(key == NULL) {
-            break;
+            return;
         }
 
         //Do we have a subscription for this parameter
@@ -164,6 +163,10 @@ void DM_ENG_Device_ACSConnectionHandleNotification(const char* path, const amxc_
         parameter = amxc_var_from_htable_it(hit);
         value = amxc_var_dyncast(cstring_t, GETP_ARG(parameter, "to"));
 
+        if((strncmp(acs_path, "Device.IP.Interface.", 20) == 0) && (!value || !*value )) {
+            goto stop;
+        }
+
         set_subscription_new_value(acs_path, value);
 
         if(DM_ENG_ValueWasCachedInParameterAttributesCache(acs_path, value) == 0) {
@@ -172,15 +175,18 @@ void DM_ENG_Device_ACSConnectionHandleNotification(const char* path, const amxc_
             dm_amx_env_t* acs = DM_ENG_Device_GetACSInfo();
             if(DM_ENG_Device_GetParameterValues_GetValues(acs, acs_path, &pvsList) != 0) {
                 SAH_TRACEZ_ERROR("DM_DA", "Could not get ParameterValueStruct for param %s", acs_path);
-                free(value);
-                return;
+                goto stop;
             }
             SAH_TRACEZ_INFO("DM_DA", "send notification %s", acs_path);
             /* Update the inform message scheduler */
             DM_ENG_InformMessageScheduler_parameterValueChanged(pvsList, mode);
         }
-        free(value);
     }
+
+stop:
+    free(value);
+    free(acs_path);
+    return;
 }
 /**
    @brief
