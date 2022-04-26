@@ -195,7 +195,7 @@ static void cwmp_client_parse_cookie(char* cookies) {
 static char* cwmp_client_auth_basic(const char* username, const char* passwd) {
     char* credentials = NULL;
     char* result = NULL;
-    int len = strlen(username) + strlen(passwd);
+    int len = strlen(username) + strlen(passwd) + 1;
     int hdr_size = 6 + ((4 * (len + 2)) / 3) + 2;
 
     credentials = calloc(1, (len + 1) * sizeof(char));
@@ -491,12 +491,7 @@ static int cwmp_client_connection_closed_cb() {
         _closeACSSession(true);//ACS session finished OK
     } else if(http_status == HTTP_STATUS_UNAUTHORIZED) {
         if((auth_type != auth_unsupported) && auth_hdr) {
-            //schedule reconnect with auth
-            DM_ENG_NotificationInterface_timerStart("Session-timer",
-                                                    session_timeout,
-                                                    0,
-                                                    cwmp_client_sessionTimedOut);
-            SAH_TRACEZ_INFO("CWMPD", "Retry with auth in 1 sec");
+            SAH_TRACEZ_INFO("CWMPD", "Reconnection in 1 sec");
             DM_ENG_NotificationInterface_timerStart("cwmp_client_auth_retry",
                                                     1,
                                                     0,
