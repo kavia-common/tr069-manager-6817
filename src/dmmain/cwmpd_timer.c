@@ -200,6 +200,9 @@ int cwmp_timer_start(const char* name, int waitTime, int intervalTime, timerHand
         }
         timer->handler = handler;
         timer_append(timer);
+    } else {
+        SAH_TRACEZ_INFO("CWMPD", "Stopping timer %s", name);
+        amxp_timer_stop(timer->timer);
     }
     SAH_TRACEZ_INFO("CWMPD", "Starting timer %s with %d seconds", name, waitTime);
     amxp_timer_start(timer->timer, waitTime * 1000);
