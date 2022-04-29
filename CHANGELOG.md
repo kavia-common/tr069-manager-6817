@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.16.6 - 2022-04-29(14:50:33 +0000)
+
+### Fixes
+
+- failed to generate auth headers
+- SIGABRT when timer is started twice before it is expire
+
 ## Release v1.16.5 - 2022-04-13(15:35:55 +0000)
 
 ### Fixes
