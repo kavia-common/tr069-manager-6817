@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.16.7 - 2022-05-03(13:02:31 +0000)
+
+### Fixes
+
+- Fix cwmpd client append handshake headers
+
 ## Release v1.16.6 - 2022-04-29(14:50:33 +0000)
 
 ### Fixes
