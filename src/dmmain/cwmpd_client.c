@@ -64,6 +64,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <debug/sahtrace.h>
+#include <debug/sahtrace_macros.h>
+#include <amxc/amxc_macros.h>
 #include <dmcom/dm_com.h>
 #include "dmmain/cwmpd.h"
 #include <dmengine/DM_ENG_RPCInterface.h>
@@ -439,35 +441,33 @@ static int cwmp_client_http_complete_cb() {
 }
 
 static int cwmp_client_handshake_cb(struct lws* wsi, void* in, size_t len) {
-
     unsigned char** p = (unsigned char**) in;
     unsigned char* end = (*p) + len;
-    int ret = 0;
-    if(!pending_msg) {
-        return CWMP_HTTP_CALLBACK_ERROR; //close or lws_callback_http_dummy will send an empty post
-    }
-    ret += lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_USER_AGENT, USER_AGENT, 15, p, end);
-    ret += lws_add_http_header_content_length(wsi, strlen(pending_msg), p, end);
-    ret += lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_CONTENT_TYPE, CONTENT_TYPE, 28, p, end);
-    if(session_cookie) {//Handle session cookie if any
-        ret += lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_COOKIE,
-                                            (const unsigned char*) session_cookie,
-                                            strlen(session_cookie), p, end);
+
+    when_null(pending_msg, error);
+    when_false(lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_USER_AGENT, USER_AGENT, 15, p, end) == 0, error);
+    when_false(lws_add_http_header_content_length(wsi, strlen(pending_msg), p, end) == 0, error);
+    when_false(lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_CONTENT_TYPE, CONTENT_TYPE, 28, p, end) == 0, error);
+
+    if(session_cookie) { //Handle session cookie if any
+        when_false(lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_COOKIE,
+                                                (const unsigned char*) session_cookie,
+                                                strlen(session_cookie), p, end) == 0, error);
     }
     if(auth_hdr) { //Handle Authentication
-        ret += lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_AUTHORIZATION,
-                                            (unsigned char*) auth_hdr,
-                                            strlen(auth_hdr), p, end);
+        when_false(lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_AUTHORIZATION,
+                                                (unsigned char*) auth_hdr,
+                                                strlen(auth_hdr), p, end) == 0, error);
     }
-    ret += lws_add_http_header_by_name(wsi, SOAP_HEADER, EMPTY_USTR, 0, p, end);
 
-    if(ret != 0) {
-        SAH_TRACEZ_ERROR("CWMPD", "Cant write Header to WSI, closing connection");
-        return CWMP_HTTP_CALLBACK_ERROR; //We couldn't wrie Headers something went wrong
-    }
+    when_false(lws_add_http_header_by_name(wsi, SOAP_HEADER, EMPTY_USTR, 0, p, end) == 0, error);
+
     //headers finished, tell lws the message body is awaiting
     lws_client_http_body_pending(wsi, 1);
     return CWMP_HTTP_CALLBACK_CONTINUE;
+error:
+    SAH_TRACEZ_ERROR("CWMPD", "Can not write Headers to WSI, closing connection");
+    return CWMP_HTTP_CALLBACK_ERROR; //We couldn't wrie Headers something went wrong
 }
 
 static int cwmp_client_wsi_destroy_cb(struct lws* wsi) {
