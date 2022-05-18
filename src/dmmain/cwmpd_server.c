@@ -470,6 +470,7 @@ error:
 
 /* Start the main server */
 cwmp_status_t cwmp_server_start() {
+    SAH_TRACEZ_IN("CWMPD");
     char* cpe_enabled = NULL;
     bool cpe_enabled_b = false;
 
@@ -496,6 +497,7 @@ cwmp_status_t cwmp_server_start() {
     } else {
         SAH_TRACEZ_ERROR("CWMPD", "CWMP Server is not Started : CPE not enabled !");
     }
+    SAH_TRACEZ_OUT("CWMPD");
     return cwmp_status_ok;
 }
 

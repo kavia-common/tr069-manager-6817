@@ -262,6 +262,7 @@ stop:
 
 /*retry if this is an inform message*/
 static void cwmp_client_retry() {
+    SAH_TRACEZ_INFO("CWMPD", "Retry to send Inform message");
     cwmp_free(&acs_server_ip);
     cwmp_dns_get_random_ip(&acs_server_ip);
     if(!acs_server_ip) {
@@ -273,6 +274,7 @@ static void cwmp_client_retry() {
 
 /* resend the message with authentication*/
 static void cwmp_client_auth_retry() {
+    SAH_TRACEZ_INFO("CWMPD", "Retry auth : resend the message with authentication");
     DM_SendHttpMessage(pending_msg);
 }
 
@@ -301,10 +303,9 @@ static int cwmp_client_connection_error_cb(void* in) {
     return CWMP_HTTP_CALLBACK_CONTINUE;
 }
 
-static int cwmp_client_new_wsi_cb(struct lws* wsi) {
+static int cwmp_client_new_wsi_cb() {
     cwmp_free(&rcv_buf);
     rcv_buf_len = 0;
-    lws_client_wsi = wsi;
     return CWMP_HTTP_CALLBACK_CONTINUE;
 }
 
@@ -333,6 +334,7 @@ static void cwmp_client_get_authentication_hdr(struct lws* wsi) {
 }
 
 static int cwmp_client_handle_cookies(struct lws* wsi) {
+    SAH_TRACEZ_INFO("CWMPD", "Handle cookies");
     int cookie_len = lws_hdr_total_length(wsi, WSI_TOKEN_HTTP_SET_COOKIE);
     if(cookie_len > 0) {
         //try to get session cookies
@@ -366,7 +368,7 @@ static int cwmp_client_connection_established_cb(struct lws* wsi) {
         //get the WWW-Authenticate headers
         cwmp_client_get_authentication_hdr(wsi);
         //jump to LWS_CALLBACK_CLOSED_CLIENT_HTTP
-        lws_wsi_close(wsi, LWS_TO_KILL_SYNC);
+        lws_wsi_close(wsi, LWS_TO_KILL_ASYNC);
 
     } else if((http_status == HTTP_OK) && !connected) {
         connected = true;
@@ -441,6 +443,7 @@ static int cwmp_client_http_complete_cb() {
 }
 
 static int cwmp_client_handshake_cb(struct lws* wsi, void* in, size_t len) {
+    SAH_TRACEZ_INFO("CWMPD", "Write HTTP Headers to wsi");
     unsigned char** p = (unsigned char**) in;
     unsigned char* end = (*p) + len;
 
@@ -470,13 +473,6 @@ error:
     return CWMP_HTTP_CALLBACK_ERROR; //We couldn't wrie Headers something went wrong
 }
 
-static int cwmp_client_wsi_destroy_cb(struct lws* wsi) {
-    if(lws_client_wsi && (lws_client_wsi == wsi)) {
-        lws_client_wsi = NULL;
-    }
-    return CWMP_HTTP_CALLBACK_CONTINUE;
-}
-
 static int cwmp_client_http_writable_cb(struct lws* wsi) {
     if(pending_msg) {
         lws_write(wsi, (unsigned char*) pending_msg, strlen(pending_msg), LWS_WRITE_HTTP);
@@ -486,6 +482,7 @@ static int cwmp_client_http_writable_cb(struct lws* wsi) {
 }
 
 static int cwmp_client_connection_closed_cb() {
+    SAH_TRACEZ_INFO("CWMPD", "Close connection");
     /* this client is closing , check its state and update dmengine */
     if(http_status == HTTP_NO_CONTENT) {
         _closeACSSession(true);//ACS session finished OK
@@ -514,7 +511,7 @@ static int cwmp_client_http_callback(struct lws* wsi, enum lws_callback_reasons 
         ret = cwmp_client_connection_error_cb(in);
         break;
     case LWS_CALLBACK_SERVER_NEW_CLIENT_INSTANTIATED:
-        ret = cwmp_client_new_wsi_cb(wsi);
+        ret = cwmp_client_new_wsi_cb();
         break;
     case LWS_CALLBACK_ESTABLISHED_CLIENT_HTTP:
         ret = cwmp_client_connection_established_cb(wsi);
@@ -530,9 +527,6 @@ static int cwmp_client_http_callback(struct lws* wsi, enum lws_callback_reasons 
         break;
     case LWS_CALLBACK_CLIENT_APPEND_HANDSHAKE_HEADER:
         ret = cwmp_client_handshake_cb(wsi, in, len);
-        break;
-    case LWS_CALLBACK_WSI_DESTROY:
-        ret = cwmp_client_wsi_destroy_cb(wsi);
         break;
     case LWS_CALLBACK_CLIENT_HTTP_WRITEABLE:
         ret = cwmp_client_http_writable_cb(wsi);
@@ -608,12 +602,9 @@ static void cwmp_client_prepare_session() {
     lws_connect_info.alpn = "http/1.1";
     lws_connect_info.protocol = protocols[0].name;
 
-    //LCCSCF_PIPELINE break if we set the hostname
-    //https://github.com/warmcat/libwebsockets/issues/2575
-    //this is because we use an IP instead of an URL?
-    //the only solution is to use lws internal dns handler
-    //but we cant control affinity with it
-    lws_connect_info.ssl_connection = LCCSCF_PIPELINE;
+    // libwebsocket crash with multi client after the first server reply
+    // this will cause a neww SSL connection for each message, not ideal?
+    lws_connect_info.ssl_connection = 0; //3.6.4 *The CPE MUST NOT make use of pipelining as defined in HTTP 1.1
 
     /* https stuff */
     if(strcmp(acs_server_scheme, "https") == 0) {
@@ -749,7 +740,6 @@ cwmp_status_t cwmp_client_init() {
 }
 
 cwmp_status_t cwmp_client_stop() {
-
     lws_context_destroy(lws_client_ctx);
     DM_CloseHttpSession(true);
     return cwmp_status_ok;
