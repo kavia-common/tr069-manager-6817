@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.16.8 - 2022-05-18(07:48:42 +0000)
+
+### Fixes
+
+- libwebsockets crash after the first server reply in a multi client context
+
 ## Release v1.16.7 - 2022-05-03(13:02:31 +0000)
 
 ### Fixes
