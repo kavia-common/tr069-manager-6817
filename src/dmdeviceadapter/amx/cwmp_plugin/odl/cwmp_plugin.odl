@@ -26,7 +26,8 @@
     };
 
     tr069-service = {
-        cwmpd_cache_file = "/tmp/cwmpd_cache.txt",
+        // Path where to store temporary values for RPC's that need to survive a reboot
+        cwmpd_persistent_rpc_path = "/etc/config/cwmp_plugin",
         cwmpd_pid_file = "/var/run/cwmp.pid",
         cwmpd_certs_file = "/usr/lib/cwmp/cwmpdcerts.pem",
         cwmpd_adapter_path = "/usr/lib/libdmda_amx.so"

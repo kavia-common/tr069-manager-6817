@@ -138,7 +138,7 @@ static cwmp_status_t cwmp_app_parse_config(void) {
     // tr069-service configs
     amxc_var_t* tr069_config = amxc_var_get_key(config, "tr069-service", AMXC_VAR_FLAG_DEFAULT);
     cwmp_app.da_path = GETP_CHAR(tr069_config, "cwmpd_adapter_path");
-    cwmp_app.cacheFile = GETP_CHAR(tr069_config, "cwmpd_cache_file");
+    cwmp_app.persistent_rpc_path = GETP_CHAR(tr069_config, "cwmpd_persistent_rpc_path");
     cwmp_app.trustedCA = GETP_CHAR(tr069_config, "cwmpd_certs_file");
     cwmp_app.pidFile = GETP_CHAR(tr069_config, "cwmpd_pid_file");
 
@@ -171,7 +171,7 @@ static void cwmp_app_configureDefaults() {
     /* defaults for sahtrace */
     cwmp_app.traceLevel = 200;
     cwmp_app.traceType = TRACE_TYPE_SYSLOG;
-    cwmp_app.cacheFile = "/tmp/cwmpd_cache.txt";
+    cwmp_app.persistent_rpc_path = "/tmp/";
     /* ssl default */
 #ifdef CONFIG_SAH_AMX_TR069_MANAGER_CERTIFICATE_NO_PEM
     cwmp_app.trustedCA = NULL;
@@ -337,7 +337,7 @@ static cwmp_status_t cwmp_app_init_dmengine() {
         return rc;
     }
     //Connect to Data-model
-    if(DM_COM_DMCONNECT(cwmp_app.cacheFile, (void**) &sys_bus_ctx, (void**) &acs_bus_ctx) != 0) {
+    if(DM_COM_DMCONNECT(cwmp_app.persistent_rpc_path, (void**) &sys_bus_ctx, (void**) &acs_bus_ctx) != 0) {
         SAH_TRACEZ_ERROR("CWMPD", "Failed to initialize DM_COM");
         return rc;
     }

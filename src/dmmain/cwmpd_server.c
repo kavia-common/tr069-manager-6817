@@ -476,6 +476,7 @@ cwmp_status_t cwmp_server_start() {
 
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ENABLECWMP, &cpe_enabled) != 0) {
         SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the ACS enable flag");
+        return cwmp_status_ko;
     }
 
     if(cpe_enabled && ( strcmp(cpe_enabled, "1") == 0)) {
@@ -496,6 +497,7 @@ cwmp_status_t cwmp_server_start() {
         return cwmp_status_ok;
     } else {
         SAH_TRACEZ_ERROR("CWMPD", "CWMP Server is not Started : CPE not enabled !");
+        return cwmp_status_ko;
     }
     SAH_TRACEZ_OUT("CWMPD");
     return cwmp_status_ok;

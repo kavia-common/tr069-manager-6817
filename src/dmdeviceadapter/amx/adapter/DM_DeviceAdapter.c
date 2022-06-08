@@ -652,6 +652,7 @@ int DM_ENG_Device_Upload(char* commandkey, char* fileType, char* url, char* user
  * @return -1 in case of error, 0 on success
  */
 static int DM_ENG_Device_LoadAttributes(char* rpcpath, DM_ENG_ParameterAttributesStruct** acacheArray[]) {
+    SAH_TRACEZ_IN("DM_DA");
     FILE* pFile;
     char* path = NULL;
     unsigned int notification = DM_ENG_NotificationMode_OFF;
@@ -709,6 +710,7 @@ static int DM_ENG_Device_LoadAttributes(char* rpcpath, DM_ENG_ParameterAttribute
         *acacheArray = DM_ENG_toParameterAttributesStructArray(LoadList);
         fclose(pFile);
     }
+    SAH_TRACEZ_OUT("DM_DA");
     return 0;
 }
 
@@ -720,6 +722,7 @@ static int DM_ENG_Device_LoadAttributes(char* rpcpath, DM_ENG_ParameterAttribute
  * @return -1 in case of error, 0 on success
  */
 static int DM_ENG_Device_LoadScheduleInform(char* rpcpath, DM_ENG_ScheduleInformStruct** is) {
+    SAH_TRACEZ_IN("DM_DA");
     FILE* pFile;
     SAH_TRACEZ_ERROR("DM_DA", "Opening for read: %s", rpcpath);
     pFile = DM_COMMON_rpc_open_read(rpcpath, "cwmp_scheduleinform");
@@ -742,6 +745,7 @@ static int DM_ENG_Device_LoadScheduleInform(char* rpcpath, DM_ENG_ScheduleInform
         }
         fclose(pFile);
     }
+    SAH_TRACEZ_OUT("DM_DA");
     return 0;
 }
 
@@ -754,6 +758,7 @@ static int DM_ENG_Device_LoadScheduleInform(char* rpcpath, DM_ENG_ScheduleInform
  * @ return 0 if save was succesfull, -1 if an error occurred
  */
 int DM_ENG_Device_LoadConfig(DM_ENG_ParameterAttributesStruct** acacheArray[], DM_ENG_ScheduleInformStruct** is) {
+    SAH_TRACEZ_IN("DM_DA");
     char* path = NULL;
     if(persistentRPCPath) {
         path = strdup(persistentRPCPath);
@@ -778,7 +783,7 @@ int DM_ENG_Device_LoadConfig(DM_ENG_ParameterAttributesStruct** acacheArray[], D
         SAH_TRACEZ_OUT("DM_DA");
         return -1;
     }
-
+    SAH_TRACEZ_OUT("DM_DA");
     return 0;
 }
 
@@ -790,8 +795,9 @@ int DM_ENG_Device_LoadConfig(DM_ENG_ParameterAttributesStruct** acacheArray[], D
  * @return -1 in case of error, 0 on success
  */
 static int DM_ENG_Device_SaveAttributes(DM_ENG_ParameterAttributesStruct* acacheArray[]) {
+    SAH_TRACEZ_IN("DM_DA");
     FILE* pFile;
-    SAH_TRACEZ_INFO("DM_DA", "Saving attribute cache");
+    SAH_TRACEZ_INFO("DM_DA", "Saving attribute cache in persistentRPCPath = %s", persistentRPCPath);
     pFile = DM_COMMON_rpc_open_write(persistentRPCPath, "cwmp_acache");
     if(pFile == NULL) {
         SAH_TRACEZ_ERROR("DM_DA", "Could not open acache file");
@@ -816,6 +822,7 @@ static int DM_ENG_Device_SaveAttributes(DM_ENG_ParameterAttributesStruct* acache
     }
     DM_COMMON_rpc_close(pFile, persistentRPCPath, "cwmp_acache");
     //todo: save all items in accesslist
+    SAH_TRACEZ_OUT("DM_DA");
     return 0;
 }
 
@@ -828,6 +835,7 @@ static int DM_ENG_Device_SaveAttributes(DM_ENG_ParameterAttributesStruct* acache
  * @return -1 in case of error, 0 on success
  */
 static int DM_ENG_Device_SaveScheduleInform(DM_ENG_ScheduleInformStruct* is) {
+    SAH_TRACEZ_IN("DM_DA");
     FILE* pFile;
     char* val = NULL;
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_BOOTPERSISTENTSCHEDULEINFORM, &val) == 0) {
@@ -856,7 +864,7 @@ static int DM_ENG_Device_SaveScheduleInform(DM_ENG_ScheduleInformStruct* is) {
         DM_COMMON_rpc_remove(persistentRPCPath, "cwmp_scheduleinform");
         sync();
     }
-
+    SAH_TRACEZ_OUT("DM_DA");
     return 0;
 }
 
@@ -869,7 +877,7 @@ static int DM_ENG_Device_SaveScheduleInform(DM_ENG_ScheduleInformStruct* is) {
  * @ return 0 if save was succesfull, -1 if an error occurred
  */
 int DM_ENG_Device_SaveConfig(DM_ENG_ParameterAttributesStruct* acacheArray[], DM_ENG_ScheduleInformStruct* is) {
-
+    SAH_TRACEZ_IN("DM_DA");
     if(acacheArray) {
         if(DM_ENG_Device_SaveAttributes(acacheArray) == -1) {
             SAH_TRACEZ_ERROR("DM_DA", "Could not save attributes file");
@@ -881,7 +889,7 @@ int DM_ENG_Device_SaveConfig(DM_ENG_ParameterAttributesStruct* acacheArray[], DM
             return -1;
         }
     }
-
+    SAH_TRACEZ_OUT("DM_DA");
     return 0;
 }
 
