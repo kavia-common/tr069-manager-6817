@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.16.9 - 2022-06-08(14:59:59 +0000)
+
+### Fixes
+
+- Fix saving attributes cache and schedulerinform
+- Fix memleaks on cwmpd
+
 ## Release v1.16.8 - 2022-05-18(07:48:42 +0000)
 
 ### Fixes
