@@ -79,6 +79,7 @@
 #include "dummy_be.h"
 #include "test_dm_adapter.h"
 #include <amxc/amxc_macros.h>
+#include <dmengine/DM_ENG_Device.h>
 
 #define DM_ENG_METHOD_NOT_SUPPORTED          (9000)
 #define DM_ENG_REQUEST_DENIED                (9001)
@@ -252,6 +253,7 @@ int test_dmadapter_setup(UNUSED void** state) {
 int test_dmadapter_teardown(UNUSED void** state) {
 
     unsetenv("AMXB_URI");
+    DM_ENG_DeactivateNotification(DM_ENG_EntityType_ANY);
     DM_ENG_Device_Unload();
 
     amxb_be_remove_all();
@@ -1134,9 +1136,11 @@ void test_dmadapter_Open_Close_Session(UNUSED void** state) {
     DM_ENG_SessionOpened(DM_ENG_EntityType_ACS);
     assert_int_equal(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_SESSIONSTATUS, &session_status), 0);
     assert_string_equal(session_status, "Busy");
+    free(session_status);
     DM_ENG_SessionClosed(DM_ENG_EntityType_ACS, true);
     assert_int_equal(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_SESSIONSTATUS, &session_status), 0);
     assert_string_equal(session_status, "Idle");
+    free(session_status);
 }
 
 void test_dmadapter_Reboot(UNUSED void** state) {

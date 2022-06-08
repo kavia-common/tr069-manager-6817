@@ -67,6 +67,7 @@
 #include <amxd/amxd_object.h>
 #include <amxd/amxd_object_function.h>
 #include <amxb/amxb_be.h>
+#include <amxb/amxb.h>
 #include <amxo/amxo.h>
 
 #include "dummy_be.h"
@@ -84,6 +85,10 @@ static void* amxb_dummy_connect(UNUSED const char* host,
                                 UNUSED const char* path,
                                 UNUSED amxp_signal_mngr_t* sigmngr) {
 
+    // dmDeviceAdapter maintain 2 connections, dummy Be
+    // can only track one, clean the other
+    amxo_parser_clean(&parser);
+    amxd_dm_clean(&remote_dm);
     amxd_dm_init(&remote_dm);
     amxo_parser_init(&parser);
     return &remote_dm;
@@ -192,6 +197,7 @@ static int amxb_dummy_list(void* const ctx,
     } else {
         fprintf(stderr, "Another Specific use case : DIY here !!!!\n");
     }
+    amxb_close_request(&request);
     return 0;
 }
 

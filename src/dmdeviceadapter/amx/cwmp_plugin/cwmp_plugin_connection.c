@@ -60,6 +60,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include <uriparser/Uri.h>
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -153,6 +154,7 @@ static void updateLocalIP(void) {
         amxd_trans_select_object(&trans, conn_request);
         amxd_trans_set_cstring_t(&trans, "ConnRequestHost", crh_value);
         amxd_trans_apply(&trans, cwmp_plugin_get_dm());
+        amxd_trans_clean(&trans);
     }
     _updateConnectionRequestURL(NULL, NULL, NULL);
 }
@@ -213,7 +215,7 @@ void _updateConnectionRequestURL(UNUSED const char* const sig_name,
     amxd_object_t* management_server = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer");
     amxd_object_t* conn_request = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer.ConnRequest");
     amxc_string_t* url = NULL;
-    const char* host = NULL;
+    char* host = NULL;
     uint16_t port = 0;
     bool update;
     amxd_status_t ret = amxd_status_ok;
@@ -255,6 +257,7 @@ void _updateConnectionRequestURL(UNUSED const char* const sig_name,
 
 clean:
     amxc_string_delete(&url);
+    free(host);
     SAH_TRACEZ_OUT(ME);
 }
 
@@ -463,16 +466,17 @@ static bool isAddressIpV6(const char* address) {
 
 static bool assembleConnectionRequestURL(amxd_object_t* object, amxc_string_t* url, const char* host, uint16_t port) {
     amxd_param_t* connrequestpath = amxd_object_get_param_def(object, "ConnRequestPath");
-    const char* path = amxc_var_get_cstring_t(&connrequestpath->value);
+    char* path = amxc_var_get_cstring_t(&connrequestpath->value);
     bool isIPV6 = false;
 
-    if(!path || !*path) {
+    if(!path) {
         SAH_TRACEZ_ERROR(ME, "Couldn't find ConnRequestPath");
         return false;
     }
 
     isIPV6 = isAddressIpV6(host);
     amxc_string_setf(url, "http://%s%s%s:%hu/%s", isIPV6 ? "[" : "", host, isIPV6 ? "]" : "", port, path);
+    free(path);
     return true;
 }
 

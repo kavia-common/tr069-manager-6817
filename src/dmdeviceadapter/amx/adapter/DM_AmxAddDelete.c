@@ -119,10 +119,8 @@ int DM_ENG_Device_AddDeleteObject_Add(dm_amx_env_t* amx, char* objectName, unsig
     if(internalPath == NULL) {
         SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Not a valid parameter Name");
     }
+    amxd_path_setf(&path, false, "%s", internalPath);
 
-    amxd_path_clean(&path);
-    amxd_path_init(&path, internalPath);
-    // check for path validity
     if(amxd_path_is_search_path(&path)) {
         SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Not a valid parameter Name");
     }
@@ -134,8 +132,8 @@ int DM_ENG_Device_AddDeleteObject_Add(dm_amx_env_t* amx, char* objectName, unsig
         SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Not a valid parameter Name");
     }
     type_id = GET_INT32(GETI_ARG(&desc, 0), "type_id");
-    //check if object is a template
-    if(type_id != 2) {// type_id=2 -> template
+
+    if(type_id != amxd_object_template) {
         SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Object is Not a template");
     }
 
@@ -199,15 +197,11 @@ int DM_ENG_Device_AddDeleteObject_Delete(dm_amx_env_t* amx, char* objectName, DM
     internalPath = DM_ENG_Device_Common_ACSToAMXPath_noalloc(objectName);
     if(internalPath == NULL) {
         SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Invalid objet path")
-
-        amxd_path_clean(&path);
     }
-    amxd_path_init(&path, internalPath);
 
+    amxd_path_setf(&path, false, "%s", internalPath);
     // check for path validity
-    if(amxd_path_is_search_path(&path) &&
-       (( objectName[strlen(objectName) - 1] != '.')
-        || (objectName[strlen(objectName) - 1] != '*'))) {
+    if(amxd_path_is_search_path(&path)) {
         SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Invalid search path");
     }
     // get object data
@@ -215,14 +209,12 @@ int DM_ENG_Device_AddDeleteObject_Delete(dm_amx_env_t* amx, char* objectName, DM
                        0, &desc, 2);
 
     if((rv != 0) || amxc_var_is_null(&desc)) {
-        //maybe its a internal error ?
         SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Not a valid parameter Name");
     }
 
     type_id = GET_INT32(GETI_ARG(&desc, 0), "type_id");
 
-    //check if object is a instance ( TODO! : Add multi_instance objects?)
-    if(type_id != 3) { // type_id=3 -> instance
+    if(type_id != amxd_object_instance) {
         SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Object is Not a instance");
     }
 

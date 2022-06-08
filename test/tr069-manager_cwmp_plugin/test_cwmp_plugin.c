@@ -215,11 +215,12 @@ void test_cwmp_plugin_write_interface(UNUSED void** state) {
     _writeInterface(NULL, &data, NULL);
 
     amxd_object_t* conn_request = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer.ConnRequest");
-    const char* local_ip = amxd_object_get_cstring_t(conn_request, "LocalIPAddress", &ret);
+    char* local_ip = amxd_object_get_cstring_t(conn_request, "LocalIPAddress", &ret);
     assert_non_null(local_ip);
     assert_string_equal(local_ip, "172.17.0.2");
 
     amxc_var_clean(&data);
+    free(local_ip);
 }
 
 void test_cwmp_plugin_updateConnectionRequestURL(UNUSED void** state) {
@@ -239,6 +240,7 @@ void test_cwmp_plugin_updateConnectionRequestURL(UNUSED void** state) {
     // check ConnectionRequestURL is updated
     connectionRequestURL = amxd_object_get_cstring_t(management_server, "ConnectionRequestURL", &ret);
     assert_string_equal(connectionRequestURL, "http://172.17.0.2:5000/test");
+    free(connectionRequestURL);
 }
 
 void test_cwmp_plugin_stop(UNUSED void** state) {
