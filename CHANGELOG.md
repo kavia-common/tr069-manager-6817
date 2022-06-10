@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.16.11 - 2022-06-10(15:05:30 +0000)
+
+### Fixes
+
+- Empty POST must not contain a SOAPAction and content-Type headers
+
 ## Release v1.16.10 - 2022-06-09(11:27:02 +0000)
 
 ### Other
