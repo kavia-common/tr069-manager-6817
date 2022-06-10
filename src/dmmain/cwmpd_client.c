@@ -444,13 +444,14 @@ static int cwmp_client_http_complete_cb() {
 
 static int cwmp_client_handshake_cb(struct lws* wsi, void* in, size_t len) {
     SAH_TRACEZ_INFO("CWMPD", "Write HTTP Headers to wsi");
+    int msg_len = 0;
     unsigned char** p = (unsigned char**) in;
     unsigned char* end = (*p) + len;
 
     when_null(pending_msg, error);
+    msg_len = strlen(pending_msg);
     when_false(lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_USER_AGENT, USER_AGENT, 15, p, end) == 0, error);
-    when_false(lws_add_http_header_content_length(wsi, strlen(pending_msg), p, end) == 0, error);
-    when_false(lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_CONTENT_TYPE, CONTENT_TYPE, 28, p, end) == 0, error);
+    when_false(lws_add_http_header_content_length(wsi, msg_len, p, end) == 0, error);
 
     if(session_cookie) { //Handle session cookie if any
         when_false(lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_COOKIE,
@@ -463,7 +464,11 @@ static int cwmp_client_handshake_cb(struct lws* wsi, void* in, size_t len) {
                                                 strlen(auth_hdr), p, end) == 0, error);
     }
 
-    when_false(lws_add_http_header_by_name(wsi, SOAP_HEADER, EMPTY_USTR, 0, p, end) == 0, error);
+    if(msg_len > 0) {
+        when_false(lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_CONTENT_TYPE, CONTENT_TYPE, 28, p, end) == 0, error);
+        when_false(lws_add_http_header_by_name(wsi, SOAP_HEADER, EMPTY_USTR, 0, p, end) == 0, error);
+    }
+
 
     //headers finished, tell lws the message body is awaiting
     lws_client_http_body_pending(wsi, 1);
