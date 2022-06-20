@@ -370,13 +370,15 @@ static int cwmp_client_connection_established_cb(struct lws* wsi) {
         //jump to LWS_CALLBACK_CLOSED_CLIENT_HTTP
         lws_wsi_close(wsi, LWS_TO_KILL_ASYNC);
 
-    } else if((http_status == HTTP_OK) && !connected) {
-        connected = true;
-        //store ACSIP in persistent storage
-        if(DM_ENG_SetManagementServerValue(DM_ENG_EntityType_SYSTEM,
-                                           DM_ENG_ACSIP,
-                                           acs_server_ip) != 0) {
-            SAH_TRACEZ_ERROR("CWMPD", "ACSIP failed to update data model");
+    } else if((http_status == HTTP_OK)) {
+        if(!connected) {
+            connected = true;
+            //store ACSIP in persistent storage
+            if(DM_ENG_SetManagementServerValue(DM_ENG_EntityType_SYSTEM,
+                                               DM_ENG_ACSIP,
+                                               acs_server_ip) != 0) {
+                SAH_TRACEZ_ERROR("CWMPD", "ACSIP failed to update data model");
+            }
         }
         ret = cwmp_client_handle_cookies(wsi);
     }
