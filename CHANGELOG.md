@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.16.12 - 2022-06-20(11:47:24 +0000)
+
+### Fixes
+
+- GPV RPC stop on a non-tr181 components
+
 ## Release v1.16.11 - 2022-06-10(15:05:30 +0000)
 
 ### Fixes
