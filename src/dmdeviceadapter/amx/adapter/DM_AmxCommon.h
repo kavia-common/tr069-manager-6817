@@ -92,11 +92,11 @@ extern "C"
 // tr181-device name on the bus
 #define TR181_DEVICE_OBJNAME "Device."
 
-#define SetErrorGotoStop(errorNumber, message) \
-    { error = errorNumber; SAH_TRACEZ_ERROR("DM_DA", message); goto stop; }
+#define SetErrorGotoStop(errorNumber, ...) \
+    { error = errorNumber; SAH_TRACEZ_ERROR("DM_DA", __VA_ARGS__); goto stop; }
 
-#define GotoStop(message) \
-    { SAH_TRACEZ_ERROR("DM_DA", message); goto stop; }
+#define GotoStop(...) \
+    { SAH_TRACEZ_ERROR("DM_DA", __VA_ARGS__); goto stop; }
 
 typedef void (* notification_cb_t)(const char* path, const amxc_var_t* const data);
 

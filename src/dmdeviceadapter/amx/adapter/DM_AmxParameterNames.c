@@ -107,12 +107,11 @@ static bool DM_ENG_Device_GetParameterNames_GetParameter(const char* object_path
     param_name = GETP_CHAR(parameter, "name");
 
     if(param_name == NULL) {
-        GotoStop("invalid parameter name");
+        GotoStop("The parameterName is NULL?, parent Path [%s]", object_path);
     }
 
     amxc_string_setf(&paramPath, "%s%s%s", prefixName, object_path, param_name);
 
-    SAH_TRACEZ_INFO("DM_DA", "ADD [%s] to ParameterInfoStruct", amxc_string_get(&paramPath, 0));
     // Find parameter attributes
     attributes = GET_ARG(parameter, "attributes");
     is_read_only = GET_INT32(attributes, "read-only");
@@ -185,7 +184,7 @@ static bool DM_ENG_Device_GetParameterNames_GetParameters(const char* path, bool
             //amxc_var_dump(parameter,0);
             if(!DM_ENG_Device_GetParameterNames_GetParameter(path, parameter, pnsList)) {
                 ret = false;
-                GotoStop("Adding parameter failed");
+                GotoStop("Adding parameter failed [%s]", path);
             }
         }
     }
@@ -230,15 +229,15 @@ static int DM_ENG_Device_GetParameterNames_GetObjects(dm_amx_env_t* amx, const c
 
     // case of a null parameter/object
     if(((rv != 0) || amxc_var_is_null(&result)) && (rv != 3)) {
-        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "DM_ENG_Device_Common_GetObjects failed to get object");
+        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "amxb_describe failed for object [%s]", path);
     } else if(rv == 3) { //object dosen't support describe operation
-        SetErrorGotoStop(0, "Object dosen't support describe");
+        SetErrorGotoStop(0, "Object dosen't support describe, Skip it [%s]", path);
     }
 
     object = GETI_ARG(&result, 0);
 
     if(!DM_ENG_Device_GetParameterNames_GetParameters(path, true, object, pnsList)) {
-        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "DM_ENG_Device_Common_GetObjects failed to get object");
+        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "GetParameterNames(nextLevel=TRUE) failed, object [%s]", path);
     }
 
     type_id = GET_INT32(object, "type_id");
@@ -299,19 +298,18 @@ static int DM_ENG_Device_GetParameterNames_GetChildObjects(dm_amx_env_t* amx_env
     u_int32_t flags = AMXB_FLAG_PARAMETERS | AMXB_FLAG_OBJECTS | AMXB_FLAG_INSTANCES;
     SAH_TRACEZ_IN("DM_DA");
 
-    SAH_TRACEZ_INFO("DM_DA", "requested path=%s", path);
     int rv = amxb_describe(amx_env->bus_ctx, path, flags, &parent, 1);
 
     if(((rv != 0) || amxc_var_is_null(&parent)) && (rv != 3)) {
-        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "failed");
+        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "amxb_describe failed for object [%s]", path);
     } else if(rv == 3) { //object doesn't support describe operation
-        SetErrorGotoStop(0, "Object doesn't support describe");
+        SetErrorGotoStop(0, "Object doesn't support describe, skip it [%s]", path);
     }
 
     object = GETI_ARG(&parent, 0);
 
     if(DM_ENG_Device_GetParameterNames_GetParameters(path, false, object, pnsList) == false) {
-        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "failed");
+        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "GetParameterNames(nextLevel=FALSE) failed, object [%s]", path);
     }
 
     type_id = GET_INT32(object, "type_id");
@@ -332,7 +330,7 @@ static int DM_ENG_Device_GetParameterNames_GetChildObjects(dm_amx_env_t* amx_env
             rv = amxb_describe(amx_env->bus_ctx, amxc_string_get(&childPath, 0), flags, &childobject, 1);
 
             if((rv != 0) || amxc_var_is_null(&childobject)) {
-                SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "failed");
+                SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "amxb_describe failed for child [%s], abort", amxc_string_get(&childPath, 0));
             }
             // 2 = template , 3 = instance
             type_id = GET_INT32(GETI_ARG(&childobject, 0), "type_id");
@@ -502,13 +500,13 @@ int DM_ENG_Device_GetParameterNames_Parameter(dm_amx_env_t* amx_env, char* path,
             amxd_path_init(&paramPath, ppath);
             int rv = amxb_describe(amx_env->bus_ctx, amxd_path_get(&paramPath, AMXD_OBJECT_TERMINATE), flags, &object, 1);
             if((rv != 0) || amxc_var_is_null(&object)) {
-                SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "failed to resolve path");
+                SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "amxb_describe failed to path [%s]", amxd_path_get(&paramPath, AMXD_OBJECT_TERMINATE));
             }
             amxc_string_clean(&paramName);
             amxc_string_setf(&paramName, "0.parameters.%s", amxd_path_get_param(&paramPath));
             amxc_var_t* parameter = GETP_ARG(&object, amxc_string_get(&paramName, 0));
             if(!DM_ENG_Device_GetParameterNames_GetParameter(amxd_path_get(&paramPath, AMXD_OBJECT_TERMINATE), parameter, infoList)) {
-                SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Could not get the object parameters");
+                SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Could not get the object parameters [%s]", amxd_path_get(&paramPath, AMXD_OBJECT_TERMINATE));
             }
         }
     } else {

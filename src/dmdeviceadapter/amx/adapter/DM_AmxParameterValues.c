@@ -191,8 +191,13 @@ static int DM_ENG_Device_GetParameterValues_GetData(amxb_bus_ctx_t* bus_ctx, con
 
     ret = amxb_get(bus_ctx, path, depth, &object, timeout);
 
-    if((ret != 0) || amxc_var_is_null(&object)) {
-        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "DM_ENG_Device_GetParameterNames_ChildObjects failed to get object");
+    if((ret != AMXB_STATUS_OK) || amxc_var_is_null(&object)) {
+        if((ret == AMXB_ERROR_NOT_SUPPORTED_SCHEME) || (ret == AMXB_ERROR_NOT_SUPPORTED_OP)) {
+            //not a tr181 component skip it
+            SetErrorGotoStop(0, "non tr181 component, skipping it code [%d] path [%s]", ret, path);
+        } else {
+            SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "failed to get object code [%d] path [%s]", ret, path);
+        }
     }
     // Parse result
     error = DM_ENG_Device_GetParameterValues_ParseValues(&object, pvsList);
@@ -232,14 +237,14 @@ static int DM_ENG_Device_GetParameterValues_GetRootParameter(dm_amx_env_t* amx, 
     amxc_var_init(&object);
     const char* internalPath = DM_ENG_Device_Common_GetRootParameterInternalPath(path);
     if(internalPath == NULL) {
-        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Not a valid object path");
+        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Failed to get parameter [%s]", path);
     }
     amxd_path_clean(&parameterPath);
     amxd_path_init(&parameterPath, internalPath);
 
     ret = amxb_get(amx->bus_ctx, internalPath, 0, &object, 1);
     if((ret != 0) || amxc_var_is_null(&object)) {
-        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "failed to get object");
+        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "failed to get object [%s]", internalPath);
     }
     amxc_string_clean(&parameterAmxPath);
     amxc_string_setf(&parameterAmxPath, "0.'%s'.%s",
@@ -292,13 +297,11 @@ int DM_ENG_Device_GetParameterValues_GetValues(dm_amx_env_t* amx, const char* pa
 
     // Case of Device. or IGD.
     if((strlen(path) == 0) || (strcmp(amx->prefix, path) == 0)) {
-        // When requesting All data model lets not forget the root parameters
-        // Add them first
         int i = 0;
         while(ROOT_DM_INTERNAL_PARAMETER_PATH[i]) {
             error = DM_ENG_Device_GetParameterValues_GetRootParameter(amx, ROOT_DM_INTERNAL_PARAMETER_PATH[i], pvsList);
             if(error) {
-                SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Couldn't get Root datamodel paramete");
+                SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Couldn't get Root datamodel paramete [%s]", ROOT_DM_INTERNAL_PARAMETER_PATH[i]);
             }
             i++;
         }
@@ -313,12 +316,12 @@ int DM_ENG_Device_GetParameterValues_GetValues(dm_amx_env_t* amx, const char* pa
                 }
             }
         } else {
-            SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "failed to resolve path");
+            SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "couldn't resolve object Path [%s]", internalPath);
         }
     } else {
         if(DM_ENG_Device_Common_IsWildcardPath(path) &&
            !DM_ENG_Device_Common_IsWildcardPathValid(path)) {
-            SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "path format is not supported");
+            SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "path format is not supported [%s]", path);
         }
 
         if(DM_ENG_Device_Common_IsRootParameter(path)) {
