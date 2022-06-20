@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.16.13 - 2022-06-20(11:53:44 +0000)
+
+### Fixes
+
+- Fix Set session cookies
+
 ## Release v1.16.12 - 2022-06-20(11:47:24 +0000)
 
 ### Fixes
