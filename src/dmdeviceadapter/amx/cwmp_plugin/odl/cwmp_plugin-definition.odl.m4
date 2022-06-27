@@ -433,7 +433,7 @@
       /**
         * Parameters indicating the state of the ManagementServer
         */
-        %protected object State {
+        %persistent %protected object State {
           /**
             * Flag indicating that a factory reset has occurred. Once the CPE has succesfully send an inform message this flag will be set to 1. This flag will be reset to 0 when a factory reset occurs. Formerly known as FactoryResetOccurred
             * @version 1.0
