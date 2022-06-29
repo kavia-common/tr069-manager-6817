@@ -608,10 +608,7 @@ static void cwmp_client_prepare_session() {
     lws_connect_info.path = acs_server_path;
     lws_connect_info.alpn = "http/1.1";
     lws_connect_info.protocol = protocols[0].name;
-
-    // libwebsocket crash with multi client after the first server reply
-    // this will cause a neww SSL connection for each message, not ideal?
-    lws_connect_info.ssl_connection = 0; //3.6.4 *The CPE MUST NOT make use of pipelining as defined in HTTP 1.1
+    lws_connect_info.ssl_connection = LCCSCF_PIPELINE;
 
     /* https stuff */
     if(strcmp(acs_server_scheme, "https") == 0) {
