@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.16.16 - 2022-07-04(15:49:47 +0000)
+
+### Fixes
+
+- missing "M Reboot" in inform msg after reboot
+- Remove duplicated env script from tr069-manager
+
 ## Release v1.16.15 - 2022-07-04(15:28:27 +0000)
 
 ### Fixes
