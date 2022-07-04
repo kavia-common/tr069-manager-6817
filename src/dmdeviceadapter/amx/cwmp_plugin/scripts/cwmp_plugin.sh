@@ -6,7 +6,7 @@ name="cwmp_plugin"
 case $1 in
     start|boot)
         source /etc/environment
-	LD_LIBRARY_PATH=/opt/prplos/usr/lib cwmp_plugin -D
+        LD_LIBRARY_PATH=/opt/prplos/usr/lib cwmp_plugin -D
         ;;
     stop|shutdown)
         if [ -f /var/run/cwmp_plugin.pid ]; then
@@ -18,6 +18,7 @@ case $1 in
         ;;
     restart)
         $0 stop
+        sleep 1
         $0 start
         ;;
     log)
