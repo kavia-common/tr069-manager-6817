@@ -783,9 +783,7 @@ bool DM_ENG_Device_SystemConnectionInitialize(dm_amx_env_t* amx) {
         ret = false;
         GotoStop("Connection to bus failed");
     }
-
-    //TODO!
-    //we should wait until ManagementServer & DeviceInfo are UP
+    amxb_set_access(amx->bus_ctx, AMXB_PROTECTED);
 
     DM_ENG_Device_SystemConnectionSleepBeforeStarting();
 

@@ -47,6 +47,7 @@
         * @version 1.0
         */
         %persistent string Password {
+            on action read call hide_value;
             constraint maxvalue 256;
             default "cdrouter";
         }
@@ -124,6 +125,7 @@
         * @version 1.0
         */
         %persistent string ConnectionRequestPassword {
+            on action read call hide_value;
             constraint maxvalue 256;
             default "acs";
         }

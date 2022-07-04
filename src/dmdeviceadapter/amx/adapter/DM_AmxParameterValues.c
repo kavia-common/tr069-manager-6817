@@ -79,6 +79,55 @@ extern char* ROOT_DM_INTERNAL_PARAMETER_PATH[];
  */
 
 //---------------------------------------------------------------------------------------------
+
+
+/**
+   @brief
+   Simple Helper to search the right parameter type
+
+   @details
+   Helper :search the right parameter type
+   used to work arround ubus problem of the types supported.
+
+   @param bus_ctx bus env variable
+   @param object object Path
+   @param parameter parameter name without the object prefix
+
+   @return
+   type (integer id of the type)
+ */
+static int DM_ENG_Device_GetParameterValues_FindType(amxb_bus_ctx_t* bus_ctx, const char* object, const char* parameter) {
+    int type = -1;
+    int rv = 0;
+    amxc_var_t desc;
+    amxc_var_t* param_var = NULL;
+    amxc_string_t paramPath;
+    amxc_string_init(&paramPath, 0);
+    amxc_var_init(&desc);
+
+    rv = amxb_describe(bus_ctx, object, AMXB_FLAG_PARAMETERS, &desc, 1);
+
+    if(((rv != 0) || amxc_var_is_null(&desc))) {
+        type = -1;
+        goto stop;
+    }
+    amxc_string_setf(&paramPath, "0.parameters.%s", parameter);
+
+    param_var = GETP_ARG(&desc, amxc_string_get(&paramPath, 0));
+    if(!param_var) {
+        type = -1;
+        goto stop;
+    }
+    type = GET_INT32(param_var, "type_id");
+
+stop:
+    amxc_string_clean(&paramPath);
+    amxc_var_clean(&desc);
+    return type;
+}
+
+
+
 /**
    @brief
    Simple Helper to read and parse the result variant
@@ -95,7 +144,7 @@ extern char* ROOT_DM_INTERNAL_PARAMETER_PATH[];
    - false if an error occurred
    - true if succesfull
  */
-static int DM_ENG_Device_GetParameterValues_ParseValues(amxc_var_t* object, void* data) {
+static int DM_ENG_Device_GetParameterValues_ParseValues(amxb_bus_ctx_t* bus_ctx, amxc_var_t* object, void* data) {
     /*
      * result may be something like this
      * htable of a htable ?
@@ -138,6 +187,15 @@ static int DM_ENG_Device_GetParameterValues_ParseValues(amxc_var_t* object, void
             amxc_string_init(&param_name, 0);
             amxc_string_setf(&param_name, "%s%s%s", dmprefix, key, paramkey);
 
+            //(check via describe API), ubus report the wrong type
+            //bool is reported as int8 , all uintX are reported as intX
+            if((type == AMXC_VAR_ID_INT8) || (type == AMXC_VAR_ID_INT16) || (type == AMXC_VAR_ID_INT32) || (type == AMXC_VAR_ID_INT64)) {
+                int new_type = DM_ENG_Device_GetParameterValues_FindType(bus_ctx, key, paramkey);
+                if(new_type != -1) {
+                    type = new_type;
+                }
+            }
+
             dmvs = DM_ENG_newParameterValueStruct(amxc_string_get(&param_name, 0),
                                                   DM_ENG_Device_Common_ConvertParameterType(type), param_val);
 
@@ -148,7 +206,6 @@ static int DM_ENG_Device_GetParameterValues_ParseValues(amxc_var_t* object, void
         }
     }
 
-//stop:
     SAH_TRACEZ_OUT("DM_DA");
     return error;
 }
@@ -200,7 +257,7 @@ static int DM_ENG_Device_GetParameterValues_GetData(amxb_bus_ctx_t* bus_ctx, con
         }
     }
     // Parse result
-    error = DM_ENG_Device_GetParameterValues_ParseValues(&object, pvsList);
+    error = DM_ENG_Device_GetParameterValues_ParseValues(bus_ctx, &object, pvsList);
 stop:
     amxc_var_clean(&object);
     return error;

@@ -275,6 +275,8 @@ DM_ENG_ParameterType DM_ENG_Device_Common_ConvertParameterType(u_int32_t type) {
         return DM_ENG_ParameterType_BOOLEAN;
     case AMXC_VAR_ID_TIMESTAMP:
         return DM_ENG_ParameterType_DATE;
+    case AMXC_VAR_ID_ANY:
+        return DM_ENG_ParameterType_ANY;
     default:
         //parameter_type_unknown,   /**< unknown (only for internal use)*/
         return DM_ENG_ParameterType_UNDEFINED;
