@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.16.14 - 2022-07-04(15:24:13 +0000)
+
+### Fixes
+
+- Firewall service should be required by cwmpd
+- TCP connection is not persistent
+
 ## Release v1.16.13 - 2022-06-20(11:53:44 +0000)
 
 ### Fixes
