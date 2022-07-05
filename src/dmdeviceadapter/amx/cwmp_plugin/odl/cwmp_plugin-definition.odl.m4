@@ -75,7 +75,7 @@
         * If absolute time is not available to the CPE, its periodic Inform behavior MUST be the same as if the PeriodicInformTime parameter was set to the Unknown Time value.
         * @version 1.0
         */
-        %persistent string PeriodicInformTime;
+        %persistent datetime PeriodicInformTime;
 
       /**
         * Indicates support of instance wildcards to the ACS
