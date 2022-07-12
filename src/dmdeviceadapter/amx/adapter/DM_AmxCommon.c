@@ -417,43 +417,59 @@ static void DM_ENG_Device_Common_Resolve_Path_cb(const amxb_bus_ctx_t* bus_ctx, 
     - true : no error path resolved successfully
  */
 bool DM_ENG_Device_Common_Resolve_Path(dm_amx_env_t* amx, const char* path, amxc_var_t* resolved) {
-    bool ret = true;
+    bool ret = false;
     int rv = 0;
     amxd_path_t amxd_path;
     amxc_var_init(resolved);
     // resolve the search path
     amxd_path_init(&amxd_path, path);
+    amxc_var_set_type(resolved, AMXC_VAR_ID_LIST);
 
     if(DM_ENG_Device_Common_IsWildcardPath(path)) {
         if(!DM_ENG_Device_Common_IsWildcardPathValid(path)
            || !amxd_path_is_search_path(&amxd_path)) {
-            ret = false;
             goto stop;
         }
 
-        if((amxb_resolve(amx->bus_ctx, &amxd_path, resolved) != 0)
-           || amxc_var_is_null(resolved)
-           || ( amxc_var_type_of(resolved) != AMXC_VAR_ID_LIST)) {
-            ret = false;
+        //amxb_resolve ommit Parameter Path
+        amxc_var_t result;
+        bool is_parameter = (path[strlen(path) - 1] != '.');
+        amxc_var_init(&result);
+        if((amxb_resolve(amx->bus_ctx, &amxd_path, &result) != 0)
+           || amxc_var_is_null(&result)
+           || ( amxc_var_type_of(&result) != AMXC_VAR_ID_LIST)) {
+            amxc_var_clean(&result);
             goto stop;
         }
+
+        amxc_var_for_each(path, &result) {
+            const char* resolved_path = amxc_var_constcast(cstring_t, path);
+            amxc_string_t param_name;
+            amxc_string_init(&param_name, 0);
+
+            if(is_parameter) {
+                amxc_string_setf(&param_name, "%s%s", resolved_path, amxd_path_get_param(&amxd_path));
+            } else {
+                amxc_string_setf(&param_name, "%s", resolved_path);
+            }
+            amxc_var_add(cstring_t, resolved, amxc_string_get(&param_name, 0));
+            amxc_string_clean(&param_name);
+        }
+        amxc_var_clean(&result);
     } else if((strlen(path) == 0) || (strcmp(amx->prefix, path) == 0)) {
         // listing all of Device. or IGD.
         int flags = AMXB_FLAG_OBJECTS | AMXB_FLAG_INSTANCES;
-        amxc_var_set_type(resolved, AMXC_VAR_ID_LIST);
         // find all possible object paths on root data model
         rv = amxb_list(amx->bus_ctx, "", flags,
                        DM_ENG_Device_Common_Resolve_Path_cb, (void*) resolved);
 
         if(rv != 0) {
-            ret = false;
+            goto stop;
         }
     } else {
-        // there is nothing to resolve here
-        amxc_var_set_type(resolved, AMXC_VAR_ID_LIST);
         amxc_var_add(cstring_t, resolved, path);
-        ret = true;
     }
+    ret = true;
 stop:
     amxd_path_clean(&amxd_path);
     return ret;

@@ -536,28 +536,22 @@ void test_dmadapter_GetParameterNames_Object_NextLevel_False_searchPath(UNUSED v
     assert_int_equal(rv, 0);
     /*
      * Expected Result:
-     * Parameter/Object [Device.Hosts.Host.1.] , Writable= 1
-     * Parameter/Object [Device.Hosts.Host.1.IPAddress] , Writable= 1
-     * Parameter/Object [Device.Hosts.Host.1.MACAddress] , Writable= 1
-     * Parameter/Object [Device.Hosts.Host.2.] , Writable= 1
-     * Parameter/Object [Device.Hosts.Host.2.IPAddress] , Writable= 1
-     * Parameter/Object [Device.Hosts.Host.2.MACAddress] , Writable= 1
+     * Parameter/Object [InternetGatewayDevice.Hosts.Host.1.] , Writable= 1
+     * Parameter/Object [InternetGatewayDevice.Hosts.Host.1.IPAddress] , Writable= 1
+     * Parameter/Object [InternetGatewayDevice.Hosts.Host.1.MACAddress] , Writable= 1
+     * Parameter/Object [InternetGatewayDevice.Hosts.Host.2.] , Writable= 1
+     * Parameter/Object [InternetGatewayDevice.Hosts.Host.2.IPAddress] , Writable= 1
+     * Parameter/Object [InternetGatewayDevice.Hosts.Host.2.MACAddress] , Writable= 1
      */
     num_param = DM_ENG_tablen((void**) param_info_st);
     assert_int_equal(num_param, 6);// result should include objects
 
-    assert_string_equal(param_info_st[0]->parameterName, "InternetGatewayDevice.Hosts.Host.1.");
-    assert_int_equal(param_info_st[0]->writable, 1);
-    assert_string_equal(param_info_st[1]->parameterName, "InternetGatewayDevice.Hosts.Host.1.IPAddress");
-    assert_int_equal(param_info_st[1]->writable, 1);
-    assert_string_equal(param_info_st[2]->parameterName, "InternetGatewayDevice.Hosts.Host.1.MACAddress");
-    assert_int_equal(param_info_st[2]->writable, 1);
-    assert_string_equal(param_info_st[3]->parameterName, "InternetGatewayDevice.Hosts.Host.2.");
-    assert_int_equal(param_info_st[3]->writable, 1);
-    assert_string_equal(param_info_st[4]->parameterName, "InternetGatewayDevice.Hosts.Host.2.IPAddress");
-    assert_int_equal(param_info_st[4]->writable, 1);
-    assert_string_equal(param_info_st[5]->parameterName, "InternetGatewayDevice.Hosts.Host.2.MACAddress");
-    assert_int_equal(param_info_st[5]->writable, 1);
+    assert_int_equal(check_parameter_name(param_info_st, "InternetGatewayDevice.Hosts.Host.1.", true), 0);
+    assert_int_equal(check_parameter_name(param_info_st, "InternetGatewayDevice.Hosts.Host.1.MACAddress", true), 0);
+    assert_int_equal(check_parameter_name(param_info_st, "InternetGatewayDevice.Hosts.Host.1.IPAddress", true), 0);
+    assert_int_equal(check_parameter_name(param_info_st, "InternetGatewayDevice.Hosts.Host.2.", true), 0);
+    assert_int_equal(check_parameter_name(param_info_st, "InternetGatewayDevice.Hosts.Host.2.MACAddress", true), 0);
+    assert_int_equal(check_parameter_name(param_info_st, "InternetGatewayDevice.Hosts.Host.2.IPAddress", true), 0);
 
 #if PRINT_RESULT
     for(int i = 0; i < num_param; i++) {
@@ -582,21 +576,46 @@ void test_dmadapter_GetParameterNames_Object_NextLevel_True_searchPath(UNUSED vo
     assert_int_equal(rv, 0);
     /*
      * Expected Result:
-     * Parameter/Object [Device.Hosts.Host.1.IPAddress] , Writable= 1
-     * Parameter/Object [Device.Hosts.Host.1.MACAddress] , Writable= 1
-     * Parameter/Object [Device.Hosts.Host.2.IPAddress] , Writable= 1
-     * Parameter/Object [Device.Hosts.Host.2.MACAddress] , Writable= 1
+     * Parameter/Object [InternetGatewayDevice.Hosts.Host.1.MACAddress] , Writable= 1
+     * Parameter/Object [InternetGatewayDevice.Hosts.Host.1.IPAddress] , Writable= 1
+     * Parameter/Object [InternetGatewayDevice.Hosts.Host.2.MACAddress] , Writable= 1
+     * Parameter/Object [InternetGatewayDevice.Hosts.Host.2.IPAddress] , Writable= 1
      */
     num_param = DM_ENG_tablen((void**) param_info_st);
     assert_int_equal(num_param, 4);
-    assert_string_equal(param_info_st[0]->parameterName, "InternetGatewayDevice.Hosts.Host.1.IPAddress");
-    assert_int_equal(param_info_st[0]->writable, 1);
-    assert_string_equal(param_info_st[1]->parameterName, "InternetGatewayDevice.Hosts.Host.1.MACAddress");
-    assert_int_equal(param_info_st[1]->writable, 1);
-    assert_string_equal(param_info_st[2]->parameterName, "InternetGatewayDevice.Hosts.Host.2.IPAddress");
-    assert_int_equal(param_info_st[2]->writable, 1);
-    assert_string_equal(param_info_st[3]->parameterName, "InternetGatewayDevice.Hosts.Host.2.MACAddress");
-    assert_int_equal(param_info_st[3]->writable, 1);
+    assert_int_equal(check_parameter_name(param_info_st, "InternetGatewayDevice.Hosts.Host.1.MACAddress", true), 0);
+    assert_int_equal(check_parameter_name(param_info_st, "InternetGatewayDevice.Hosts.Host.1.IPAddress", true), 0);
+    assert_int_equal(check_parameter_name(param_info_st, "InternetGatewayDevice.Hosts.Host.2.MACAddress", true), 0);
+    assert_int_equal(check_parameter_name(param_info_st, "InternetGatewayDevice.Hosts.Host.2.IPAddress", true), 0);
+#if PRINT_RESULT
+    for(int i = 0; i < num_param; i++) {
+        printf("-> Parameter/Object [%s] , Writable= %d\n", param_info_st[i]->parameterName, param_info_st[i]->writable);
+    }
+#endif
+    if(param_info_st) {
+        DM_ENG_deleteAllParameterInfoStruct(param_info_st);
+        free(param_info_st);
+    }
+    param_info_st = NULL;
+}
+
+void test_dmadapter_GetParameterNames_Parameter_searchPath(UNUSED void** state) {
+    char* objtest_path = "InternetGatewayDevice.Hosts.Host.*.IPAddress";
+    int rv = 0;
+    int num_param = 0;
+    DM_ENG_ParameterInfoStruct** param_info_st = NULL;
+
+    rv = DM_ENG_GetParameterNames(DM_ENG_EntityType_ACS, (char*) objtest_path, false, &param_info_st);
+    assert_int_equal(rv, 0);
+    /*
+     * Expected Result:
+     * Parameter/Object [Device.Hosts.Host.1.IPAddress] , Writable= 1
+     * Parameter/Object [Device.Hosts.Host.2.IPAddress] , Writable= 1
+     */
+    num_param = DM_ENG_tablen((void**) param_info_st);
+    assert_int_equal(num_param, 2);
+    assert_int_equal(check_parameter_name(param_info_st, "InternetGatewayDevice.Hosts.Host.1.IPAddress", true), 0);
+    assert_int_equal(check_parameter_name(param_info_st, "InternetGatewayDevice.Hosts.Host.2.IPAddress", true), 0);
 
 #if PRINT_RESULT
     for(int i = 0; i < num_param; i++) {
@@ -676,7 +695,7 @@ void test_dmadapter_GetParametersValues_Parameters(UNUSED void** state) {
     int num_param = 4;
     char* paramPath1 = "InternetGatewayDevice.DeviceInfo.SerialNumber";
     char* paramPath2 = "InternetGatewayDevice.DeviceInfo.DeviceStatus";
-    char* paramPath3 = "InternetGatewayDevice.DeviceInfo.testInt";
+    char* paramPath3 = "InternetGatewayDevice.DeviceInfo.testuint";
     DM_ENG_ParameterValueStruct** params_values_st = NULL;
     char* paramsArray[num_param + 1];
     paramsArray[0] = paramPath1;
@@ -690,21 +709,21 @@ void test_dmadapter_GetParametersValues_Parameters(UNUSED void** state) {
      * Expected Result:
      * [InternetGatewayDevice.DeviceInfo.SerialNumber] : type= 5 , val= 000000123
      * [InternetGatewayDevice.DeviceInfo.DeviceStatus] : type= 5 , val= Up
-     * [InternetGatewayDevice.DeviceInfo.testInt] : type= 0 , val= 10
+     * [InternetGatewayDevice.DeviceInfo.testuint] : type= 0 , val= 10
      */
     int nb_param = DM_ENG_tablen((void**) params_values_st);
     assert_int_equal(nb_param, 3);
 
     assert_string_equal(params_values_st[0]->parameterName, paramPath1);
-    assert_int_equal(params_values_st[0]->type, 5);// 5 -> string
+    assert_int_equal(params_values_st[0]->type, DM_ENG_ParameterType_STRING);
     assert_string_equal(params_values_st[0]->value, "000000123");
 
     assert_string_equal(params_values_st[1]->parameterName, paramPath2);
-    assert_int_equal(params_values_st[1]->type, 5);// 5 -> string
+    assert_int_equal(params_values_st[1]->type, DM_ENG_ParameterType_STRING);
     assert_string_equal(params_values_st[1]->value, "Up");
 
     assert_string_equal(params_values_st[2]->parameterName, paramPath3);
-    assert_int_equal(params_values_st[2]->type, 1);// 0 -> uint
+    assert_int_equal(params_values_st[2]->type, DM_ENG_ParameterType_UINT);
     assert_string_equal(params_values_st[2]->value, "10");
 
     if(rv == 0) {
@@ -739,11 +758,11 @@ void test_dmadapter_GetParametersValues_RootParameters(UNUSED void** state) {
     assert_int_equal(nb_param, 2);
 
     assert_string_equal(params_values_st[0]->parameterName, paramPath1);
-    assert_int_equal(params_values_st[0]->type, 5);// 5 -> string
+    assert_int_equal(params_values_st[0]->type, DM_ENG_ParameterType_STRING);// 5 -> string
     assert_string_equal(params_values_st[0]->value, "2.14");
 
     assert_string_equal(params_values_st[1]->parameterName, paramPath2);
-    assert_int_equal(params_values_st[1]->type, 1);// 0 -> uint
+    assert_int_equal(params_values_st[1]->type, DM_ENG_ParameterType_UINT);// 0 -> uint
     assert_string_equal(params_values_st[1]->value, "0");
 
     if(rv == 0) {
@@ -779,15 +798,15 @@ void test_dmadapter_GetParametersValues_Object(UNUSED void** state) {
      * [InternetGatewayDevice.DeviceInfo.testInt] : type= 0 , val= 10
      */
     int nb_param = DM_ENG_tablen((void**) params_values_st);
-    assert_int_equal(nb_param, 5);
+    assert_int_equal(nb_param, 7);
 
-    //order is not always garanteed with GetParameterValues
-    rv = check_parameter_value(params_values_st, "InternetGatewayDevice.DeviceInfo.SerialNumber", "000000123", 5);
-    assert_int_equal(rv, 0);
-    rv = check_parameter_value(params_values_st, "InternetGatewayDevice.DeviceInfo.DeviceStatus", "Up", 5);
-    assert_int_equal(rv, 0);
-    rv = check_parameter_value(params_values_st, "InternetGatewayDevice.DeviceInfo.testInt", "10", 1);
-    assert_int_equal(rv, 0);
+    assert_int_equal(check_parameter_value(params_values_st, "InternetGatewayDevice.DeviceInfo.SerialNumber", "000000123", DM_ENG_ParameterType_STRING), 0);
+    assert_int_equal(check_parameter_value(params_values_st, "InternetGatewayDevice.DeviceInfo.DeviceStatus", "Up", DM_ENG_ParameterType_STRING), 0);
+    assert_int_equal(check_parameter_value(params_values_st, "InternetGatewayDevice.DeviceInfo.HardwareVersion", "1.1", DM_ENG_ParameterType_STRING), 0);
+    assert_int_equal(check_parameter_value(params_values_st, "InternetGatewayDevice.DeviceInfo.SoftwareVersion", "2.7", DM_ENG_ParameterType_STRING), 0);
+    assert_int_equal(check_parameter_value(params_values_st, "InternetGatewayDevice.DeviceInfo.testuint", "10", DM_ENG_ParameterType_UINT), 0);
+    assert_int_equal(check_parameter_value(params_values_st, "InternetGatewayDevice.DeviceInfo.testint", "10", DM_ENG_ParameterType_INT), 0);
+    assert_int_equal(check_parameter_value(params_values_st, "InternetGatewayDevice.DeviceInfo.testbool", "true", DM_ENG_ParameterType_BOOLEAN), 0);
 
     if(rv == 0) {
     #if PRINT_RESULT
@@ -825,11 +844,11 @@ void test_dmadapter_GetParametersValues_searchPath_Parameter(UNUSED void** state
      * [Device.Hosts.Host.2.IPAddress] : type= 5 , value = 192.168.0.221
      */
     assert_string_equal(params_values_st[0]->parameterName, "InternetGatewayDevice.Hosts.Host.1.IPAddress");
-    assert_int_equal(params_values_st[0]->type, 5);// 5 -> string
+    assert_int_equal(params_values_st[0]->type, DM_ENG_ParameterType_STRING);// 5 -> string
     assert_string_equal(params_values_st[0]->value, HOST_1_IP);
 
     assert_string_equal(params_values_st[1]->parameterName, "InternetGatewayDevice.Hosts.Host.2.IPAddress");
-    assert_int_equal(params_values_st[1]->type, 5);// 0 -> uint
+    assert_int_equal(params_values_st[1]->type, DM_ENG_ParameterType_STRING);// 0 -> uint
     assert_string_equal(params_values_st[1]->value, HOST_2_IP);
 
     #if PRINT_RESULT
@@ -871,19 +890,19 @@ void test_dmadapter_GetParametersValues_searchPath_Object(UNUSED void** state) {
      * [InternetGatewayDevice.Hosts.Host.2.MACAddress] : type= 5 , value = DD:DD:DD:FF:FF:FF
      */
     assert_string_equal(params_values_st[0]->parameterName, "InternetGatewayDevice.Hosts.Host.1.IPAddress");
-    assert_int_equal(params_values_st[0]->type, 5);// 5 -> string
+    assert_int_equal(params_values_st[0]->type, DM_ENG_ParameterType_STRING);// 5 -> string
     assert_string_equal(params_values_st[0]->value, HOST_1_IP);
 
     assert_string_equal(params_values_st[1]->parameterName, "InternetGatewayDevice.Hosts.Host.1.MACAddress");
-    assert_int_equal(params_values_st[1]->type, 5);// 5 -> string
+    assert_int_equal(params_values_st[1]->type, DM_ENG_ParameterType_STRING);// 5 -> string
     assert_string_equal(params_values_st[1]->value, HOST_1_MAC);
 
     assert_string_equal(params_values_st[2]->parameterName, "InternetGatewayDevice.Hosts.Host.2.IPAddress");
-    assert_int_equal(params_values_st[2]->type, 5);// 0 -> uint
+    assert_int_equal(params_values_st[2]->type, DM_ENG_ParameterType_STRING);// 0 -> uint
     assert_string_equal(params_values_st[2]->value, HOST_2_IP);
 
     assert_string_equal(params_values_st[3]->parameterName, "InternetGatewayDevice.Hosts.Host.2.MACAddress");
-    assert_int_equal(params_values_st[3]->type, 5);// 5 -> string
+    assert_int_equal(params_values_st[3]->type, DM_ENG_ParameterType_STRING);// 5 -> string
     assert_string_equal(params_values_st[3]->value, HOST_2_MAC);
 
     #if PRINT_RESULT

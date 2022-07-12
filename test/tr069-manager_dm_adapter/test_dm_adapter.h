@@ -147,4 +147,6 @@ void test_dmadapter_Reboot(void** state);
 
 void test_dmadapter_FactoryReset(void** state);
 
+void test_dmadapter_GetParameterNames_Parameter_searchPath(void** state);
+
 #endif // __TEST_LIB_DMENGINE_H__

@@ -87,6 +87,7 @@ int main(void) {
         cmocka_unit_test(test_dmadapter_GetParameterNames_Object_NextLevel_False),
         cmocka_unit_test(test_dmadapter_GetParameterNames_Object_NextLevel_False_searchPath),
         cmocka_unit_test(test_dmadapter_GetParameterNames_Object_NextLevel_True_searchPath),
+        cmocka_unit_test(test_dmadapter_GetParameterNames_Parameter_searchPath),
         cmocka_unit_test(test_dmadapter_GetParameterNames_Object_AllDataModel),
         cmocka_unit_test(test_dmadapter_GetParameterNames_Object_ListRootObjects),
         cmocka_unit_test(test_dmadapter_GetParametersValues_Parameters),

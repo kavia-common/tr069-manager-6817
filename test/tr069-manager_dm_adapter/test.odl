@@ -162,7 +162,9 @@
         string DeviceStatus = "Up";
         string HardwareVersion = "1.1";
         string SoftwareVersion = "2.7";
-        uint32 testInt = 10;
+        uint32 testuint = 10;
+        int32 testint = 10;
+        bool testbool=1;
     }
 }
 
