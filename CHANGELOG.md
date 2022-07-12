@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.16.17 - 2022-07-12(16:17:35 +0000)
+
+### Fixes
+
+- Fix PeriodicInformTime format
+- GPN/GPA fail with parameter search path
+
 ## Release v1.16.16 - 2022-07-04(15:49:47 +0000)
 
 ### Fixes
