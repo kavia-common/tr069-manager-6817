@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.16.18 - 2022-07-29(12:53:03 +0000)
+
+### Fixes
+
+- Check if wan is not connected, no starting cwmpd server
+
 ## Release v1.16.17 - 2022-07-12(16:17:35 +0000)
 
 ### Fixes
