@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.16.19 - 2022-08-03(09:02:06 +0000)
+
+### Other
+
+- Fix wrong error code returned when making a SetParameterValue...
+
 ## Release v1.16.18 - 2022-07-29(12:53:03 +0000)
 
 ### Fixes
