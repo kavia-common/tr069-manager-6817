@@ -522,7 +522,7 @@ int DM_ENG_Device_SetParameterValues_Validate(dm_amx_env_t* amx, DM_ENG_Paramete
 
         // check param validity
         if(amxc_var_is_null(parameter)) {
-            DM_ENG_addSetParameterValuesFault(faultsList, DM_ENG_newSetParameterValuesFault(parameterList[*i]->parameterName, DM_ENG_INVALID_PARAMETER_TYPE));
+            DM_ENG_addSetParameterValuesFault(faultsList, DM_ENG_newSetParameterValuesFault(parameterList[*i]->parameterName, DM_ENG_INVALID_PARAMETER_NAME));
             if(nbFaults) {
                 (*nbFaults)++;
             }
