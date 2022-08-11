@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.16.20 - 2022-08-11(09:59:25 +0000)
+
+### Other
+
+- It is not possible to contact the box using the ConnReqURL,...
+
 ## Release v1.16.19 - 2022-08-03(09:02:06 +0000)
 
 ### Other
