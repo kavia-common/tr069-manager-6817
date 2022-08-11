@@ -258,10 +258,14 @@ static cwmp_status_t cwmp_server_validate_uri(struct lws* wsi, const char* reque
 //        HTTP 503 status code (Service Unavailable). In this case, the CPE SHOULD NOT include the HTTP
 //        Retry-After header in the response.
 static cwmp_status_t cwmp_server_check_availability() {
+    // we currently support (b), remove the comments to support option (a)
+#if 0
     if(g_DmComData.bSession == true) { // we implement action (a)
         SAH_TRACEZ_INFO("CWMPD", "Session is active, return HTTP 503");
         return cwmp_status_ko;
     }
+#endif
+
     if(cwmp_server_maxConnectionsReached()) {
         SAH_TRACEZ_WARNING("CWMPD", "Maximum number of connections reached return HTTP 503");
         return cwmp_status_ko;
