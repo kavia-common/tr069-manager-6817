@@ -1,6 +1,6 @@
 # Introduction
 
-First off, thank you for considering contributing to tr069-manager and the [Ambiorix](https://gitlab.com/prpl-foundation/components/ambiorix) project. It's people like you that makes [Ambiorix](https://gitlab.com/prpl-foundation/components) such a great set of tools and libraries.
+First off, thank you for considering contributing to tr069-manager and the [Ambiorix](https://gitlab.com/prpl-foundation/components/ambiorix) project. It's people like you that makes [Ambiorix](https://gitlab.com/prpl-foundation/components/ambiorix) such a great set of tools and libraries.
 
 Following these guidelines helps to communicate that you respect the time of the developers managing and developing this open source project. In return, they should reciprocate that respect in addressing your issue, assessing changes, and helping you finalize your merge requests.
 
@@ -20,7 +20,7 @@ Contributing to the repositories can be done, make sure an issue is created in t
 
 Unsure where to begin contributing to Ambiorix? You can start by looking through the documentation and help-wanted issues:
 
-- documentation: Most of the documentation is written by none native English speaking people, reviewing the documentation and fixing grammar mistakes, or just rewriting parts, can help to make it all more understandable.
+- documentation: Most of the documentation is written by non-native English speaking people, reviewing the documentation and fixing grammar mistakes, or just rewriting parts, can help to make it all more understandable.
 - help-wanted: Help wanted issues are very specific and someone is needed with a good knowledge of that specific area.
 
 # Contributions to tr069-manager

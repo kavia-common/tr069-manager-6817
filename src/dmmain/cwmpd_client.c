@@ -81,6 +81,7 @@
 * Macro/Const definitions
 **********************************************************/
 #define DEFAULT_SESSION_TIMEOUT 45
+#define CNONCE_SIZE 16
 
 #define CWMP_HTTP_CALLBACK_CONTINUE (1)
 #define CWMP_HTTP_CALLBACK_ERROR (-1)
@@ -133,13 +134,6 @@ static bool is_ipaddr(const char* ip) {
         return true;
     }
     return false;
-}
-
-static void cwmp_free(char** val) {
-    if(*val) {
-        free(*val);
-        *val = NULL;
-    }
 }
 
 //lws cannot handle session cookie
@@ -231,6 +225,7 @@ static cwmp_status_t cwmp_client_gen_auth_hdr(auth_t type, char* auth_d) {
     cwmp_status_t ret = cwmp_status_ko;
     char* username = NULL;
     char* passwd = NULL;
+    char* cnonce = NULL;
 
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_USERNAME, &username) != 0) {
         SAH_TRACEZ_ERROR("CWMPD", "failed to fetch acs username");
@@ -245,7 +240,8 @@ static cwmp_status_t cwmp_client_gen_auth_hdr(auth_t type, char* auth_d) {
     if(type == auth_basic) {
         auth_hdr = cwmp_client_auth_basic(username, passwd);
     } else if(type == auth_digest) {
-        auth_hdr = DM_COM_GenerateDigestResponse_MD5(auth_d, acs_server_path, "POST", username, passwd);
+        _generateRandomString(cnonce, CNONCE_SIZE);
+        auth_hdr = DM_COM_GenerateDigestResponse_MD5(auth_d, cnonce, acs_server_path, "POST", username, passwd);
     } else {
         SAH_TRACEZ_ERROR("CWMPD", "ACS requested an unsupported auth method [%s]", auth_d);
         ret = cwmp_status_ko;
@@ -257,6 +253,7 @@ static cwmp_status_t cwmp_client_gen_auth_hdr(auth_t type, char* auth_d) {
 stop:
     cwmp_free(&username);
     cwmp_free(&passwd);
+    cwmp_free(&cnonce);
     return ret;
 }
 

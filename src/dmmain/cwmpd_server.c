@@ -81,6 +81,10 @@
 // Size of the CPE URL
 #define CPE_URL_SIZE (16)
 
+#define NONCESIZE  (34)
+static char randomNonceStr[NONCESIZE + 1];  // Max(NONCESIZE, OPAQUESIZE) + 1
+static char randomOpaqueStr[NONCESIZE + 1]; // Max(NONCESIZE, OPAQUESIZE) + 1
+
 extern dm_com_struct g_DmComData;
 
 amxc_string_t buffer;
@@ -280,7 +284,7 @@ static cwmp_status_t cwmp_server_reply_http_unauthaurized(struct lws* wsi) {
     unsigned char* p = start;
     unsigned char* end = &buf[sizeof(buf) - LWS_PRE - 1];
 
-    char* requestDigestMsg = _getRandomString();
+    char* requestDigestMsg = DM_COM_GenerateRequestDigestMsg(randomNonceStr, randomOpaqueStr);
     if(lws_add_http_header_status(wsi, HTTP_STATUS_UNAUTHORIZED, &p, end)) {
         return cwmp_status_ko;
     }
@@ -314,12 +318,24 @@ static cwmp_status_t cwmp_server_reply_http_unauthaurized(struct lws* wsi) {
 // an authentication request.
 static cwmp_status_t cwmp_server_validate_authentication(struct lws* wsi, const char* requested_uri) {
     cwmp_status_t ret = cwmp_status_ko;
+    char* conn_req_username = NULL;
+    char* conn_req_passwd = NULL;
+
+    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_CONNECTIONREQUESTUSERNAME, &conn_req_username) != 0) {
+        SAH_TRACEZ_ERROR("CWMPD", "failed to fetch acs username");
+        goto stop;
+    }
+    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_CONNECTIONREQUESTPASSWORD, &conn_req_passwd) != 0) {
+        SAH_TRACEZ_ERROR("CWMPD", "failed to fetch acs password");
+        goto stop;
+    }
+
     if(!lws_hdr_total_length(wsi, WSI_TOKEN_HTTP_AUTHORIZATION)) {
         SAH_TRACEZ_ERROR("CWMPD", "Received a request without authentication data");
     } else {
         char auth_data[1024];
         char* httpMethod = (char*) "";
-        char* tmp = NULL;
+        char* digest_message = NULL;
         if(lws_hdr_total_length(wsi, WSI_TOKEN_GET_URI)) {
             httpMethod = (char*) "GET";
         }
@@ -327,9 +343,13 @@ static cwmp_status_t cwmp_server_validate_authentication(struct lws* wsi, const 
         lws_hdr_copy(wsi, auth_data, sizeof auth_data, WSI_TOKEN_HTTP_AUTHORIZATION);
         amxc_string_setf(&buffer, "%s %s\n\r%s %s", httpMethod, requested_uri, AuthorizationToken, auth_data);
 
-        tmp = amxc_string_dup(&buffer, 0, amxc_string_text_length(&buffer));
-        if(_checkDigestAuthMessageContent(tmp)) {
-            if(false == performClientDigestAuthentication(tmp)) {
+        digest_message = amxc_string_dup(&buffer, 0, amxc_string_text_length(&buffer));
+        if(DM_COM_CheckDigestAuthMessageContent(digest_message)) {
+            if(false == DM_COM_PerformClientDigestAuthentication(digest_message,
+                                                                 randomNonceStr,
+                                                                 randomOpaqueStr,
+                                                                 conn_req_username,
+                                                                 conn_req_passwd)) {
                 SAH_TRACEZ_ERROR("CWMPD", "Digest authentication failed");
                 ret = cwmp_status_ko;
             } else {
@@ -339,8 +359,12 @@ static cwmp_status_t cwmp_server_validate_authentication(struct lws* wsi, const 
         } else {
             SAH_TRACEZ_ERROR("CWMPD", "cannot reterive all tokens");
         }
-        DM_ENG_FREE(tmp);
+        DM_ENG_FREE(digest_message);
     }
+
+stop:
+    cwmp_free(&conn_req_username);
+    cwmp_free(&conn_req_passwd);
     return ret;
 }
 
