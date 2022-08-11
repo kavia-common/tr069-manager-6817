@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.16.21 - 2022-08-11(10:22:00 +0000)
+
+### Fixes
+
+- Issue : HOP-1466 Fix Digest Authentication and refactoring code
+
 ## Release v1.16.20 - 2022-08-11(09:59:25 +0000)
 
 ### Other
