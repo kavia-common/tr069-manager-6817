@@ -467,6 +467,8 @@ int DM_ENG_Device_SetParameterValues_Validate(dm_amx_env_t* amx, DM_ENG_Paramete
     amxd_path_t obj_path;
     amxc_var_t obj_desc;
     char* object_path = NULL;
+    amxd_path_init(&obj_path, "");
+    amxc_var_init(&obj_desc);
 
     SAH_TRACEZ_IN("DM_DA");
 
@@ -479,8 +481,7 @@ int DM_ENG_Device_SetParameterValues_Validate(dm_amx_env_t* amx, DM_ENG_Paramete
         SetErrorGotoStop(DM_ENG_INVALID_ARGUMENTS, "Not a valid parameter Name");
     }
 
-    amxd_path_init(&obj_path, internalPath);
-    amxc_var_init(&obj_desc);
+    amxd_path_setf(&obj_path, false, "%s", internalPath);
     object_path = strdup(amxd_path_get(&obj_path, AMXD_OBJECT_TERMINATE));
 
     if(amxd_path_is_search_path(&obj_path)) {
