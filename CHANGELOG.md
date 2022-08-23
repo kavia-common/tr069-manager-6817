@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.16.23 - 2022-08-23(11:19:24 +0000)
+
+### Fixes
+
+- Fix cwmpd crash when excute setParameterValues with object not found
+
 ## Release v1.16.22 - 2022-08-23(11:14:30 +0000)
 
 ### Fixes
