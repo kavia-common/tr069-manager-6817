@@ -240,6 +240,7 @@ static cwmp_status_t cwmp_client_gen_auth_hdr(auth_t type, char* auth_d) {
     if(type == auth_basic) {
         auth_hdr = cwmp_client_auth_basic(username, passwd);
     } else if(type == auth_digest) {
+        cnonce = malloc(CNONCE_SIZE + 1);
         _generateRandomString(cnonce, CNONCE_SIZE);
         auth_hdr = DM_COM_GenerateDigestResponse_MD5(auth_d, cnonce, acs_server_path, "POST", username, passwd);
     } else {
