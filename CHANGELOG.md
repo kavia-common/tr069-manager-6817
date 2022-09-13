@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.16.24 - 2022-09-13(13:05:27 +0000)
+
+### Fixes
+
+- ubus reported datetime as string type
+
 ## Release v1.16.23 - 2022-08-23(11:19:24 +0000)
 
 ### Fixes
