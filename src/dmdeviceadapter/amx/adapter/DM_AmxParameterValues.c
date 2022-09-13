@@ -159,6 +159,7 @@ static int DM_ENG_Device_GetParameterValues_ParseValues(amxb_bus_ctx_t* bus_ctx,
         }
        }
      */
+    SAH_TRACEZ_IN("DM_DA");
     int error = 0;
     DM_ENG_ParameterValueStruct** pvsList = (DM_ENG_ParameterValueStruct**) data;
     DM_ENG_ParameterValueStruct* dmvs = NULL;
@@ -181,7 +182,6 @@ static int DM_ENG_Device_GetParameterValues_ParseValues(amxb_bus_ctx_t* bus_ctx,
             const char* paramkey = amxc_htable_it_get_key(hit_param);
             amxc_var_t* param_var = amxc_var_from_htable_it(hit);
             amxc_var_t* value = GETP_ARG(param_var, paramkey);
-            //amxc_var_dump(value , 0);
             u_int32_t type = amxc_var_type_of(value);
             char* param_val = amxc_var_dyncast(cstring_t, value);
             amxc_string_init(&param_name, 0);
@@ -189,7 +189,8 @@ static int DM_ENG_Device_GetParameterValues_ParseValues(amxb_bus_ctx_t* bus_ctx,
 
             //(check via describe API), ubus report the wrong type
             //bool is reported as int8 , all uintX are reported as intX
-            if((type == AMXC_VAR_ID_INT8) || (type == AMXC_VAR_ID_INT16) || (type == AMXC_VAR_ID_INT32) || (type == AMXC_VAR_ID_INT64)) {
+            // datetime is reported as cstring.
+            if((type == AMXC_VAR_ID_INT8) || (type == AMXC_VAR_ID_INT16) || (type == AMXC_VAR_ID_INT32) || (type == AMXC_VAR_ID_INT64) || (type == AMXC_VAR_ID_CSTRING)) {
                 int new_type = DM_ENG_Device_GetParameterValues_FindType(bus_ctx, key, paramkey);
                 if(new_type != -1) {
                     type = new_type;
@@ -342,6 +343,7 @@ stop:
    - 0 if succesfull
  */
 int DM_ENG_Device_GetParameterValues_GetValues(dm_amx_env_t* amx, const char* path, DM_ENG_ParameterValueStruct** pvsList) {
+    SAH_TRACEZ_IN("DM_DA");
     int error = 0;
     const char* internalPath = NULL;
     amxc_var_t objects;

@@ -61,8 +61,10 @@ doc:
 
 	mkdir -p output/xml
 	mkdir -p output/html
+	mkdir -p output/confluence
 	amxo-cg -Gxml,output/xml/$(COMPONENT).xml $(or $(ODLFILES), "")
 	amxo-xml-to -x html -o output-dir=output/html -o title="$(COMPONENT)" -o version=$(VERSION) -o sub-title="Datamodel reference" output/xml/*.xml
+	amxo-xml-to -x confluence -o output-dir=output/confluence -o title="$(COMPONENT)" -o version=$(VERSION) -o sub-title="Datamodel reference" output/xml/*.xml
 
 test:
 	$(MAKE) -C test run
