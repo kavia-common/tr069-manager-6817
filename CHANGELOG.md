@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.17.0 - 2022-09-13(13:13:22 +0000)
+
+### New
+
+- The amx TR069 client must be adapted to work with ACL's
+
 ## Release v1.16.24 - 2022-09-13(13:05:27 +0000)
 
 ### Fixes
