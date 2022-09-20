@@ -363,8 +363,8 @@ static cwmp_status_t cwmp_server_validate_authentication(struct lws* wsi, const 
     }
 
 stop:
-    cwmp_free(&conn_req_username);
-    cwmp_free(&conn_req_passwd);
+    CWMPD_FREE(conn_req_username);
+    CWMPD_FREE(conn_req_passwd);
     return ret;
 }
 

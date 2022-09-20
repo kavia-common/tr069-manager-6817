@@ -94,13 +94,6 @@ static amxb_bus_ctx_t* acs_bus_ctx = NULL;
 static amxo_parser_t parser;
 static amxd_object_t* root = NULL;
 
-void cwmp_free(char** val) {
-    if(val) {
-        free(*val);
-        *val = NULL;
-    }
-}
-
 static void cwmp_app_handleSignal(int signal) {
     SAH_TRACEZ_WARNING("CWMPD", "handling signal %d", signal);
     if((signal == SIGINT) || (signal == SIGTERM)) {

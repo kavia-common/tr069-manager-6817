@@ -77,6 +77,8 @@
 
 #define ME "CWMPD"
 
+#define CWMPD_FREE(p) { free(p); p = NULL; }
+
 #define COPY_BUFFER_SIZE 4 * 1024
 
 #define EVENT_ENG_SRV_RESTART      "HTTP_SERVER_RESTART"
@@ -156,7 +158,5 @@ cwmp_status_t cwmp_dns_resolve(bool send_boot_strap);
 cwmp_status_t cwmp_dns_stop();
 
 void cwmp_dns_get_random_ip(char** ip);
-
-void cwmp_free(char** val);
 
 #endif // !_CWMPD_H_

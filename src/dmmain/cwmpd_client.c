@@ -142,7 +142,7 @@ static void cwmp_client_parse_cookie(char* cookies) {
     char* tok = strtok(cookies, ";");
     int total_len = 0;
     int buff_len = 256;
-    cwmp_free(&session_cookie);
+    CWMPD_FREE(session_cookie);
     if(cookies && !tok) {
         session_cookie = strdup(cookies);
     } else {
@@ -210,13 +210,13 @@ static char* cwmp_client_auth_basic(const char* username, const char* passwd) {
     //base64 encode
     if(lws_b64_encode_string(credentials, len, result + 6, hdr_size - 6) < 0) {
         SAH_TRACEZ_ERROR("CWMPD", "Failed to encode user/passwd to base64 %s", result);
-        cwmp_free(&result);
+        CWMPD_FREE(result);
         goto stop;
     }
     result[hdr_size - 1] = '\0';
 
 stop:
-    cwmp_free(&credentials);
+    CWMPD_FREE(credentials);
     return result;
 }
 
@@ -235,7 +235,7 @@ static cwmp_status_t cwmp_client_gen_auth_hdr(auth_t type, char* auth_d) {
         SAH_TRACEZ_ERROR("CWMPD", "failed to fetch acs password");
         goto stop;
     }
-    cwmp_free(&auth_hdr);
+    CWMPD_FREE(auth_hdr);
 
     if(type == auth_basic) {
         auth_hdr = cwmp_client_auth_basic(username, passwd);
@@ -252,16 +252,16 @@ static cwmp_status_t cwmp_client_gen_auth_hdr(auth_t type, char* auth_d) {
         ret = cwmp_status_ok;
     }
 stop:
-    cwmp_free(&username);
-    cwmp_free(&passwd);
-    cwmp_free(&cnonce);
+    CWMPD_FREE(username);
+    CWMPD_FREE(passwd);
+    CWMPD_FREE(cnonce);
     return ret;
 }
 
 /*retry if this is an inform message*/
 static void cwmp_client_retry() {
     SAH_TRACEZ_INFO("CWMPD", "Retry to send Inform message");
-    cwmp_free(&acs_server_ip);
+    CWMPD_FREE(acs_server_ip);
     cwmp_dns_get_random_ip(&acs_server_ip);
     if(!acs_server_ip) {
         // just close the session
@@ -302,7 +302,7 @@ static int cwmp_client_connection_error_cb(void* in) {
 }
 
 static int cwmp_client_new_wsi_cb() {
-    cwmp_free(&rcv_buf);
+    CWMPD_FREE(rcv_buf);
     rcv_buf_len = 0;
     return CWMP_HTTP_CALLBACK_CONTINUE;
 }
@@ -349,7 +349,7 @@ static int cwmp_client_handle_cookies(struct lws* wsi) {
         }
         //rebuild session cookie
         cwmp_client_parse_cookie(server_cookie);
-        cwmp_free(&server_cookie);
+        CWMPD_FREE(server_cookie);
     }
     return CWMP_HTTP_CALLBACK_CONTINUE;
 }
@@ -361,7 +361,7 @@ static int cwmp_client_connection_established_cb(struct lws* wsi) {
 
     if(http_status == HTTP_NO_CONTENT) {
         //closing free any message
-        cwmp_free(&pending_msg);
+        CWMPD_FREE(pending_msg);
     } else if(http_status == HTTP_STATUS_UNAUTHORIZED) {
         //get the WWW-Authenticate headers
         cwmp_client_get_authentication_hdr(wsi);
@@ -619,7 +619,7 @@ static cwmp_status_t cwmp_client_get_acsip() {
     cwmp_status_t ret = cwmp_status_ko;
 
     if(is_ipaddr(acs_server_host)) {
-        cwmp_free(&acs_server_ip);
+        CWMPD_FREE(acs_server_ip);
         acs_server_ip = strdup(acs_server_host);
     } else {
         //try to reuse the same ip from the last session
@@ -643,12 +643,12 @@ static cwmp_status_t cwmp_client_get_acsip() {
 
             if(!valid_ip) {
                 //the IP is no longer part of the dns_pool
-                cwmp_free(&acs_server_ip);
+                CWMPD_FREE(acs_server_ip);
                 cwmp_dns_get_random_ip(&acs_server_ip);
             }
-            cwmp_free(&ip_list);
+            CWMPD_FREE(ip_list);
         } else {
-            cwmp_free(&acs_server_ip);
+            CWMPD_FREE(acs_server_ip);
             cwmp_dns_get_random_ip(&acs_server_ip);
         }
     }
@@ -748,7 +748,7 @@ cwmp_status_t cwmp_client_stop() {
 }
 
 void cwmp_client_clear_ACSIP() {
-    cwmp_free(&acs_server_ip);
+    CWMPD_FREE(acs_server_ip);
 }
 
 /** libtr069-engine callbacks **/
@@ -762,14 +762,14 @@ int DM_CloseHttpSession(bool closeMode) {
     http_status = 0;
     auth_type = auth_none;
     connected = false;
-    cwmp_free(&acs_server_host);
-    cwmp_free(&acs_server_path);
-    cwmp_free(&acs_server_scheme);
-    cwmp_free(&acs_server_ip);
-    cwmp_free(&pending_msg);
-    cwmp_free(&session_cookie);
-    cwmp_free(&rcv_buf);
-    cwmp_free(&auth_hdr);
+    CWMPD_FREE(acs_server_host);
+    CWMPD_FREE(acs_server_path);
+    CWMPD_FREE(acs_server_scheme);
+    CWMPD_FREE(acs_server_ip);
+    CWMPD_FREE(pending_msg);
+    CWMPD_FREE(session_cookie);
+    CWMPD_FREE(rcv_buf);
+    CWMPD_FREE(auth_hdr);
     rcv_buf_len = 0;
     return 0;
 }
@@ -777,12 +777,10 @@ int DM_CloseHttpSession(bool closeMode) {
 int DM_SendHttpMessage(const char* soap_msg) {
     int msg_len = strlen(soap_msg);
 
-    SAH_TRACEZ_INFO("CWMPD",
-                    "sending soap message :\n ----------> \n%s\n ----------> ",
-                    (msg_len == 0) ? "EMPTY_HTTP_MESSAGE" : soap_msg);
+    SAH_TRACEZ_INFO("CWMPD", "sending a new soap message");
 
     if(pending_msg != soap_msg) {
-        cwmp_free(&pending_msg);
+        CWMPD_FREE(pending_msg);
         pending_msg = strdup(soap_msg);
         DM_UpdateRetryBuffer(soap_msg, msg_len);
     }
@@ -801,7 +799,7 @@ int DM_SendHttpMessage(const char* soap_msg) {
         //try to send the message
         if(!lws_client_connect_via_info(&lws_connect_info)) {
             SAH_TRACEZ_ERROR("CWMPD", "Couldn't connect to %s", acs_server_ip);
-            cwmp_free(&pending_msg);
+            CWMPD_FREE(pending_msg);
             return -1;
         }
     }
@@ -826,10 +824,10 @@ int client_startSession() {
     // Check if wan is up
     if(!(*crhost) || (strcmp(crhost, "0.0.0.0") == 0)) {
         SAH_TRACEZ_ERROR("CWMPD", "WAN is not connected, not connecting to server");
-        cwmp_free(&crhost);
+        CWMPD_FREE(crhost);
         return -1;
     }
-    cwmp_free(&crhost);
+    CWMPD_FREE(crhost);
 
     if(cwmp_client_parse_url() == cwmp_status_ko) {
         SAH_TRACEZ_ERROR("CWMPD", "Cannot parse ACS url");
