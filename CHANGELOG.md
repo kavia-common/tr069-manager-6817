@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.17.1 - 2022-09-20(15:46:21 +0000)
+
+### Fixes
+
+- Fix cwmp free
+
 ## Release v1.17.0 - 2022-09-13(13:13:22 +0000)
 
 ### New
