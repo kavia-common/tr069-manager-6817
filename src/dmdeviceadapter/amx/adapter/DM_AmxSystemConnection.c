@@ -371,19 +371,14 @@ static const char* DM_ENG_Device_ConvertToObjectName(DM_ENG_SystemParameter_t pa
     case DM_ENG_CONNECTIONREQUESTUSERNAME:
     case DM_ENG_CONNECTIONREQUESTPASSWORD:
     case DM_ENG_CONNECTIONREQUESTURL:
-    case DM_ENG_SESSIONSSINCEBOOT:
     case DM_ENG_INTERFACE:
     case DM_ENG_MAXDOWNLOADDELAY:
     case DM_ENG_MAXUPLOADDELAY:
     case DM_ENG_BOOTPERSISTENTSCHEDULEINFORM:
     case DM_ENG_MAXDOWNLOADS:
     case DM_ENG_MAXDOWNLOADSERRORCODE:
-    case DM_ENG_ACSEVENTS:
-    case DM_ENG_DELIVEREDEVENTS:
-    case DM_ENG_BLOCKEDEVENTS:
     case DM_ENG_INSTANCEMODE:
     case DM_ENG_AUTOCREATEINSTANCES:
-    case DM_ENG_INHIBIT_VALUE_CHANGE_UPON_BOOT:
         return "ManagementServer.";
     case DM_ENG_MANUFACTURER:
     case DM_ENG_MANUFACTUREROUI:
@@ -408,6 +403,10 @@ static const char* DM_ENG_Device_ConvertToObjectName(DM_ENG_SystemParameter_t pa
     case DM_ENG_UPGRADEBOOTDELAY:
     case DM_ENG_SESSIONTIMEOUT:
     case DM_ENG_VERIFYSUPPORTEDACSMETHODS:
+    case DM_ENG_INHIBIT_VALUE_CHANGE_UPON_BOOT:
+    case DM_ENG_ACSEVENTS:
+    case DM_ENG_DELIVEREDEVENTS:
+    case DM_ENG_BLOCKEDEVENTS:
         return "ManagementServer.InternalSettings.";
     case DM_ENG_CONNECTIONREQUESTHOST:
     case DM_ENG_CONNECTIONREQUESTPORT:
@@ -428,6 +427,7 @@ static const char* DM_ENG_Device_ConvertToObjectName(DM_ENG_SystemParameter_t pa
     case DM_ENG_ACSIPLIST:
         return "ManagementServer.State.";
     case DM_ENG_GETPARAMETERVALUEREQUESTS:
+    case DM_ENG_SESSIONSSINCEBOOT:
         return "ManagementServer.Stats.";
     default: break;
     }

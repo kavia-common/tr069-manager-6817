@@ -399,6 +399,32 @@
             * @version 1.0
             */
             %persistent string AllowConnectionRequestFromAddress;
+
+          /**
+          * List of events send to the ACE  in the format eventtype(cmdkey),eventtype(cmdkey),eventtype(cmdkey),...
+          * @version 1.0
+          */
+          string DeliveredEvents;
+
+          /**
+          * List of events requested by the ACS in the format eventtype(cmdkey),eventtype(cmdkey),eventtype(cmdkey),...
+          * @version 7.0
+          */
+          string ACSEvents;
+
+          /**
+          * List of events to block in the format eventtype(cmdkey),eventtype(cmdkey),eventtype(cmdkey),...
+          * @version 7.0
+          */
+          string BlockedEvents;
+
+          /**
+            * whether to inhibit the value change notification upon rebooting
+            * @version 8.1
+            */
+          bool InhibitValueChangeUponBoot {
+                default false;
+          }
       }
 
       /**
