@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.17.2 - 2022-10-04(08:19:26 +0000)
+
+### Fixes
+
+- Add some missing parameters to cwmp_plugin odl
+
 ## Release v1.17.1 - 2022-09-20(15:46:21 +0000)
 
 ### Fixes
