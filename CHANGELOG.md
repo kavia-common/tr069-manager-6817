@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.17.3 - 2022-10-07(16:19:26 +0000)
+
+### Fixes
+
+- InterfaceStackNumberOfEntries wrong type
+
 ## Release v1.17.2 - 2022-10-04(08:19:26 +0000)
 
 ### Fixes
