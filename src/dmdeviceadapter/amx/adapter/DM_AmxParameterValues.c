@@ -182,20 +182,14 @@ static int DM_ENG_Device_GetParameterValues_ParseValues(amxb_bus_ctx_t* bus_ctx,
             const char* paramkey = amxc_htable_it_get_key(hit_param);
             amxc_var_t* param_var = amxc_var_from_htable_it(hit);
             amxc_var_t* value = GETP_ARG(param_var, paramkey);
-            u_int32_t type = amxc_var_type_of(value);
-            char* param_val = amxc_var_dyncast(cstring_t, value);
-            amxc_string_init(&param_name, 0);
-            amxc_string_setf(&param_name, "%s%s%s", dmprefix, key, paramkey);
 
             //(check via describe API), ubus report the wrong type
             //bool is reported as int8 , all uintX are reported as intX
             // datetime is reported as cstring.
-            if((type == AMXC_VAR_ID_INT8) || (type == AMXC_VAR_ID_INT16) || (type == AMXC_VAR_ID_INT32) || (type == AMXC_VAR_ID_INT64) || (type == AMXC_VAR_ID_CSTRING)) {
-                int new_type = DM_ENG_Device_GetParameterValues_FindType(bus_ctx, key, paramkey);
-                if(new_type != -1) {
-                    type = new_type;
-                }
-            }
+            u_int32_t type = DM_ENG_Device_GetParameterValues_FindType(bus_ctx, key, paramkey);
+            char* param_val = amxc_var_dyncast(cstring_t, value);
+            amxc_string_init(&param_name, 0);
+            amxc_string_setf(&param_name, "%s%s%s", dmprefix, key, paramkey);
 
             dmvs = DM_ENG_newParameterValueStruct(amxc_string_get(&param_name, 0),
                                                   DM_ENG_Device_Common_ConvertParameterType(type), param_val);
@@ -310,7 +304,8 @@ static int DM_ENG_Device_GetParameterValues_GetRootParameter(dm_amx_env_t* amx, 
                      amxd_path_get_param(&parameterPath));
 
     var = GETP_ARG(&object, amxc_string_get(&parameterAmxPath, 0));
-    type = amxc_var_type_of(var);
+    type = DM_ENG_Device_GetParameterValues_FindType(amx->bus_ctx, amxd_path_get(&parameterPath, AMXD_OBJECT_TERMINATE), amxd_path_get_param(&parameterPath));
+
     val = amxc_var_dyncast(cstring_t, var);
     DM_ENG_addParameterValueStruct(pvsList,
                                    DM_ENG_newParameterValueStruct(path,
