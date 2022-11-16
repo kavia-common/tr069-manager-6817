@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.18.0 - 2022-11-16(12:56:03 +0000)
+
+### Fixes
+
+- Cwmpd process leaking when retrying to reach ACS
+
 ## Release v1.17.3 - 2022-10-07(16:19:26 +0000)
 
 ### Fixes
