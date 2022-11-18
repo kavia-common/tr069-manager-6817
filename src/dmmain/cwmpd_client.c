@@ -112,7 +112,6 @@ static char* acs_server_scheme = NULL;            /* ACS server connection schem
 int http_status = 0;                              /* ACS last http return code */
 static char* rcv_buf = NULL;                      /* Buffer for SOAP message received from ACS */
 static int rcv_buf_len = 0;                       /* SOAP buffer size */
-static int retry_count = 0;                       /* retry counter */
 static int session_timeout = 0;                   /* session timeout  */
 static char* pending_msg = NULL;                  /* SOAP message waiting to be sent to ACS */
 static char* session_cookie = NULL;               /* HTTP session Cookie if any */
@@ -122,19 +121,6 @@ static struct lws* lws_client_wsi = NULL;         /* client ws interface */
 static struct lws_context* lws_client_ctx = NULL; /* client lws context */
 static struct lws_context_creation_info lws_client_ctx_info;
 static struct lws_client_connect_info lws_connect_info;
-
-static bool is_ipaddr(const char* ip) {
-    struct in6_addr result;
-    int res = inet_pton(AF_INET, ip, &result);
-    if(res) {
-        return true;
-    }
-    res = inet_pton(AF_INET6, ip, &result);
-    if(res) {
-        return true;
-    }
-    return false;
-}
 
 //lws cannot handle session cookie
 //check LWS_WITH_CACHE_NSCOOKIEJAR for more info
@@ -258,21 +244,8 @@ stop:
     return ret;
 }
 
-/*retry if this is an inform message*/
-static void cwmp_client_retry() {
-    SAH_TRACEZ_INFO("CWMPD", "Retry to send Inform message");
-    CWMPD_FREE(acs_server_ip);
-    cwmp_dns_get_random_ip(&acs_server_ip);
-    if(!acs_server_ip) {
-        // just close the session
-        _closeACSSession(false);
-    }
-    DM_SendHttpMessage(pending_msg);
-}
-
 /* resend the message with authentication*/
 static void cwmp_client_auth_retry() {
-    SAH_TRACEZ_INFO("CWMPD", "Retry auth : resend the message with authentication");
     DM_SendHttpMessage(pending_msg);
 }
 
@@ -281,23 +254,19 @@ static void cwmp_client_sessionTimedOut(UNUSED char* name) {
     _closeACSSession(false);
 }
 
-/* http callbacks */
-static int cwmp_client_connection_error_cb(void* in) {
-    SAH_TRACEZ_INFO("CWMPD", "CONNECTION_ERROR: %s, retry_count %d",
-                    in ? (char*) in : "(null)", retry_count);
-    lws_client_wsi = NULL;
-    retry_count++;
-    //(retry_count * connection_timeout) must stay below session timeout default 45sec
-    // retry only we are sending an inform message
-    if(!is_ipaddr(acs_server_host)
-       && pending_msg
-       && strstr(pending_msg, "Inform")
-       && ((session_timeout - (retry_count * 5) - 10) > 5)) {
-        //one more shot, retry in 1 sec
-        DM_ENG_NotificationInterface_timerStart("cwmp_client_retry", 1, 0, cwmp_client_retry);
-    } else {
-        _closeACSSession(false);
+/* connection error callbacks */
+static int cwmp_client_connection_error_cb(void* error) {
+    char* acsurl = NULL;
+
+    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_URL, &acsurl) != 0) {
+        SAH_TRACEZ_ERROR("CWMPD", "Failed to get ACS URL");
     }
+    SAH_TRACEZ_ERROR("CWMPD", "CONNECTION_ERROR: [%s], ACS URL: [%s], IP: [%s]",
+                     error ? (char*) error : "(null)",
+                     acsurl ? acsurl : "(null)",
+                     acs_server_ip ? acs_server_ip : "(null)");
+    _closeACSSession(false);
+    free(acsurl);
     return CWMP_HTTP_CALLBACK_CONTINUE;
 }
 
@@ -493,9 +462,9 @@ static int cwmp_client_connection_closed_cb() {
         _closeACSSession(true);//ACS session finished OK
     } else if(http_status == HTTP_STATUS_UNAUTHORIZED) {
         if((auth_type != auth_unsupported) && auth_hdr) {
-            SAH_TRACEZ_INFO("CWMPD", "Reconnection in 1 sec");
+            SAH_TRACEZ_INFO("CWMPD", "Reconnection ...");
             DM_ENG_NotificationInterface_timerStart("cwmp_client_auth_retry",
-                                                    1,
+                                                    0,
                                                     0,
                                                     cwmp_client_auth_retry);
         } else {
@@ -752,12 +721,11 @@ void cwmp_client_clear_ACSIP() {
 }
 
 /** libtr069-engine callbacks **/
-
 int DM_CloseHttpSession(bool closeMode) {
     if(closeMode == true) {
         SAH_TRACEZ_INFO("CWMPD", "ACS Session finished with success");
     } else {
-        SAH_TRACEZ_ERROR("CWMPD", "ERROR ACS session corrupted");
+        SAH_TRACEZ_ERROR("CWMPD", "ACS session failed");
     }
     http_status = 0;
     auth_type = auth_none;
@@ -852,7 +820,6 @@ int client_startSession() {
     }
 
     DM_ENG_NotificationInterface_timerStart("Session-timer", session_timeout, 0, cwmp_client_sessionTimedOut);
-    retry_count = 0; //reset the retry counter
 
     return 0;
 }

@@ -399,6 +399,14 @@
             * @version 1.0
             */
             %persistent string AllowConnectionRequestFromAddress;
+          
+          /**
+            * Allow schedule inform per session
+            * @version 1.0
+            */
+            bool AllowMultipleScheduleInform {
+                default true;
+            }
 
           /**
           * List of events send to the ACE  in the format eventtype(cmdkey),eventtype(cmdkey),eventtype(cmdkey),...

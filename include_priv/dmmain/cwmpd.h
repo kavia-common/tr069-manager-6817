@@ -159,4 +159,6 @@ cwmp_status_t cwmp_dns_stop();
 
 void cwmp_dns_get_random_ip(char** ip);
 
+bool is_ipaddr(const char* ip);
+
 #endif // !_CWMPD_H_

@@ -407,6 +407,7 @@ static const char* DM_ENG_Device_ConvertToObjectName(DM_ENG_SystemParameter_t pa
     case DM_ENG_ACSEVENTS:
     case DM_ENG_DELIVEREDEVENTS:
     case DM_ENG_BLOCKEDEVENTS:
+    case DM_ENG_ALLOWMULTIPLESCHEDULEINFORM:
         return "ManagementServer.InternalSettings.";
     case DM_ENG_CONNECTIONREQUESTHOST:
     case DM_ENG_CONNECTIONREQUESTPORT:
@@ -515,6 +516,7 @@ static const char* DM_ENG_Device_ConvertToParameterName(DM_ENG_SystemParameter_t
     case DM_ENG_INHIBIT_VALUE_CHANGE_UPON_BOOT:    return "InhibitValueChangeUponBoot";
     case DM_ENG_RETURNEMPTYLISTONPARIALPATH:       return "ReturnEmptyListOnPartialPath";
     case DM_ENG_EMPTYFULLPARAMETERLIST:            return "EmptyFullParameterList";
+    case DM_ENG_ALLOWMULTIPLESCHEDULEINFORM:       return "AllowMultipleScheduleInform";
     default: break;
     }
     return NULL;

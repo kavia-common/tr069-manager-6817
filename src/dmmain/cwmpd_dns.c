@@ -104,19 +104,6 @@ static amxc_llist_t ainfo_list;
 static int ainfo_count = 0;
 static int last_ip_index = -1;
 
-static bool is_ipaddr(const char* ip) {
-    struct in6_addr result;
-    int res = inet_pton(AF_INET, ip, &result);
-    if(res) {
-        return true;
-    }
-    res = inet_pton(AF_INET6, ip, &result);
-    if(res) {
-        return true;
-    }
-    return false;
-}
-
 static void ainfo_list_clean(amxc_llist_it_t* it) {
     addr_info_t* ainfo = amxc_container_of(it, addr_info_t, it);
     if(ainfo && ainfo->ip) {

@@ -558,10 +558,9 @@ static void DM_ENG_Device_Common_DeleteSubscriptionFromList(amxc_llist_t* list, 
 }
 
 // subscription callback, dispatch events to the right handler
-static void DM_ENG_Device_Common_NotificationHandler(const char* const sig_name,
+static void DM_ENG_Device_Common_NotificationHandler(UNUSED const char* const sig_name,
                                                      const amxc_var_t* const data,
                                                      void* const priv) {
-    SAH_TRACEZ_INFO("DM_DA", "event [%s]", sig_name);
     if(priv) {
         DM_Subscription_t* sub = (DM_Subscription_t*) priv;
         if(sub && sub->cb) {

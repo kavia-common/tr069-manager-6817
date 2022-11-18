@@ -469,7 +469,6 @@ stop:
    - 0 if succesfull
  */
 int DM_ENG_Device_GetParameterNames_Parameter(dm_amx_env_t* amx_env, char* path, DM_ENG_ParameterInfoStruct** infoList) {
-    SAH_TRACEZ_IN("DM_DA");
     int error = 0;
     u_int32_t flags = AMXB_FLAG_PARAMETERS;
     const char* internalPath = NULL;
@@ -485,13 +484,11 @@ int DM_ENG_Device_GetParameterNames_Parameter(dm_amx_env_t* amx_env, char* path,
     // resolve Path
     internalPath = DM_ENG_Device_Common_ACSToAMXPath_noalloc(path);
     if(!internalPath) {
-        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Not a valid object path");
+        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Not a valid object path [%s]", path);
     }
 
     if(DM_ENG_Device_Common_IsRootParameter(path)) {
-        // no need for describe
         DM_ENG_Device_GetParameterNames_AddRootParameter(amx_env->prefix, internalPath, infoList);
-        SetErrorGotoStop(0, "OK");
     } else if(DM_ENG_Device_Common_Resolve_Path(amx_env, internalPath, &parameters)) {
         const amxc_llist_t* path_list = amxc_var_constcast(amxc_llist_t, &parameters);
         amxc_llist_iterate(it, path_list) {
@@ -510,14 +507,13 @@ int DM_ENG_Device_GetParameterNames_Parameter(dm_amx_env_t* amx_env, char* path,
             }
         }
     } else {
-        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "failed to resolve path");
+        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "failed to resolve path [%s]", internalPath);
     }
 stop:
     amxd_path_clean(&paramPath);
     amxc_var_clean(&parameters);
     amxc_var_clean(&object);
     amxc_string_clean(&paramName);
-    SAH_TRACEZ_OUT("DM_DA");
     return error;
 }
 

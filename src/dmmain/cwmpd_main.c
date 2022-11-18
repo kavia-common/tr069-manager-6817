@@ -62,19 +62,8 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <signal.h>
-
-/* open ssl header */
-#ifdef OPEN_SSL_SUPPORT
-#include <openssl/rand.h>
-#include <openssl/err.h>
-#include <openssl/pem.h>
-#include <openssl/ssl.h>
-#include <openssl/evp.h>
-#include <openssl/bio.h>
-
-#include <tr069key/tr069key.h>
-#endif
 #include <event2/event.h>
+#include <arpa/inet.h>
 
 #include "dmmain/cwmpd.h"
 #include "dmcom/dm_com.h"
@@ -82,6 +71,7 @@
 
 #include <debug/sahtrace.h>
 #include <debug/sahtrace_macros.h>
+#include <amxc/amxc_macros.h>
 
 /*PID FILE*/
 #ifndef CFG_PID_FILE
@@ -93,6 +83,17 @@ static amxb_bus_ctx_t* sys_bus_ctx = NULL;
 static amxb_bus_ctx_t* acs_bus_ctx = NULL;
 static amxo_parser_t parser;
 static amxd_object_t* root = NULL;
+
+bool is_ipaddr(const char* ip) {
+    struct in6_addr result;
+    when_null(ip, exit);
+
+    if(inet_pton(AF_INET, ip, &result) || inet_pton(AF_INET6, ip, &result)) {
+        return true;
+    }
+exit:
+    return false;
+}
 
 static void cwmp_app_handleSignal(int signal) {
     SAH_TRACEZ_WARNING("CWMPD", "handling signal %d", signal);
@@ -254,12 +255,12 @@ static cwmp_status_t cwmp_app_clean() {
         SAH_TRACEZ_ERROR("CWMPD", "failed to stop HTTP server");
         status = cwmp_status_ko;
     }
-    if(cwmp_evlp_clean() != cwmp_status_ok) {
-        SAH_TRACEZ_ERROR("CWMPD", "eventloop cleanup failed");
-        status = cwmp_status_ko;
-    }
     if(cwmp_dns_stop() != cwmp_status_ok) {
         SAH_TRACEZ_ERROR("CWMPD", "DNS cleanup failed");
+        status = cwmp_status_ko;
+    }
+    if(cwmp_evlp_clean() != cwmp_status_ok) {
+        SAH_TRACEZ_ERROR("CWMPD", "eventloop cleanup failed");
         status = cwmp_status_ko;
     }
     DM_COM_STOP();
