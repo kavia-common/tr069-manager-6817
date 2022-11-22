@@ -205,6 +205,10 @@ const char* DM_ENG_Device_Common_ACSToAMXPath_noalloc(const char* acsPath) {
         return acsPath;
     }
 
+    if(acsPath[0] == '.') {
+        return NULL; //Path start with '.'
+    }
+
     if(prefixName != NULL) {
         prefixlen = strlen(prefixName);
     }

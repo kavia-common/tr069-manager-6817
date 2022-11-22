@@ -487,6 +487,10 @@ int DM_ENG_Device_GetParameterNames_Parameter(dm_amx_env_t* amx_env, char* path,
         SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Not a valid object path [%s]", path);
     }
 
+    if((strchr(internalPath, '.') == NULL) && !DM_ENG_Device_Common_IsRootParameter(path)) {
+        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Invalid Parameter Name [%s]", path);
+    }
+
     if(DM_ENG_Device_Common_IsRootParameter(path)) {
         DM_ENG_Device_GetParameterNames_AddRootParameter(amx_env->prefix, internalPath, infoList);
     } else if(DM_ENG_Device_Common_Resolve_Path(amx_env, internalPath, &parameters)) {
