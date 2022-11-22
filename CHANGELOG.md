@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.18.2 - 2022-11-22(13:35:52 +0000)
+
+### Fixes
+
+- crash when performing a GPN on Device.NonExistent parameter
+
 ## Release v1.18.1 - 2022-11-22(09:02:29 +0000)
 
 ### Fixes
