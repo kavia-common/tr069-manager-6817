@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.19.0 - 2022-12-09(11:45:46 +0000)
+
+### New
+
+- Implement Download/Upload/GetQueuedTransfers
+
 ## Release v1.18.2 - 2022-11-22(13:35:52 +0000)
 
 ### Fixes
