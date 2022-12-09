@@ -106,9 +106,7 @@ static void cwmp_plugin_init(amxd_dm_t* dm, amxo_parser_t* parser) {
 
     load_fw_controller();
     cwmp_plugin_netmodel_init();
-
-    amxp_sigmngr_add_signal(NULL, "proc:stopped");
-    amxp_slot_connect(NULL, "proc:stopped", NULL, cwmpd_proc_stopped, NULL);
+    cwmp_plugin_transfer_init();
 }
 
 static void cwmp_plugin_exit(UNUSED amxd_dm_t* dm,
@@ -124,6 +122,29 @@ static void cwmp_plugin_exit(UNUSED amxd_dm_t* dm,
     if(fw_module) {
         amxm_so_close(&fw_module);
     }
+}
+
+void proc_finished_cb(const char* const event_name,
+                      UNUSED const amxc_var_t* const event_data,
+                      void* const priv) {
+    cwmp_proc_ctx_t* context = NULL;
+    SAH_TRACEZ_INFO(ME, "proc signal [%s], private data [%p]", event_name, priv);
+
+    when_null(priv, stop);
+    context = (cwmp_proc_ctx_t*) priv;
+    when_null(context, stop);
+    when_null(context->cb, clean);
+    context->cb(context->priv);
+    when_null(context->clean_cb, clean);
+    context->clean_cb(context->priv);
+
+clean:
+    if(context->proc) {
+        amxp_proc_ctrl_delete(&context->proc);
+    }
+    free(context);
+stop:
+    return;
 }
 
 void cwmp_plugin_netmodel_init(void) {

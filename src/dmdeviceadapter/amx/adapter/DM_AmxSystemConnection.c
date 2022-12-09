@@ -216,41 +216,6 @@ void DM_ENG_Device_SystemConnectionHandleParameterChanged(const char* path, cons
     }
 }
 
-//---------------------------------------------------------------------------------------------
-/**
-   @brief
-   Handle a download request event.
-
-   @details
-   This function handles a download request event:
-   - Check if the event is coming from the ManagementServer object.
-   - Check and extract the arguments
-   - Signal the engine that a download request event has been received
-
-   @param notify The individual notification
- */
-void DM_ENG_Device_SystemConnectionHandleDownloadRequest(/*notification_t* notify*/) {
-    SAH_TRACEZ_INFO("DM_DA", "DM_ENG_Device_SystemConnectionHandleDownloadRequest ");
-}
-
-//---------------------------------------------------------------------------------------------
-/**
-   @brief
-   Handle the custom notification event.
-
-   @details
-   This function handles the custom notification event:
-   - Check if the event is coming from the ManagementServer object.
-   - Check and extract the arguments
-   - Signal the engine that a custom notification event has been received
-
-   @param notify The individual notification
- */
-void DM_ENG_Device_SystemConnectionHandleCustomNotification(/*notification_t* notify*/) {
-    SAH_TRACEZ_INFO("DM_DA", " DM_ENG_Device_SystemConnectionHandleCustomNotification ");
-}
-
-
 void DM_ENG_Device_SystemConnectionHandleFinishedTransfer(const char* initiator, const char* announceURL,
                                                           const char* transferURL, const char* fileType,
                                                           uint32_t fileSize, const char* targetFileName,
@@ -272,73 +237,6 @@ void DM_ENG_Device_SystemConnectionHandleFinishedTransfer(const char* initiator,
     (void) completeTime;
     (void) objectName;
     SAH_TRACEZ_INFO("DM_DA", " DM_ENG_Device_SystemConnectionHandleFinishedTransfer  ");
-}
-
-void DM_ENG_Device_SystemConnectionHandleFinishedTransferObject(char* objectName) {
-
-    SAH_TRACEZ_INFO("DM_DA", " DM_ENG_Device_SystemConnectionHandleFinishedTransferObject - %s =", objectName);
-}
-
-
-void DM_ENG_Device_SystemConnectionHandleFinishedTransferNotification(/*notification_t* notify*/) {
-    SAH_TRACEZ_INFO("DM_DA", "DM_ENG_Device_SystemConnectionHandleFinishedTransferNotification");
-}
-
-
-//---------------------------------------------------------------------------------------------
-/**
-   @brief
-   Handle the Diagnostics complete event.
-
-   @details
-   This function handles the diagnostics complete event:
-   - Check if the event is coming from the ManagementServer object.
-   - Check the arguments
-   - Signal the engine that a diagnostics complete event has been received
-
-   @param notify The individual notification
- */
-void DM_ENG_Device_SystemConnectionHandleDiagnosticsComplete(/*notification_t* notify*/) {
-    SAH_TRACEZ_INFO("DM_DA", "DM_ENG_Device_SystemConnectionHandleDiagnosticsComplete");
-}
-
-//---------------------------------------------------------------------------------------------
-/**
-   @brief
-   Handle the Connection Requestevent.
-
-   @details
-   This function handles the connection request event:
-   - Check if the event is coming from the ManagementServer object.
-   - Check the arguments
-   - Signal the engine that a connection request has been received
-
-   @param notify The individual notification
- */
-void DM_ENG_Device_SystemConnectionHandleConnectionRequest(/*notification_t* notify*/) {
-    SAH_TRACEZ_INFO("DM_DA", "DM_ENG_Device_SystemConnectionHandleConnectionRequest");
-}
-
-
-//---------------------------------------------------------------------------------------------
-/**
-   @brief
-   Interpret the incoming system notification and call the appropriate handler.
-
-   @details
-   Interpret the incoming system notification and call the appropriate handler:
-   - value changed event: call the DM_ENG_Device_SystemConnectionHandleParameterChanged function
-   - custom notification 911: call the DM_ENG_Device_SystemConnectionHandleDownloadRequest function
-   - custom notification 912: call the DM_ENG_Device_SystemConnectionHandleCustomNotification function
-   - custom notification 913: call the DM_ENG_Device_SystemConnectionHandleDiagnosticsComplete function
-   - custom notification 914: call the DM_ENG_Device_SystemConnectionHandleConnectionRequest function
-   - custom notification 915: call the DM_ENG_Device_SystemConnectionHandleFinishedTransfer function
-
-   @param notify The individual notification
- */
-void DM_ENG_Device_SystemConnectionHandleNotification(/*notification_t* notify*/) {
-
-    SAH_TRACEZ_INFO("DM_DA", "DM_ENG_Device_SystemConnectionHandleNotification");
 }
 
 //---------------------------------------------------------------------------------------------

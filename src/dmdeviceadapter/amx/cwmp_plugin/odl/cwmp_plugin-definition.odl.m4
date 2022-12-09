@@ -464,6 +464,164 @@
             */
             bool Override;
         }
+
+   /**
+    * This object contains all the ongoing 'transfers' (Downloads and uploads)
+    * When an upload or download RPC is received from the ACS in cwmpd:
+    * - a new entry is created with a description of the transfer.
+    * - cwmp_plugin take the transfer data and invoke libfiletransfer to start the transfer
+    * - Once finished, cwmp_plugin update the object state to 'Finished' and/or 'Error' ... 
+    * - cwmpd will react on this change by sending a TransferComplete message to the ACS
+    */
+    %persistent %protected object ACSTransfers {
+       /**
+        * RPC to add a transfer
+        * @version 1.0
+        *
+        * @param commandKey The command key
+        * @param isDownload True if it is a download, false in case of upload
+        * @param fileSize The file size
+        * @param fileType The file type
+        * @param url The url
+        * @param userName The user name
+        * @param password The password
+        * @param targetFileName The target file name
+        * @param successUrl The success url
+        * @param failureURL The failure url
+        * @param authentication the authentication strategy
+        * @param caCertPath the CA certification file path
+        * @param clientCertPath the Client certification file path
+        * @param privatekeyPath the client private key file path
+        *
+        * @return true if succesfull, false if an error occurred
+        **/
+        bool AddTransfer(%in %mandatory string CommandKey, 
+                          %in %mandatory bool IsDownload, 
+                          %in %mandatory string Url,
+                          %in %mandatory string FileType,
+                          %in uint32 FileSize,  
+                          %in string TargetFileName, 
+                          %in string UserName, 
+                          %in string Password);
+          /**
+        * object representing CWMP list of active transfers
+        * @version 1.0
+        */
+        %persistent object ACSTransfer[] {
+          /**
+            * Parameter indicating who started the transfer
+            * ACS : transfer was requested by the ACS
+            * Autonomous : transfer was started by cwmpd
+            * @version 1.0
+            */
+            %persistent string Initiator {
+                constraint enum ["ACS","Autonomous"];
+                default "ACS";
+            }
+          /**
+            * ACS transfer request commandkey
+            * @version 1.0
+            */
+            %persistent string CommandKey;
+          /**
+            * ACS Transfer Type (true if the transfer is download false otherwise)
+            * @version 1.0
+            */
+            %persistent bool IsDownload;
+          /**
+            * Download or upload URL
+            * @version 1.0
+            */
+            %persistent string Url;
+           /**
+            * A string describing the file type:
+            *  Possible tr69 download strings:
+            *   - 1 Firmware Upgrade Image
+            *   - 2 Web Content
+            *   - 3 Vendor Configuration File
+            *   - 4 Tone File
+            *   - 5 Ringer File
+            *  Possible tr69 upload strings:
+            *   - 1 Vendor Configuration File
+            *   - 2 Vendor Log File
+            * @version 1.0
+            */
+            %persistent string FileType;
+            /**
+            * Parameter indicating the current status of the transfer
+            * @version 1.0
+            */
+            %persistent string Status {
+                constraint enum ["Initial","Transferring","Applying","Applied","Finished"];
+                default "Initial";
+            }
+          /**
+            * Parameter indicating the file size
+            * @version 1.0
+            */
+            %persistent uint32 FileSize;
+          /**
+            * Parameter indicating the file name
+            * @version 1.0
+            */
+            %persistent string TargetFileName;
+          /**
+            * username for download authentication
+            * @version 1.0
+            */
+            %persistent string Username;
+          /**
+            * password for download authentication
+            * @version 1.0
+            */
+            %persistent string Password;
+            /**
+            * Transfer real Start Time
+            * @version 1.0
+            */
+            %persistent datetime StartTime;
+            /**
+            * Transfer real complete time
+            * @version 1.0
+            */
+            %persistent datetime CompleteTime;
+            /**
+            * Transfer Fault code
+            * @version 1.0
+            */
+            %persistent uint32 FaultCode;
+
+            /**
+            * Transfer Fault error 
+            * @version 1.0
+            */
+            %persistent string FaultString;
+
+            /**
+            * TR069 Transfer SuccessURL
+            * @version 1.0
+            */
+            %persistent string SuccessURL;
+
+            /**
+            * TR069 Transfer FailureURL
+            * @version 1.0
+            */
+            %persistent string FailureURL;
+
+            /**
+            * delay before start the transfer
+            * @version 1.0
+            */
+            %persistent uint32 DelaySeconds;
+
+            /**
+            * Unique identifier for the subscription on the transfer node
+            * @version 1.0
+            */
+            %persistent int32 SubscriptionId;
+        }
+    }
       /**
         * Parameters indicating the state of the ManagementServer
         */

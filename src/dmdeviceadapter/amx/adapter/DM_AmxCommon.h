@@ -67,6 +67,7 @@ extern "C"
 #endif
 
 #include <amxc/amxc.h>
+#include <amxc/amxc_macros.h>
 #include <amxp/amxp.h>
 #include <amxd/amxd_dm.h>
 #include <amxd/amxd_path.h>

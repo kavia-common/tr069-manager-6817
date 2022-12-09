@@ -144,7 +144,6 @@ static char* persistentRPCPath = NULL;
  */
 bool DM_ENG_Device_Init(void** systemCtx, void** acsCtx, const char* rpcPath) {
     bool result;
-    SAH_TRACEZ_IN("DM_DA");
     char* tmp;
 
     result = DM_ENG_Device_SystemConnectionInitialize(&da.system);
@@ -160,14 +159,13 @@ bool DM_ENG_Device_Init(void** systemCtx, void** acsCtx, const char* rpcPath) {
     result = DM_ENG_Device_ACSConnectionInitialize(&da.acs);
     if(result == false) {
         SAH_TRACEZ_ERROR("DM_DA", "Error initializing ACS system");
-        SAH_TRACEZ_OUT("DM_DA");
         return false;
     }
     *systemCtx = (void*) (da.system.bus_ctx);
     *acsCtx = (void*) (da.acs.bus_ctx);
 
     if(!rpcPath) {
-        SAH_TRACEZ_ERROR("DM_DA", "rpcPath is not set , some feautures will not work properly");
+        SAH_TRACEZ_WARNING("DM_DA", "rpcPath is not set , not blocking !!!");
     } else {
         persistentRPCPath = strdup(rpcPath);
     }
@@ -187,7 +185,6 @@ bool DM_ENG_Device_Init(void** systemCtx, void** acsCtx, const char* rpcPath) {
         da.acs.autoCreateInstances = true;
     }
 
-    SAH_TRACEZ_OUT("DM_DA");
     return result;
 }
 
@@ -261,7 +258,7 @@ error:
  * Notify the Device Adapter of the end of the session with the ACS.
  */
 void DM_ENG_Device_CloseSession() {
-    SAH_TRACEZ_INFO("DM_DA", "Call to DM_ENG_Device_closeSession");
+    //does nothing!!
 }
 
 
@@ -285,8 +282,6 @@ int DM_ENG_Device_GetParameterValues(char* parameterNames[], DM_ENG_ParameterVal
     int numberParameter = 0;
     char* EmptyFullParameterList = NULL;
     bool emptyFull = true;
-
-    SAH_TRACEZ_IN("DM_DA");
 
     if(DM_ENG_Device_Common_CheckSystem(&da.acs) == false) {
         SetErrorGotoStop(DM_ENG_INTERNAL_ERROR, "Internal System error");
@@ -343,7 +338,6 @@ stop:
         }
     }
 
-    SAH_TRACEZ_OUT("DM_DA");
     return error;
 }
 
@@ -364,13 +358,11 @@ int DM_ENG_Device_GetParameterNames(char* path, bool nextLevel, DM_ENG_Parameter
     unsigned int error = 0;
     int pathLength = 0;
 
-    SAH_TRACEZ_IN("DM_DA");
-
     if(DM_ENG_Device_Common_CheckSystem(&da.acs) == false) {
         SetErrorGotoStop(DM_ENG_INTERNAL_ERROR, "System error");
     }
 
-    SAH_TRACEZ_INFO("DM_DA", "Getting parameter names for %s (nextlevel=%d)", path, nextLevel);
+    SAH_TRACEZ_INFO("DM_DA", "Getting parameter names for [%s] (nextlevel=%d)", path, nextLevel);
 
     if(path != NULL) {
         pathLength = strlen(path);
@@ -397,7 +389,6 @@ stop:
         DM_ENG_deleteAllParameterInfoStruct(infoList);
     }
 
-    SAH_TRACEZ_OUT("DM_DA");
     return error;
 }
 
@@ -425,15 +416,15 @@ stop:
  *
  * @return Returns 0 (zero) if OK or a fault code (9002, ...) according to the TR-069.
  */
-int DM_ENG_Device_SetParameterValues(DM_ENG_ParameterValueStruct* parameterList[], const char* parameterKey, DM_ENG_ParameterStatus* pStatus, DM_ENG_SetParameterValuesFault** faultsList) {
-    (void) parameterKey;//its handled by the caller
+int DM_ENG_Device_SetParameterValues(DM_ENG_ParameterValueStruct* parameterList[],
+                                     UNUSED const char* parameterKey,
+                                     DM_ENG_ParameterStatus* pStatus,
+                                     DM_ENG_SetParameterValuesFault** faultsList) {
     int i = 0;
     int len = 0;
     int error = 0;
     int suberror = 0;
     int nbFaults = 0;
-
-    SAH_TRACEZ_IN("DM_DA");
 
     if(DM_ENG_Device_Common_CheckSystem(&da.acs) == false) {
         SetErrorGotoStop(DM_ENG_INTERNAL_ERROR, "System error");
@@ -496,10 +487,11 @@ stop:
  *
  * @return Returns 0 (zero) if OK or a fault code (9002, ...) according to the TR-069.
  */
-int DM_ENG_Device_AddObject(const char* objectName, const char* parameterKey, unsigned int* pInstanceNumber, DM_ENG_ParameterStatus* pStatus) {
-    (void) parameterKey;
+int DM_ENG_Device_AddObject(const char* objectName,
+                            UNUSED const char* parameterKey,
+                            unsigned int* pInstanceNumber,
+                            DM_ENG_ParameterStatus* pStatus) {
     int error = 0;
-    SAH_TRACEZ_IN("DM_DA");
 
     if(DM_ENG_Device_Common_CheckSystem(&da.acs) == false) {
         SetErrorGotoStop(DM_ENG_INTERNAL_ERROR, "System error");
@@ -525,10 +517,10 @@ stop:
  *
  * @return Returns 0 (zero) if OK or a fault code (9002, ...) according to the TR-069.
  */
-int DM_ENG_Device_DeleteObject(const char* objectName, const char* parameterKey, DM_ENG_ParameterStatus* pStatus) {
-    (void) parameterKey;
+int DM_ENG_Device_DeleteObject(const char* objectName,
+                               UNUSED const char* parameterKey,
+                               DM_ENG_ParameterStatus* pStatus) {
     int error = 0;
-    SAH_TRACEZ_IN("DM_DA");
 
     if(DM_ENG_Device_Common_CheckSystem(&da.acs) == false) {
         SetErrorGotoStop(DM_ENG_INTERNAL_ERROR, "System error");
@@ -539,7 +531,6 @@ int DM_ENG_Device_DeleteObject(const char* objectName, const char* parameterKey,
     error = DM_ENG_Device_AddDeleteObject_Delete(&da.acs, objectName, pStatus);
 
 stop:
-    SAH_TRACEZ_OUT("DM_DA DM_ENG_Device_DeleteObject");
     return error;
 }
 
@@ -652,7 +643,6 @@ int DM_ENG_Device_Upload(char* commandkey, char* fileType, char* url, char* user
  * @return -1 in case of error, 0 on success
  */
 static int DM_ENG_Device_LoadAttributes(char* rpcpath, DM_ENG_ParameterAttributesStruct** acacheArray[]) {
-    SAH_TRACEZ_IN("DM_DA");
     FILE* pFile;
     char* path = NULL;
     unsigned int notification = DM_ENG_NotificationMode_OFF;
@@ -691,8 +681,7 @@ static int DM_ENG_Device_LoadAttributes(char* rpcpath, DM_ENG_ParameterAttribute
                 SAH_TRACEZ_INFO("DM_DA", "accesslist is empty");
                 anew = DM_ENG_newParameterAttributesStruct(path, (DM_ENG_NotificationMode) notification, NULL);
             } else {
-                SAH_TRACEZ_INFO("DM_DA", "accesslist is not empty");
-                SAH_TRACEZ_INFO("DM_DA", "accesl: %s", accesslist);
+                SAH_TRACEZ_INFO("DM_DA", "accesslist is not empty : %s", accesslist);
                 al[0] = accesslist;
                 al[1] = NULL;
                 anew = DM_ENG_newParameterAttributesStruct(path, (DM_ENG_NotificationMode) notification, al);
@@ -710,7 +699,6 @@ static int DM_ENG_Device_LoadAttributes(char* rpcpath, DM_ENG_ParameterAttribute
         *acacheArray = DM_ENG_toParameterAttributesStructArray(LoadList);
         fclose(pFile);
     }
-    SAH_TRACEZ_OUT("DM_DA");
     return 0;
 }
 
@@ -722,7 +710,6 @@ static int DM_ENG_Device_LoadAttributes(char* rpcpath, DM_ENG_ParameterAttribute
  * @return -1 in case of error, 0 on success
  */
 static int DM_ENG_Device_LoadScheduleInform(char* rpcpath, DM_ENG_ScheduleInformStruct** is) {
-    SAH_TRACEZ_IN("DM_DA");
     FILE* pFile;
     SAH_TRACEZ_ERROR("DM_DA", "Opening for read: %s", rpcpath);
     pFile = DM_COMMON_rpc_open_read(rpcpath, "cwmp_scheduleinform");
@@ -745,7 +732,6 @@ static int DM_ENG_Device_LoadScheduleInform(char* rpcpath, DM_ENG_ScheduleInform
         }
         fclose(pFile);
     }
-    SAH_TRACEZ_OUT("DM_DA");
     return 0;
 }
 
@@ -758,7 +744,6 @@ static int DM_ENG_Device_LoadScheduleInform(char* rpcpath, DM_ENG_ScheduleInform
  * @ return 0 if save was succesfull, -1 if an error occurred
  */
 int DM_ENG_Device_LoadConfig(DM_ENG_ParameterAttributesStruct** acacheArray[], DM_ENG_ScheduleInformStruct** is) {
-    SAH_TRACEZ_IN("DM_DA");
     char* path = NULL;
     if(persistentRPCPath) {
         path = strdup(persistentRPCPath);
@@ -767,7 +752,6 @@ int DM_ENG_Device_LoadConfig(DM_ENG_ParameterAttributesStruct** acacheArray[], D
     *acacheArray = NULL;
     *is = NULL;
 
-    SAH_TRACEZ_INFO("DM_DA", "Loading tr69 device configuration");
     if(DM_ENG_Device_LoadAttributes(path, acacheArray) == -1) {
         SAH_TRACEZ_ERROR("DM_DA", "Could not load attributes file");
     }
@@ -780,10 +764,8 @@ int DM_ENG_Device_LoadConfig(DM_ENG_ParameterAttributesStruct** acacheArray[], D
     bool result = DM_ENG_Device_UpDownloadInitialize(&da.system);
     if(result == false) {
         SAH_TRACEZ_ERROR("DM_DA", "Error initializing the transfers");
-        SAH_TRACEZ_OUT("DM_DA");
         return -1;
     }
-    SAH_TRACEZ_OUT("DM_DA");
     return 0;
 }
 
@@ -795,7 +777,6 @@ int DM_ENG_Device_LoadConfig(DM_ENG_ParameterAttributesStruct** acacheArray[], D
  * @return -1 in case of error, 0 on success
  */
 static int DM_ENG_Device_SaveAttributes(DM_ENG_ParameterAttributesStruct* acacheArray[]) {
-    SAH_TRACEZ_IN("DM_DA");
     FILE* pFile;
     SAH_TRACEZ_INFO("DM_DA", "Saving attribute cache in persistentRPCPath = %s", persistentRPCPath);
     pFile = DM_COMMON_rpc_open_write(persistentRPCPath, "cwmp_acache");
@@ -818,11 +799,9 @@ static int DM_ENG_Device_SaveAttributes(DM_ENG_ParameterAttributesStruct* acache
         if(DM_COMMON_rpc_write_subscription(pFile, paramName, acacheArray[i]->cachedValue, acacheArray[i]->notification, NULL) == -1) {
             SAH_TRACEZ_ERROR("DM_DA", "Error saving subscription");
         }
-        SAH_TRACEZ_INFO("DM_DA", "Subscription written");
     }
     DM_COMMON_rpc_close(pFile, persistentRPCPath, "cwmp_acache");
     //todo: save all items in accesslist
-    SAH_TRACEZ_OUT("DM_DA");
     return 0;
 }
 
@@ -877,7 +856,6 @@ static int DM_ENG_Device_SaveScheduleInform(DM_ENG_ScheduleInformStruct* is) {
  * @ return 0 if save was succesfull, -1 if an error occurred
  */
 int DM_ENG_Device_SaveConfig(DM_ENG_ParameterAttributesStruct* acacheArray[], DM_ENG_ScheduleInformStruct* is) {
-    SAH_TRACEZ_IN("DM_DA");
     if(acacheArray) {
         if(DM_ENG_Device_SaveAttributes(acacheArray) == -1) {
             SAH_TRACEZ_ERROR("DM_DA", "Could not save attributes file");
@@ -889,7 +867,6 @@ int DM_ENG_Device_SaveConfig(DM_ENG_ParameterAttributesStruct* acacheArray[], DM
             return -1;
         }
     }
-    SAH_TRACEZ_OUT("DM_DA");
     return 0;
 }
 
@@ -935,9 +912,7 @@ int DM_ENG_Device_RemoveNotification(const char* subscriptionPath, int subscript
  *
  * @ return 0 if succesfull, -1 if an error occurred
  */
-int DM_ENG_Device_SetAccessRights(const char* accessrightsPath, char* al[]) {
-    (void) accessrightsPath;
-    (void) al;
+int DM_ENG_Device_SetAccessRights(UNUSED const char* accessrightsPath, UNUSED char* al[]) {
     return 0;
 }
 
@@ -951,14 +926,11 @@ int DM_ENG_Device_SetAccessRights(const char* accessrightsPath, char* al[]) {
  */
 int DM_ENG_Device_SetConfigValue(DM_ENG_SystemParameter_t parameter, char* pValue) {
     int error = 0;
-    SAH_TRACEZ_IN("DM_DA");
-
     if(DM_ENG_Device_SystemConnectionSetParameter(&da.system, parameter, pValue) == false) {
         SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Could not set the parameter value");
     }
 
 stop:
-    SAH_TRACEZ_OUT("DM_DA");
     return error;
 
 }
@@ -973,14 +945,12 @@ stop:
  */
 int DM_ENG_Device_GetConfigValue(DM_ENG_SystemParameter_t parameter, char** pResult) {
     int error = 0;
-    SAH_TRACEZ_IN("DM_DA");
     *pResult = DM_ENG_Device_SystemConnectionGetParameter(&da.system, parameter);
     if(*pResult == NULL) {
         SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Could not get the parameter value");
     }
 
 stop:
-    SAH_TRACEZ_OUT("DM_DA");
     return error;
 }
 
@@ -1041,8 +1011,20 @@ int DM_ENG_Device_GetAllQueuedTransfers(DM_ENG_AllQueuedTransferStruct** pResult
  * @return 0 if succesfull, -1 if an error occurred
  */
 int DM_ENG_Device_TransferDoneAcknowledged(char* uniqueID) {
-    (void) uniqueID;
-    return -1;
+    SAH_TRACEZ_INFO("DM_DA", "ACK DONE delete object : %s", uniqueID);
+    int error = 0;
+    int rv = 0;
+    amxc_var_t ret;
+    amxc_var_init(&ret);
+    dm_amx_env_t* amx = &da.system;
+
+    rv = amxb_del(amx->bus_ctx, uniqueID, 0, NULL, &ret, 2);
+    if((rv != 0) || amxc_var_is_null(&ret)) {
+        SetErrorGotoStop(-1, "Delete Instance failed [%s]", uniqueID);
+    }
+stop:
+    amxc_var_clean(&ret);
+    return error;
 }
 
 void __attribute__ ((destructor)) fini(void) {

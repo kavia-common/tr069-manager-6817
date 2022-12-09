@@ -102,6 +102,10 @@ void __wrap_netmodel_cleanup(void) {
     return;
 }
 
+void __wrap_cwmp_plugin_transfer_init() {
+    //Does nothing
+}
+
 netmodel_query_t* __wrap_netmodel_openQuery_luckyAddrAddress(const char* intf,
                                                              const char* subscriber,
                                                              const char* flag,

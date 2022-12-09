@@ -13,7 +13,8 @@ LDFLAGS += -Wl,--wrap=start_cwmpd \
 		   -Wl,--wrap=netmodel_openQuery_luckyAddrAddress \
 		   -Wl,--wrap=netmodel_closeQuery \
 		   -Wl,--wrap=ipv4address_changed_cb \
-		   -lsahtrace -luriparser
+		   -Wl,--wrap=cwmp_plugin_transfer_init \
+		   -lsahtrace -luriparser -lfiletransfer
 
 
 include ../test_targets.mk

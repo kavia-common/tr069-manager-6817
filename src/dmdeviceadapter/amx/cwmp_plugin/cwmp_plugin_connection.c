@@ -121,6 +121,31 @@ static wan_ip_mode_t wanipmode = IPV4ONLY;
 static amxp_proc_ctrl_t* cwmpd_proc = NULL;
 static amxp_timer_t* restart_timer = NULL;
 
+int cwmp_proc_ctx_new(cwmp_proc_ctx_t** ctx,
+                      amxp_proc_ctrl_t* proc,
+                      proc_ctrl_cb_t cb,
+                      proc_ctrl_clean_cb_t clean_cb,
+                      void* priv) {
+    int ret = -1;
+    when_null(ctx, stop);
+    when_null(cb, stop);
+
+    *ctx = (cwmp_proc_ctx_t*) calloc(1, sizeof(cwmp_proc_ctx_t));
+    when_null(*ctx, stop);
+
+    (*ctx)->cb = cb;
+    (*ctx)->clean_cb = clean_cb;
+    (*ctx)->proc = proc;
+    (*ctx)->priv = priv;
+    ret = 0;
+stop:
+    if((ret != 0) && (*ctx != NULL)) {
+        free(*ctx);
+        *ctx = NULL;
+    }
+    return ret;
+}
+
 static void updateLocalIP(void) {
     SAH_TRACEZ_INFO(ME, "cwmp_plugin updateLocalIP");
     amxd_object_t* conn_request = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer.ConnRequest");
@@ -485,11 +510,9 @@ static void cwmp_timer_cb(UNUSED amxp_timer_t* timer, UNUSED void* priv) {
     start_cwmpd();
 }
 
-void cwmpd_proc_stopped(UNUSED const char* const event_name,
-                        UNUSED const amxc_var_t* const event_data,
-                        UNUSED void* const priv) {
+static void cwmpd_proc_stopped(UNUSED void* priv) {
     stop_cwmpd();
-    SAH_TRACEZ_NOTICE(ME, "cwmpd stopped signal [%s]", event_name);
+    SAH_TRACEZ_NOTICE(ME, "cwmpd stopped signal stopped ");
     // cwmpd is dead, wait for x time then restart it
     amxp_timer_new(&restart_timer, cwmp_timer_cb, NULL);
     // restart in 10 seconds
@@ -551,13 +574,16 @@ static void close_cwmpd_listening_port(void) {
 }
 
 void start_cwmpd(void) {
+    cwmp_proc_ctx_t* ctx = NULL;
     if(cwmpd_proc) {
-        SAH_TRACEZ_WARNING(ME, "cwmpd already started");
+        SAH_TRACEZ_INFO(ME, "cwmpd already started");
         return;
     }
     open_cwmpd_listening_port();
     SAH_TRACEZ_INFO(ME, "Starting cwmpd");
     amxp_proc_ctrl_new(&cwmpd_proc, build_cwmpd_proc_args);
+    cwmp_proc_ctx_new(&ctx, NULL, cwmpd_proc_stopped, NULL, NULL);
+    amxp_slot_connect(cwmpd_proc->proc->sigmngr, "stop", NULL, proc_finished_cb, (void*) ctx);
     amxp_proc_ctrl_start(cwmpd_proc, 0, NULL);
 }
 
@@ -565,9 +591,9 @@ void stop_cwmpd(void) {
     if(cwmpd_proc) {
         amxp_proc_ctrl_stop(cwmpd_proc);
         amxp_proc_ctrl_delete(&cwmpd_proc);
-        close_cwmpd_listening_port();
         cwmpd_proc = NULL;
     }
+    close_cwmpd_listening_port();
 }
 
 

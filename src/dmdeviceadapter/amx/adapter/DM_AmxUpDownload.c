@@ -65,19 +65,165 @@
 #include <string.h>
 #include <time.h>
 #include <dmengine/DM_ENG_AllQueuedTransferStruct.h>
+#include <dmengine/DM_ENG_InformMessageScheduler.h>
 #include <dmengine/DM_ENG_Error.h>
 
 #include "DM_AmxCommon.h"
 #include "DM_AmxUpDownload.h"
 #include "DM_AmxSystemConnection.h"
+#include "DM_DeviceAdapter.h"
+
+#define TRANSFER_ROOT_PATH "ManagementServer.ACSTransfers."
+#define TRANSFER_ENTRY_PATH TRANSFER_ROOT_PATH "ACSTransfer."
+
+// Subscription list
+static amxc_llist_t transferSubsList;
 
 //---------------------------------------------------------------------------------------------
 /**
- * @addtogroup sah_cwmp_pcbdeviceadapter
+ * @addtogroup sah_cwmp_amxdeviceadapter
  * @{
  */
 
 //---------------------------------------------------------------------------------------------
+
+static int DM_ENG_Device_new_dm_entry(amxb_bus_ctx_t* bus_ctx, amxc_var_t* args, int* index) {
+    int rv = -1;
+    amxc_var_t ret;
+    amxc_var_init(&ret);
+
+    when_null(bus_ctx, stop);
+    when_null(args, stop);
+    when_null(index, stop);
+
+    when_failed(amxb_add(bus_ctx, TRANSFER_ENTRY_PATH, 0, NULL, args, &ret, 2), stop);
+    *index = GET_INT32(GETI_ARG(&ret, 0), "index");
+    rv = 0;
+
+stop:
+    if(rv != 0) {
+        SAH_TRACEZ_ERROR("DM_DA", "failed to add instance [%s]", TRANSFER_ENTRY_PATH);
+    }
+    amxc_var_clean(&ret);
+    return rv;
+}
+
+static void DM_ENG_Device_UpdateTransferState(amxb_bus_ctx_t* bus_ctx, const char* path, bool isDownload) {
+    amxc_var_t set;
+    amxc_var_t ret;
+    int faultCode = 0;
+    amxc_var_init(&set);
+    amxc_var_init(&ret);
+
+    when_str_empty(path, stop);
+    when_null(bus_ctx, stop);
+
+    faultCode = isDownload ? DM_ENG_DOWNLOAD_FAILURE : DM_ENG_UPLOAD_FAILURE;
+    amxc_var_add_key(cstring_t, &set, "FaultString", "Transfer timed out");
+    amxc_var_add_key(uint32_t, &set, "FaultCode", faultCode);
+    amxc_var_add_key(cstring_t, &set, "Status", "Finished");
+
+    if(amxb_set(bus_ctx, path, &set, &ret, 1) != 0) {
+        SAH_TRACEZ_ERROR("DM_DA", "Failed to update file transfer state");
+    }
+stop:
+    amxc_var_clean(&set);
+    amxc_var_clean(&ret);
+}
+
+static DM_ENG_TransferCompleteStruct* DM_ENG_Device_BuildTransferCompleteResponse(amxc_var_t* transfer, const char* path) {
+    DM_ENG_TransferCompleteStruct* tcs = NULL;
+    time_t startTimeUF = 0;
+    time_t completeTimeUF = 0;
+    bool autonomousTransfer = false;
+    amxc_string_t pname;
+    const char* commandKey = NULL;
+    const char* transferURL = NULL;
+    const char* status = NULL;
+    const char* fileType = NULL;
+    const char* targetFileName = NULL;
+    const char* startTime = NULL;
+    const char* completeTime = NULL;
+    const char* faultString = NULL;
+    const char* initiator = NULL;
+    uint32_t fileSize = 0;
+    int32_t faultCode = -1;
+    bool isDownload = false;
+    amxc_var_t* transfer_data = NULL;
+
+    amxc_string_init(&pname, 0);
+    amxc_string_setf(&pname, "0.'%s'", path);
+    transfer_data = GETP_ARG(transfer, amxc_string_get(&pname, 0));
+    initiator = GETP_CHAR(transfer_data, "Initiator");
+
+    if(initiator && (strncmp(initiator, "Autonomous", strlen("Autonomous")) == 0)) {
+        autonomousTransfer = true;
+    }
+
+    commandKey = GETP_CHAR(transfer_data, "CommandKey");
+    transferURL = GETP_CHAR(transfer_data, "Url");
+    status = GETP_CHAR(transfer_data, "Status");
+    isDownload = GETP_BOOL(transfer_data, "IsDownload");
+    fileType = GETP_CHAR(transfer_data, "FileType");
+    fileSize = GETP_INT32(transfer_data, "FileSize");
+    targetFileName = GETP_CHAR(transfer_data, "TargetFileName");
+    startTime = GETP_CHAR(transfer_data, "StartTime");
+    completeTime = GETP_CHAR(transfer_data, "CompleteTime");
+    faultCode = GETP_INT32(transfer_data, "FaultCode");
+    faultString = GETP_CHAR(transfer_data, "FaultString");
+
+    SAH_TRACEZ_INFO("DM_DA", "TransferComplete: key:%s status:%s url:%s faultcode:%d",
+                    commandKey, status, transferURL, faultCode);
+    SAH_TRACEZ_INFO("DM_DA", "----------------: type:%s size:%d targetfileName:%s isDownload:%s",
+                    fileType, fileSize, targetFileName, isDownload ? "DOWNLOAD" : "UPLOAD");
+    SAH_TRACEZ_INFO("DM_DA", "----------------: startTime:%s | endTime:%s faultString:%s",
+                    startTime, completeTime, faultString);
+
+    DM_ENG_dateStringToTime((char*) startTime, &startTimeUF);
+    DM_ENG_dateStringToTime((char*) completeTime, &completeTimeUF);
+
+    tcs = DM_ENG_newTransferCompleteStruct(autonomousTransfer, "announceURL", transferURL, fileType,
+                                           fileSize, targetFileName, isDownload, commandKey,
+                                           faultCode, faultString, startTimeUF, completeTimeUF, (char*) path);
+
+    amxc_string_clean(&pname);
+    return tcs;
+}
+
+static void DM_ENG_Device_TransferCompleteEvent(char* path) {
+    int32_t uid = -1;
+    DM_ENG_TransferCompleteStruct* tcs = NULL;
+    amxc_var_t transfer_object;
+    amxc_string_t pname;
+    amxc_string_init(&pname, 0);
+    amxc_var_init(&transfer_object);
+    dm_amx_env_t* amx = DM_ENG_Device_GetSystemInfo();
+    when_null(path, stop);
+
+    if(amxb_get(amx->bus_ctx, path, 0, &transfer_object, 1) != 0) {
+        GotoStop("object already deleted [%s]", path);
+    }
+
+    amxc_string_setf(&pname, "0.'%s'.%s", path, "CommandKey");
+    const char* commandKey = GETP_CHAR(&transfer_object, amxc_string_get(&pname, 0));
+    DM_ENG_NotificationInterface_timerStop(commandKey);
+    tcs = DM_ENG_Device_BuildTransferCompleteResponse(&transfer_object, path);
+    when_null(tcs, stop);
+    SAH_TRACEZ_INFO("DM_DA", "Sending a transfer complete event, commandkey=%s, path=%s, faultstring=%s, faultcode=%d", commandKey, path, tcs->faultString, tcs->faultCode);
+    DM_ENG_InformMessageScheduler_transferComplete(tcs);
+
+    amxc_string_setf(&pname, "0.'%s'.%s", path, "SubscriptionId");
+    uid = GETP_INT32(&transfer_object, amxc_string_get(&pname, 0));
+
+    if(DM_ENG_Device_Common_DeleteSubscription(&transferSubsList, amx, uid) != 0) {
+        SAH_TRACEZ_ERROR("DM_DA", "Failed to remove subscription for [%s], uid %d", path, uid);
+    }
+
+stop:
+    amxc_var_clean(&transfer_object);
+    amxc_string_clean(&pname);
+}
+
 /**
    @brief
    Called when a transfer initiated by the ACS has timed out
@@ -94,10 +240,235 @@
     - -1 in case of error
     - 0 in case of success
  */
-void DM_ENG_Device_TransferTimedOut(char* commandkey) {
-    (void) commandkey;
-    fprintf(stderr, "DM_ENG_Device_TransferTimedOut Not yet implemented \n");
+void DM_ENG_Device_TransferTimedOut(char* cmdkey) {
+    amxc_var_t transfers;
+    const amxc_htable_t* htable = NULL;
+    dm_amx_env_t* dm_system = DM_ENG_Device_GetSystemInfo();
+    amxc_var_init(&transfers);
+
+    when_null(cmdkey, stop);
+    SAH_TRACEZ_INFO("DM_DA", "Transfer [%s] has timedout", cmdkey);
+
+    if(amxb_get(dm_system->bus_ctx, TRANSFER_ENTRY_PATH "*.", 1, &transfers, 5) != 0) {
+        GotoStop("Failed to read transfers from dm");
+    }
+    htable = amxc_var_constcast(amxc_htable_t, GETI_ARG(&transfers, 0));
+
+    amxc_htable_iterate(hit, htable) {
+        const char* key = amxc_htable_it_get_key(hit);
+        amxc_var_t* transfer = amxc_var_from_htable_it(hit);
+        const char* commandKey = GETP_CHAR(transfer, "CommandKey");
+        const char* status = GETP_CHAR(transfer, "Status");
+        int32_t uid = GETP_INT32(transfer, "SubscriptionId");
+
+        if(commandKey && (strcmp(commandKey, cmdkey) == 0)) {
+            //Remove the subscription
+            if(DM_ENG_Device_Common_DeleteSubscription(&transferSubsList, dm_system, uid) != 0) {
+                SAH_TRACEZ_ERROR("DM_DA", "Failed to remove Subscription for [%s]", key);
+            }
+
+            //Notify transfer Complete
+            if(status && strcmp(status, "Initial")) {
+                bool isDownload = GETP_BOOL(transfer, "IsDownload");
+                DM_ENG_Device_UpdateTransferState(dm_system->bus_ctx, key, isDownload);
+            }
+
+            DM_ENG_Device_TransferCompleteEvent((char*) key);
+            break;
+        }
+    }
+stop:
+    amxc_var_clean(&transfers);
+}
+
+
+
+void DM_ENG_Device_TransferNotification(UNUSED const char* path, const amxc_var_t* const data) {
+    const amxc_htable_t* htable = NULL;
+    const char* objpath = NULL;
+    const amxc_var_t* parameters = NULL;
+
+    when_null(data, stop);
+
+    objpath = GETP_CHAR(data, "path");
+    parameters = GETP_ARG(data, "parameters");
+    htable = amxc_var_constcast(amxc_htable_t, parameters);
+
+    amxc_htable_iterate(hit, htable) {
+        const char* key = amxc_htable_it_get_key(hit);
+        if(key && (strcmp("Status", key) == 0)) {
+            amxc_var_t* parameter = amxc_var_from_htable_it(hit);
+            const char* transfer_state = GETP_CHAR(parameter, "to");
+
+            if(transfer_state && (strcmp("Finished", transfer_state) == 0)) {
+                SAH_TRACEZ_INFO("DM_DA", "Transfer Completed Event -> [%s]", objpath);
+                DM_ENG_Device_TransferCompleteEvent((char*) objpath);
+            }
+        }
+    }
+stop:
     return;
+}
+
+static int DM_ENG_Device_AddTransferSubscription(dm_amx_env_t* amx, int instance) {
+    int error = 0;
+    int uid = -1;
+    amxc_string_t instancePath;
+    amxc_var_t set;
+    amxc_var_t ret;
+
+    amxc_var_init(&ret);
+    amxc_var_init(&set);
+    amxc_var_set_type(&set, AMXC_VAR_ID_HTABLE);
+    amxc_var_set_type(&ret, AMXC_VAR_ID_HTABLE);
+    amxc_string_init(&instancePath, 0);
+    amxc_string_setf(&instancePath, TRANSFER_ENTRY_PATH "%d.", instance);
+    when_null(amx, stop);
+
+    if(DM_ENG_Device_Common_AddSubscription(&transferSubsList, amx, amxc_string_get(&instancePath, 0),
+                                            EVENT_DM_FILTER_OBJECT_CHANGED,
+                                            &DM_ENG_Device_TransferNotification,
+                                            &uid) != 0) {
+        SetErrorGotoStop(-1, "Could not create notification for %s", amxc_string_get(&instancePath, 0));
+    }
+
+    SAH_TRACEZ_INFO("DM_DA", "Subscription OK [%s], id=%d, uid %d", amxc_string_get(&instancePath, 0), instance, uid);
+    amxc_var_add_key(int32_t, &set, "SubscriptionId", uid);
+
+    if(amxb_set(amx->bus_ctx, amxc_string_get(&instancePath, 0), &set, &ret, 1) != 0) {
+        SAH_TRACEZ_INFO("DM_DA", "Failed to set the SubscriptionId for %s", amxc_string_get(&instancePath, 0));
+    }
+stop:
+    amxc_var_clean(&ret);
+    amxc_var_clean(&set);
+    amxc_string_clean(&instancePath);
+    return error;
+}
+
+static int DM_ENG_Device_AddTransfer(dm_amx_env_t* amx,
+                                     const char* commandkey,
+                                     const char* fileType,
+                                     const char* url,
+                                     const char* username,
+                                     const char* password,
+                                     unsigned int fileSize,
+                                     const char* targetFileName,
+                                     unsigned int delayseconds,
+                                     const char* successURL,
+                                     const char* failureURL,
+                                     bool isDownload,
+                                     int instanceID) {
+    amxc_var_t ret;
+    amxc_var_t args;
+    amxc_var_t object;
+    amxc_ts_t ts_start_time;
+    amxc_ts_t ts_complete_time;
+    int instance_id = instanceID;
+    int error = DM_ENG_REQUEST_DENIED;
+
+    amxc_var_init(&ret);
+    amxc_var_init(&args);
+    amxc_var_init(&object);
+
+    SAH_TRACEZ_INFO("DM_DA", "ADD New transfer %s", commandkey);
+
+    amxc_ts_now(&ts_start_time);
+    ts_start_time.sec += delayseconds;
+    amxc_ts_now(&ts_complete_time);
+    ts_complete_time.sec += 3600;
+
+    amxc_var_set_type(&args, AMXC_VAR_ID_HTABLE);
+    amxc_var_add_key(cstring_t, &args, "Initiator", "ACS");
+    amxc_var_add_key(cstring_t, &args, "CommandKey", commandkey);
+    amxc_var_add_key(bool, &args, "IsDownload", isDownload);
+    amxc_var_add_key(cstring_t, &args, "Url", url);
+    amxc_var_add_key(cstring_t, &args, "FileType", fileType);
+    amxc_var_add_key(uint32_t, &args, "FileSize", fileSize);
+    amxc_var_add_key(cstring_t, &args, "TargetFileName", targetFileName);
+    amxc_var_add_key(cstring_t, &args, "Username", username);
+    amxc_var_add_key(cstring_t, &args, "Password", password);
+    amxc_var_add_key(cstring_t, &args, "SuccessURL", successURL);
+    amxc_var_add_key(cstring_t, &args, "FailureURL", failureURL);
+    amxc_var_add_key(uint32_t, &args, "FaultCode", 0);
+    amxc_var_add_key(uint32_t, &args, "DelaySeconds", delayseconds);
+    amxc_var_add_key(amxc_ts_t, &args, "StartTime", &ts_start_time);
+    amxc_var_add_key(amxc_ts_t, &args, "CompleteTime", &ts_complete_time);
+
+    if(instance_id <= 0) {
+        amxc_var_copy(&object, &args);
+        when_failed(DM_ENG_Device_new_dm_entry(amx->bus_ctx, &object, &instance_id), stop);
+    }
+
+    when_true(instance_id <= 0, stop);
+    amxc_var_add_key(int32_t, &args, "index", instance_id);
+
+    if(amxb_call(amx->bus_ctx, TRANSFER_ROOT_PATH, "AddTransfer", &args, &ret, 2) != 0) {
+        SetErrorGotoStop(DM_ENG_REQUEST_DENIED, "Invoke to AddTransfer instance %d", instance_id);
+    }
+
+    error = DM_ENG_Device_AddTransferSubscription(amx, instance_id);
+
+stop:
+    amxc_var_clean(&ret);
+    amxc_var_clean(&object);
+    amxc_var_clean(&args);
+    return error;
+}
+
+static void DM_ENG_Device_RestartTransfer(char* path) {
+    amxc_var_t transfer;
+    amxc_string_t pname;
+    amxd_path_t amxd_path;
+    int instanceID = -1;
+    const char* commandKey = NULL;
+    const char* transferURL = NULL;
+    const char* successURL = NULL;
+    const char* failureURL = NULL;
+    const char* fileType = NULL;
+    const char* targetFileName = NULL;
+    uint32_t fileSize = 0;
+    const char* username = NULL;
+    const char* password = NULL;
+    char* id_str = NULL;
+    bool isDownload = false;
+    amxc_var_t* transfer_data = NULL;
+    amxd_path_init(&amxd_path, path);
+    amxc_string_init(&pname, 0);
+    amxc_var_init(&transfer);
+    dm_amx_env_t* amx = DM_ENG_Device_GetSystemInfo();
+    when_str_empty(path, stop);
+
+    if(amxb_get(amx->bus_ctx, path, 0, &transfer, 1) != 0) {
+        GotoStop("Failed to read Transfer node from the data-model %s", path);
+    }
+
+    amxc_string_setf(&pname, "0.'%s'", path);
+    transfer_data = GETP_ARG(&transfer, amxc_string_get(&pname, 0));
+    commandKey = GETP_CHAR(transfer_data, "CommandKey");
+    transferURL = GETP_CHAR(transfer_data, "Url");
+    successURL = GETP_CHAR(transfer_data, "SuccessURL");
+    failureURL = GETP_CHAR(transfer_data, "FailureURL");
+    isDownload = GETP_BOOL(transfer_data, "IsDownload");
+    fileType = GETP_CHAR(transfer_data, "FileType");
+    fileSize = GETP_INT32(transfer_data, "FileSize");
+    targetFileName = GETP_CHAR(transfer_data, "TargetFileName");
+    username = GETP_CHAR(transfer_data, "Username");
+    password = GETP_CHAR(transfer_data, "Password");
+
+    id_str = amxd_path_get_last(&amxd_path, false);
+    when_null(id_str, stop);
+    instanceID = atoi(id_str);
+
+    if(DM_ENG_Device_AddTransfer(amx, commandKey, fileType, transferURL,
+                                 username, password, fileSize, targetFileName,
+                                 5, successURL, failureURL, isDownload, instanceID) == 0) {
+        DM_ENG_NotificationInterface_timerStart(commandKey, 3600, 0, DM_ENG_Device_TransferTimedOut);
+    }
+stop:
+    amxc_var_clean(&transfer);
+    amxc_string_clean(&pname);
+    amxd_path_clean(&amxd_path);
+    free(id_str);
 }
 
 //---------------------------------------------------------------------------------------------
@@ -142,20 +513,25 @@ void DM_ENG_Device_TransferTimedOut(char* commandkey) {
     - TR69 error in case of error
     - 0 in case of success
  */
-int DM_ENG_Device_DoDownload(dm_amx_env_t* amx, char* commandkey, char* fileType, char* url, char* username, char* password, unsigned int fileSize, char* targetFileName,
-                             unsigned int delayseconds, char* successURL, char* failureURL) {
-    (void) amx;
-    (void) commandkey;
-    (void) fileType;
-    (void) url;
-    (void) username;
-    (void) password;
-    (void) fileSize;
-    (void) targetFileName;
-    (void) delayseconds;
-    (void) successURL;
-    (void) failureURL;
-    int error = DM_ENG_METHOD_NOT_SUPPORTED;
+int DM_ENG_Device_DoDownload(dm_amx_env_t* amx,
+                             char* commandkey,
+                             char* fileType,
+                             char* url,
+                             char* username,
+                             char* password,
+                             unsigned int fileSize,
+                             char* targetFileName,
+                             unsigned int delayseconds,
+                             char* successURL,
+                             char* failureURL) {
+
+    int error = DM_ENG_Device_AddTransfer(amx, commandkey, fileType, url,
+                                          username, password, fileSize,
+                                          targetFileName, delayseconds,
+                                          successURL, failureURL, true, -1);
+    if(error == 0) {
+        DM_ENG_NotificationInterface_timerStart(commandkey, delayseconds + 3600, 0, DM_ENG_Device_TransferTimedOut);
+    }
     return error;
 }
 
@@ -192,15 +568,21 @@ int DM_ENG_Device_DoDownload(dm_amx_env_t* amx, char* commandkey, char* fileType
     - TR69 error in case of error
     - 0 in case of success
  */
-int DM_ENG_Device_DoUpload(dm_amx_env_t* amx, char* commandkey, char* fileType, char* url, char* username, char* password, unsigned int delayseconds) {
-    (void) amx;
-    (void) commandkey;
-    (void) fileType;
-    (void) url;
-    (void) username;
-    (void) password;
-    (void) delayseconds;
-    int error = DM_ENG_METHOD_NOT_SUPPORTED;
+int DM_ENG_Device_DoUpload(dm_amx_env_t* amx,
+                           char* commandkey,
+                           char* fileType,
+                           char* url,
+                           char* username,
+                           char* password,
+                           unsigned int delayseconds) {
+
+    int error = DM_ENG_Device_AddTransfer(amx, commandkey, fileType,
+                                          url, username, password,
+                                          0, "", delayseconds,
+                                          "", "", false, -1);
+    if(error == 0) {
+        DM_ENG_NotificationInterface_timerStart(commandkey, delayseconds + 3600, 0, DM_ENG_Device_TransferTimedOut);
+    }
     return error;
 }
 
@@ -208,12 +590,12 @@ int DM_ENG_Device_DoUpload(dm_amx_env_t* amx, char* commandkey, char* fileType, 
 //---------------------------------------------------------------------------------------------
 /**
    @brief
-   This function fetches a list of ManagementServer.QueuedTranfers.Entry.x upload instances and returns the
+   This function fetches a list of ManagementServer.ACSTransfers.ACSTransfer.x upload instances and returns the
    result to the calling function.
 
    @details
    If the GetQueuedTransfers RPC was valid, this function is called to create a DM_ENG_AllQueuedTransferStruct list of
-   items found in ManagementServer.QueuedTranfers.Entry.x
+   items found in ManagementServer.ACSTransfers.ACSTransfer.x
 
    The calling function is responsible for cleaning up the resulting pResult.
 
@@ -225,9 +607,49 @@ int DM_ENG_Device_DoUpload(dm_amx_env_t* amx, char* commandkey, char* fileType, 
     - 0 in case of success
  */
 int DM_ENG_Device_GetQueuedTransfers(dm_amx_env_t* amx, DM_ENG_AllQueuedTransferStruct** pResult[]) {
-    (void) amx;
-    (void) pResult;
     int error = DM_ENG_METHOD_NOT_SUPPORTED;
+    amxc_var_t transfers;
+    DM_ENG_AllQueuedTransferStruct* tempList = NULL;
+    const amxc_htable_t* htable = NULL;
+    amxc_var_init(&transfers);
+
+    SAH_TRACEZ_INFO("DM_DA", "Getting All Queued Transfers from data-model");
+
+    if(amxb_get(amx->bus_ctx, "ManagementServer.ACSTransfers.ACSTransfer.*.", 1, &transfers, 5) != 0) {
+        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "failed to read Queued Transfers");
+    }
+    htable = amxc_var_constcast(amxc_htable_t, GETI_ARG(&transfers, 0));
+
+    amxc_htable_iterate(hit, htable) {
+        amxc_var_t* transfer = amxc_var_from_htable_it(hit);
+        const char* commandKey = GETP_CHAR(transfer, "CommandKey");
+        const char* status = GETP_CHAR(transfer, "Status");
+        bool isDownload = GETP_BOOL(transfer, "IsDownload");
+        const char* fileType = GETP_CHAR(transfer, "FileType");
+        uint32_t fileSize = GETP_INT32(transfer, "FileSize");
+        const char* targetFileName = GETP_CHAR(transfer, "TargetFileName");
+        int state = 1;
+        if(strcmp(status, "Initial") == 0) {
+            state = 1;
+        } else if(strcmp(status, "Transferring") == 0) {
+            state = 2;
+        } else {
+            state = 3;
+        }
+        SAH_TRACEZ_INFO("DM_DA", "Adding transfer: key[%s] status[%s] filetype[%s] filesize[%d] targetfileName[%s]",
+                        commandKey, status, fileType, fileSize, targetFileName);
+
+        DM_ENG_AllQueuedTransferStruct* queuedTransfer = DM_ENG_newAllQueuedTransferStruct(isDownload, state, (char*) fileType, fileSize,
+                                                                                           (char*) targetFileName, (char*) commandKey);
+        if(queuedTransfer) {
+            DM_ENG_addAllQueuedTransferStruct(&tempList, queuedTransfer);
+        }
+    }
+
+    *pResult = DM_ENG_toAllQueuedTransferStructArray(tempList);
+    error = 0;
+stop:
+    amxc_var_clean(&transfers);
     return error;
 }
 
@@ -253,8 +675,51 @@ int DM_ENG_Device_GetQueuedTransfers(dm_amx_env_t* amx, DM_ENG_AllQueuedTransfer
     - true in case of success
  */
 bool DM_ENG_Device_UpDownloadInitialize(dm_amx_env_t* amx) {
-    (void) amx;
-    return false;
+    amxc_var_t transfers;
+    const amxc_htable_t* htable = NULL;
+    bool ret = false;
+    amxc_var_init(&transfers);
+    amxc_llist_init(&transferSubsList);
+
+    SAH_TRACEZ_INFO("DM_DA", "Initialize transfers");
+    amxb_get(amx->bus_ctx, "ManagementServer.ACSTransfers.ACSTransfer.*.", 1, &transfers, 5);
+    when_true(amxc_var_is_null(&transfers), stop);
+    htable = amxc_var_constcast(amxc_htable_t, GETI_ARG(&transfers, 0));
+
+    amxc_htable_iterate(hit, htable) {
+        const char* key = amxc_htable_it_get_key(hit);
+        amxc_var_t* transfer = amxc_var_from_htable_it(hit);
+        const char* status = GETP_CHAR(transfer, "Status");
+
+        if(!status) {
+            GotoStop("Failed to read the transfer status [%s]", key);
+        }
+
+        if(strcmp(status, "Initial")) {
+            amxc_ts_t then_ts;
+            amxc_ts_t now_ts;
+            const char* commandKey = GETP_CHAR(transfer, "CommandKey");
+            const char* then_str = GETP_CHAR(transfer, "CompleteTime");
+
+            if(commandKey && then_str && *then_str) {
+                amxc_ts_now(&now_ts);
+                amxc_ts_parse(&then_ts, then_str, strlen(then_str));
+                SAH_TRACEZ_WARNING("DM_DA", "Transfer [%s] didn't start", commandKey);
+
+                if(amxc_ts_compare(&now_ts, &then_ts) == 1) {
+                    DM_ENG_NotificationInterface_timerStart(commandKey, 0, 0, DM_ENG_Device_TransferTimedOut);
+                } else {
+                    DM_ENG_NotificationInterface_timerStart(key, 0, 0, DM_ENG_Device_RestartTransfer);
+                }
+            }
+        } else if(strcmp(status, "Finished")) {
+            DM_ENG_NotificationInterface_timerStart(key, 0, 0, DM_ENG_Device_TransferCompleteEvent);
+        }
+    }
+    ret = true;
+stop:
+    amxc_var_clean(&transfers);
+    return ret;
 }
 
 /** @} */

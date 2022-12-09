@@ -41,7 +41,7 @@ else
 endif
 
 LDFLAGS += $(STAGING_LIBDIR) -shared -fPIC
-LDFLAGS += -lamxc -lamxd -lamxo -lamxb -lamxp -lamxm -lamxa -lsahtrace -lnetmodel
+LDFLAGS += -lamxc -lamxd -lamxo -lamxb -lamxp -lamxm -lamxa -lsahtrace -lnetmodel -lfiletransfer
 
 # targets
 all: banner $(TARGET_SO) $(TARGET_A) $(TARGET_M4)

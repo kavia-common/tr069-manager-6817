@@ -607,7 +607,7 @@ static cwmp_status_t cwmp_client_get_acsip() {
                 SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the ACS SERVER URL");
                 return ret;
             }
-            SAH_TRACEZ_ERROR("CWMPD", "ACSIP LIST is %s", ip_list);
+            SAH_TRACEZ_INFO("CWMPD", "ACSIP LIST is %s", ip_list);
             valid_ip = (ip_list != NULL) && strstr(ip_list, acs_server_ip);
 
             if(!valid_ip) {
@@ -786,7 +786,7 @@ int client_startSession() {
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM,
                                        DM_ENG_CONNECTIONREQUESTHOST,
                                        &crhost) != 0) {
-        SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the connection request host URL");
+        SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the connection request URL");
         return -1;
     }
     // Check if wan is up

@@ -67,6 +67,7 @@ extern "C"
 #endif
 
 #include <amxc/amxc.h>
+#include <amxc/amxc_macros.h>
 #include <amxp/amxp.h>
 #include <amxd/amxd_dm.h>
 #include <amxd/amxd_object.h>
@@ -82,9 +83,6 @@ extern "C"
 #include <netmodel/common_api.h>
 #include <netmodel/client.h>
 
-#define PRIVATE __attribute__ ((visibility("hidden")))
-#define UNUSED __attribute__((unused))
-
 #define STRING_EMPTY(TEXT) ((TEXT == NULL) || (*TEXT == 0))
 
 #define ME "CWMP_PLUGIN"
@@ -94,6 +92,16 @@ typedef struct _cwmp_plugin_app {
     amxo_parser_t* parser;
     amxb_bus_ctx_t* amxb_bus_ctx;
 } cwmp_plugin_app_t;
+
+typedef void (* proc_ctrl_cb_t)(void* priv);
+typedef void (* proc_ctrl_clean_cb_t)(void* priv);
+
+typedef struct _cwmp_proc_ctx {
+    amxp_proc_ctrl_t* proc;
+    proc_ctrl_cb_t cb;
+    proc_ctrl_clean_cb_t clean_cb;
+    void* priv;
+} cwmp_proc_ctx_t;
 
 int _cwmp_plugin_main(int reason, amxd_dm_t* dm, amxo_parser_t* parser);
 
@@ -113,9 +121,10 @@ amxd_status_t _ManagementServer_updateConnectionRequestURL(amxd_object_t* object
                                                            amxc_var_t* args,
                                                            amxc_var_t* ret);
 
-void _manageCwmpd(UNUSED const char* const sig_name,
-                  UNUSED const amxc_var_t* const data,
-                  UNUSED void* const priv);
+amxd_status_t _AddTransfer(amxd_object_t* object,
+                           amxd_function_t* func,
+                           amxc_var_t* args,
+                           amxc_var_t* ret);
 
 void _updateConnectionRequestURL(const char* const sig_name,
                                  const amxc_var_t* const data,
@@ -129,9 +138,17 @@ void start_cwmpd(void);
 
 void stop_cwmpd(void);
 
-void cwmpd_proc_stopped(const char* const event_name,
-                        UNUSED const amxc_var_t* const event_data,
-                        UNUSED void* const priv);
+void proc_finished_cb(const char* const event_name,
+                      const amxc_var_t* const event_data,
+                      void* const priv);
+
+void cwmp_plugin_transfer_init(void);
+
+int cwmp_proc_ctx_new(cwmp_proc_ctx_t** ctx,
+                      amxp_proc_ctrl_t* proc,
+                      proc_ctrl_cb_t cb,
+                      proc_ctrl_clean_cb_t clean_cb,
+                      void* priv);
 
 #ifdef __cplusplus
 }

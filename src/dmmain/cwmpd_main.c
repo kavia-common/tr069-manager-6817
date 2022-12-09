@@ -66,8 +66,8 @@
 #include <arpa/inet.h>
 
 #include "dmmain/cwmpd.h"
-#include "dmcom/dm_com.h"
-#include "dmengine/DM_ENG_Device.h"
+#include <dmcom/dm_com.h>
+#include <dmengine/DM_ENG_Device.h>
 
 #include <debug/sahtrace.h>
 #include <debug/sahtrace_macros.h>

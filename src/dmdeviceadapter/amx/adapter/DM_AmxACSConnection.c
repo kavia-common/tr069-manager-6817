@@ -118,7 +118,6 @@ static void set_subscription_new_value(const char* path, const char* value) {
 }
 
 void DM_ENG_Device_ACSConnectionHandleNotification(const char* path, const amxc_var_t* const data) {
-    SAH_TRACEZ_INFO("DM_DA", "notification event path is [%s]", path);
     DM_ENG_NotificationMode mode = DM_ENG_NotificationMode_OFF;
     int id = -1;
     const amxc_htable_t* htable = NULL;

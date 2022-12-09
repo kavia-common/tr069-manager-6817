@@ -47,7 +47,9 @@
         DM_ENGINE = 200,
         DM_COM = 200,
         DM_COMMON = 200,
-        DM_HS = 200
+        DM_HS = 200,
+        ftx = 200,
+        ftx_func = 200
     };
 }
 
