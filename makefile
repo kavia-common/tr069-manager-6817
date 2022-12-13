@@ -33,7 +33,7 @@ install: all
 	$(INSTALL) -d -m 0755 $(DEST)$(BINDIR)
 	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin.odl $(DEST)/etc/amx/cwmp_plugin/cwmp_plugin.odl
 	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-defaults.odl $(DEST)/etc/amx/cwmp_plugin/cwmp_plugin-defaults.odl
-	$(INSTALL) -D -p -m 0644 output/$(MACHINE)/cwmp_plugin/cwmp_plugin-definition.odl $(DEST)/etc/amx/cwmp_plugin/cwmp_plugin-definition.odl
+	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-definition.odl $(DEST)/etc/amx/cwmp_plugin/cwmp_plugin-definition.odl
 	$(INSTALL) -D -p -m 0755 src/dmdeviceadapter/amx/cwmp_plugin/scripts/cwmp_plugin.sh $(DEST)$(INITDIR)/cwmp_plugin
 	$(INSTALL) -D -p -m 0755 src/dmdeviceadapter/amx/cwmp_plugin/scripts/tr069_1_fw_upgrade.sh $(DEST)$(BINDIR)/tr069_1_fw_upgrade
 	$(INSTALL) -D -p -m 0755 src/dmdeviceadapter/amx/cwmp_plugin/scripts/tr069_2_vendor_logs_prepare.sh $(DEST)$(BINDIR)/tr069_2_vendor_logs_prepare
@@ -50,7 +50,7 @@ package: all
 	$(INSTALL) -d -m 0755 $(PKGDIR)$(BINDIR)
 	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin.odl $(PKGDIR)/etc/amx/cwmp_plugin/cwmp_plugin.odl
 	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-defaults.odl $(PKGDIR)/etc/amx/cwmp_plugin/cwmp_plugin-defaults.odl
-	$(INSTALL) -D -p -m 0644 output/$(MACHINE)/cwmp_plugin/cwmp_plugin-definition.odl $(PKGDIR)/etc/amx/cwmp_plugin/cwmp_plugin-definition.odl
+	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-definition.odl $(PKGDIR)/etc/amx/cwmp_plugin/cwmp_plugin-definition.odl
 	$(INSTALL) -D -p -m 0755 src/dmdeviceadapter/amx/cwmp_plugin/scripts/cwmp_plugin.sh $(PKGDIR)$(INITDIR)/cwmp_plugin
 	$(INSTALL) -D -p -m 0755 src/dmdeviceadapter/amx/cwmp_plugin/scripts/tr069_1_fw_upgrade.sh $(PKGDIR)$(BINDIR)/tr069_1_fw_upgrade
 	$(INSTALL) -D -p -m 0755 src/dmdeviceadapter/amx/cwmp_plugin/scripts/tr069_2_vendor_logs_prepare.sh $(PKGDIR)$(BINDIR)/tr069_2_vendor_logs_prepare
@@ -70,6 +70,7 @@ changelog:
 doc:
 	$(eval ODLFILES += src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin.odl)
 	$(eval ODLFILES += src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-defaults.odl)
+	$(eval ODLFILES += src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-definition.odl)
 
 	mkdir -p output/xml
 	mkdir -p output/html

@@ -70,4 +70,4 @@
     ];
 }
 
-include "../../src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-definition.odl.m4";
+include "../../src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-definition.odl";

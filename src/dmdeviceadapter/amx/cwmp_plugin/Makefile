@@ -10,8 +10,6 @@ OBJDIR = $(ROOT)/output/$(MACHINE)/$(COMPONENT)
 # TARGETS
 TARGET_SO = $(OBJDIR)/$(COMPONENT).so
 
-TARGET_M4 = $(OBJDIR)/$(COMPONENT)-definition.odl
-
 # directories
 # source directories
 SRCDIR = ./
@@ -44,7 +42,7 @@ LDFLAGS += $(STAGING_LIBDIR) -shared -fPIC
 LDFLAGS += -lamxc -lamxd -lamxo -lamxb -lamxp -lamxm -lamxa -lsahtrace -lnetmodel -lfiletransfer
 
 # targets
-all: banner $(TARGET_SO) $(TARGET_A) $(TARGET_M4)
+all: banner $(TARGET_SO) $(TARGET_A)
 
 banner:
 	@echo "*********************** Building $(COMPONENT).so *********************************"
@@ -54,9 +52,6 @@ $(TARGET_SO): $(OBJECTS)
 
 $(TARGET_A): $(OBJECTS)
 	$(AR) rcs $(@) $^
-
-$(TARGET_M4):
-	m4 odl/$(COMPONENT)-definition.odl.m4 > $(TARGET_M4)
 
 -include $(OBJECTS:.o=.d)
 
