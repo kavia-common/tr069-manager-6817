@@ -385,6 +385,7 @@ static int DM_ENG_Device_AddTransfer(dm_amx_env_t* amx,
     amxc_var_add_key(cstring_t, &args, "FileType", fileType);
     amxc_var_add_key(uint32_t, &args, "FileSize", fileSize);
     amxc_var_add_key(cstring_t, &args, "TargetFileName", targetFileName);
+    amxc_var_add_key(cstring_t, &args, "SaveFileName", targetFileName);
     amxc_var_add_key(cstring_t, &args, "Username", username);
     amxc_var_add_key(cstring_t, &args, "Password", password);
     amxc_var_add_key(cstring_t, &args, "SuccessURL", successURL);

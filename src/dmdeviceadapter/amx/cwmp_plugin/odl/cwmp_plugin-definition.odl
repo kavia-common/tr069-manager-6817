@@ -566,6 +566,11 @@
             */
             %persistent string TargetFileName;
           /**
+            * Parameter indicating the downloaded file name on the system
+            * @version 1.0
+            */
+            %persistent string SaveFileName;
+          /**
             * username for download authentication
             * @version 1.0
             */

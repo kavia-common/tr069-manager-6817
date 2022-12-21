@@ -206,29 +206,16 @@ stop:
 }
 
 static void filetransfer_download_finished(const char* path) {
-    amxc_var_t transfer;
-    amxc_string_t pname;
     const char* fileType = NULL;
     const char* targetFileName = NULL;
     const char* script = NULL;
-    amxb_bus_ctx_t* bus_ctx = amxb_be_who_has(TRANSFER_ENTRY_PATH);
+    amxd_object_t* transfer = amxd_dm_findf(cwmp_plugin_get_dm(), "%s", path);
 
-    amxc_string_init(&pname, 0);
-    amxc_var_init(&transfer);
-    when_null(bus_ctx, stop);
-    when_null(path, stop);
-
-    if(amxb_get(bus_ctx, path, 0, &transfer, 1) != 0) {
-        SAH_TRACEZ_ERROR(ME, "Failed to read transfer [%s]", path);
-    }
-
-    amxc_string_setf(&pname, "0.'%s'.%s", path, "FileType");
-    fileType = GETP_CHAR(&transfer, amxc_string_get(&pname, 0));
-    amxc_string_setf(&pname, "0.'%s'.%s", path, "TargetFileName");
-    targetFileName = GETP_CHAR(&transfer, amxc_string_get(&pname, 0));
+    fileType = amxd_object_get_cstring_t(transfer, "FileType", NULL);
+    targetFileName = amxd_object_get_cstring_t(transfer, "SaveFileName", NULL);
 
     when_null_trace(fileType, stop, ERROR, "filetransfer fileType is null?");
-    when_null_trace(targetFileName, stop, ERROR, "filetransfer fileType is null?");
+    when_null_trace(targetFileName, stop, ERROR, "targetFileName is null?");
 
     if(strstr(fileType, "1")) {
         script = DL_FW_UPGRADE_SCRIPT;
@@ -245,34 +232,28 @@ static void filetransfer_download_finished(const char* path) {
         SAH_TRACEZ_ERROR(ME, "Failed to start task [%s %s]", script, targetFileName);
     }
 stop:
-    amxc_string_clean(&pname);
-    amxc_var_clean(&transfer);
+    return;
 }
 
 static void transfer_update_status(const char* path,
                                    amxc_ts_t* start_time,
                                    amxc_ts_t* complete_time,
                                    uint32_t error_code) {
-    amxc_var_t ret;
-    amxc_var_t set;
-    amxb_bus_ctx_t* bus_ctx = amxb_be_who_has(TRANSFER_ENTRY_PATH);
-    amxc_var_init(&set);
-    amxc_var_set_type(&set, AMXC_VAR_ID_HTABLE);
-    amxc_var_init(&ret);
-    amxc_var_set_type(&ret, AMXC_VAR_ID_HTABLE);
-    when_null_trace(bus_ctx, stop, ERROR, "Failed to get a valid bus context");
+    amxd_trans_t trans;
+    amxd_trans_init(&trans);
+    amxd_object_t* transfer = amxd_dm_findf(cwmp_plugin_get_dm(), "%s", path);
+    when_null_trace(transfer, stop, ERROR, "transfer not found [%s]", path);
 
-    amxc_var_add_key(cstring_t, &set, "Status", "Finished");
-    amxc_var_add_key(amxc_ts_t, &set, "StartTime", start_time);
-    amxc_var_add_key(amxc_ts_t, &set, "CompleteTime", complete_time);
-    amxc_var_add_key(uint32_t, &set, "FaultCode", error_code);
+    amxd_trans_select_object(&trans, transfer);
+    amxd_trans_set_attr(&trans, amxd_tattr_change_ro, true);
+    amxd_trans_set_value(cstring_t, &trans, "Status", "Finished");
+    amxd_trans_set_value(amxc_ts_t, &trans, "StartTime", start_time);
+    amxd_trans_set_value(amxc_ts_t, &trans, "CompleteTime", complete_time);
+    amxd_trans_set_value(uint32_t, &trans, "FaultCode", error_code);
+    amxd_trans_apply(&trans, cwmp_plugin_get_dm());
 
-    if(amxb_set(bus_ctx, path, &set, &ret, 1) != 0) {
-        SAH_TRACEZ_ERROR(ME, "Failed to update Transfer status [%s]", path);
-    }
 stop:
-    amxc_var_clean(&set);
-    amxc_var_clean(&ret);
+    amxd_trans_clean(&trans);
 }
 
 static bool filetransfer_request_cb(ftx_request_t* req, void* userdata) {
@@ -354,6 +335,31 @@ stop:
     amxc_var_clean(&get);
 }
 
+static int filetransfer_upload_prepare_file(ftx_request_t* filetransfer_request,
+                                            const char* file_name,
+                                            const char* script,
+                                            int32_t delay) {
+    int ret = -1;
+    filetransfer_context_t* context = NULL;
+    when_null(file_name, stop);
+    when_null(script, stop);
+
+    filetransfer_context_new(filetransfer_request, delay, &context);
+    when_null(context, stop);
+
+    SAH_TRACEZ_INFO(ME, "Preparing file for upload [%s]", file_name);
+
+    ftx_request_set_target_file(filetransfer_request, file_name);
+    ret = filetransfer_run_task(file_name, script, context);
+
+stop:
+    if((ret != 0) && context) {
+        SAH_TRACEZ_ERROR(ME, "Failed to start task [%s %s]", script, file_name);
+        free(context);
+    }
+    return ret;
+}
+
 static void filetransfer_prepare_upload(ftx_request_t* filetransfer_request, amxc_var_t* args) {
     const char* fileType = GETP_CHAR(args, "FileType");
     amxc_string_t file_name;
@@ -382,23 +388,10 @@ static void filetransfer_prepare_upload(ftx_request_t* filetransfer_request, amx
         goto stop;
     }
 
-    targetFile = amxc_string_get(&file_name, 0);
-
-    if(script && targetFile && (strlen(targetFile) > 0)) {
-        filetransfer_context_t* context = NULL;
-        filetransfer_context_new(filetransfer_request, delay, &context);
-        when_null(context, stop);
-
-        SAH_TRACEZ_INFO(ME, "Preparing file for upload [%s]", targetFile);
-        ftx_request_set_target_file(filetransfer_request, targetFile);
-
-        if(filetransfer_run_task(targetFile, script, context) != 0) {
-            SAH_TRACEZ_ERROR(ME, "Failed to start task [%s %s]", script, targetFile);
-            free(context);
-            goto stop;
-        }
-        error = 0;
-    }
+    error = filetransfer_upload_prepare_file(filetransfer_request,
+                                             amxc_string_get(&file_name, 0),
+                                             script,
+                                             delay);
 
 stop:
     if(error != 0) {
@@ -407,6 +400,27 @@ stop:
         filetransfer_request = NULL;
     }
     free(device_serial);
+    amxc_string_clean(&file_name);
+}
+
+static void filetransfer_download_set_target_file(ftx_request_t* filetransfer_request, amxc_var_t* args) {
+    const char* targetFileName = GETP_CHAR(args, "TargetFileName");
+    const char* cmdKey = GETP_CHAR(args, "CommandKey");
+    amxd_object_t* transfer = amxd_dm_findf(cwmp_plugin_get_dm(), TRANSFER_ENTRY_PATH "[CommandKey == '%s'].", cmdKey);
+    amxc_string_t file_name;
+    amxc_string_init(&file_name, 0);
+
+    when_null_trace(transfer, stop, ERROR, "failed to find transfer with key [%s]", cmdKey);
+
+    if(targetFileName && *targetFileName) {
+        amxc_string_setf(&file_name, "/tmp/%s", targetFileName);
+    } else {
+        amxc_string_setf(&file_name, "/tmp/dl_%s", cmdKey);
+    }
+
+    ftx_request_set_target_file(filetransfer_request, amxc_string_get(&file_name, 0));
+    amxd_object_set_cstring_t(transfer, "SaveFileName", amxc_string_get(&file_name, 0));
+stop:
     amxc_string_clean(&file_name);
 }
 
@@ -426,7 +440,7 @@ static int filetransfer_request_prepare(amxc_var_t* args) {
     when_failed(filetransfer_set_common_data(filetransfer_request, args), stop);
 
     if(is_download) {
-        ftx_request_set_target_file(filetransfer_request, GETP_CHAR(args, "TargetFileName"));
+        filetransfer_download_set_target_file(filetransfer_request, args);
         start_filetransfer_request(filetransfer_request, delay);
     } else {
         filetransfer_prepare_upload(filetransfer_request, args);
