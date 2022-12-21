@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.19.2 - 2022-12-21(14:31:41 +0000)
+
+### Fixes
+
+- Download file is not saved under tmp
+
 ## Release v1.19.1 - 2022-12-13(15:36:31 +0000)
 
 ### Fixes
