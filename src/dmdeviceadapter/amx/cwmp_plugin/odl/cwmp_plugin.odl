@@ -1,6 +1,6 @@
 %config {
     name = "cwmp_plugin";
-    import-dbg = true;
+    import-dbg = false;
 
     // SAHTRACE
     sahtrace = {
