@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.20.0 - 2023-01-05(11:53:28 +0000)
+
+### New
+
+- [import-dbg] Disable import-dbg by default for all amxrt plugin
+
 ## Release v1.19.2 - 2022-12-21(14:31:41 +0000)
 
 ### Fixes
