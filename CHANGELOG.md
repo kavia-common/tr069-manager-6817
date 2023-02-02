@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.21.0 - 2023-02-02(09:48:55 +0000)
+
+### New
+
+- Add support for ipv6
+
 ## Release v1.20.0 - 2023-01-05(11:53:28 +0000)
 
 ### New
