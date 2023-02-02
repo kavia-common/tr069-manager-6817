@@ -76,4 +76,6 @@ requires "Firewall.";
         filter 'path == "ManagementServer.ConnRequest." && (contains("parameters.ConnRequestHost") || contains("parameters.ConnRequestPort") || contains("parameters.ConnRequestPath"))';
     on event "dm:object-changed" call writeInterface
         filter 'path == "ManagementServer." && contains("parameters.Interface")';
+    on event "dm:object-changed" call writePreferredIPVersion
+        filter 'path == "ManagementServer.InternalSettings." && contains("parameters.PreferredIPVersion")';
 }

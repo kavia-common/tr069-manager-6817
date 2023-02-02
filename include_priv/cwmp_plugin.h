@@ -134,6 +134,10 @@ void _writeInterface(const char* const sig_name,
                      const amxc_var_t* const data,
                      void* const priv);
 
+void _writePreferredIPVersion(const char* const sig_name,
+                              const amxc_var_t* const data,
+                              void* const priv);
+
 void start_cwmpd(void);
 
 void stop_cwmpd(void);

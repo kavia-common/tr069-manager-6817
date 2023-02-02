@@ -409,6 +409,22 @@
             }
 
           /**
+            * Maximum wait time between incoming ipv4 and ipv6 address for the WAN side of the box
+            */
+            %persistent uint32 IPv6WaitTime=0;
+
+          /**
+            * IPV4/IPV6 WAN mode:
+            *   - IPV4: only use IPV4 as WAN address
+            *   - IPV6PREFERRED: wait for IPV6 for IPv6WaitTime then use the available WAN address (IPv6 get the priority)
+            *   - IPANY: use the first available WAN IP
+            */
+            %persistent string PreferredIPVersion {
+              constraint enum ["IPV4ONLY","IPV6PREFERRED","IPANY"];
+              default "IPANY";
+            }
+
+          /**
           * List of events send to the ACE  in the format eventtype(cmdkey),eventtype(cmdkey),eventtype(cmdkey),...
           * @version 1.0
           */

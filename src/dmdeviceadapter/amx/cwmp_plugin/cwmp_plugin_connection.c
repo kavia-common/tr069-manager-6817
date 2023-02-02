@@ -96,11 +96,10 @@ typedef struct uri_s {
 } uri_t;
 
 typedef enum {
-    IPV4ONLY,
-    IPV4ANDIPV6
+    IPv4ONLY,
+    IPv6PREFERRED,
+    IPANY
 } wan_ip_mode_t;
-
-netmodel_query_t* query_ipv4 = NULL;
 
 // Declaration of DM functions
 static void updateLocalIP(void);
@@ -109,17 +108,25 @@ static void updateLocalIP(void);
 uri_t* uri_parse(const char* uri);
 static bool isAddressIpV6(const char* address);
 static bool assembleConnectionRequestURL(amxd_object_t* object, amxc_string_t* url, const char* host, uint16_t port);
-UNUSED static void findAndUpdateLocalIP(const char* interface);
 static void ipv4address_changed_cb(const char* sig_name, const amxc_var_t* data, void* priv);
+
+static void ipv6address_changed_cb(const char* sig_name, const amxc_var_t* data, void* priv);
+static void cwmp_plugin_netmodel_open_queries(const char* intf_path);
+
 static void open_cwmpd_listening_port(void);
 static void close_cwmpd_listening_port(void);
 
 // Static variables
 static amxc_string_t ipv4address; // CPE WAN IPv4
 static amxc_string_t ipv6address; // CPE WAN IPv6
-static wan_ip_mode_t wanipmode = IPV4ONLY;
+static wan_ip_mode_t wanipmode = IPANY;
 static amxp_proc_ctrl_t* cwmpd_proc = NULL;
 static amxp_timer_t* restart_timer = NULL;
+
+static netmodel_query_t* query_ipv4 = NULL;
+static netmodel_query_t* query_ipv6 = NULL;
+static amxp_timer_t* ipv6_timer = NULL;
+
 
 int cwmp_proc_ctx_new(cwmp_proc_ctx_t** ctx,
                       amxp_proc_ctrl_t* proc,
@@ -146,30 +153,48 @@ stop:
     return ret;
 }
 
+static const char* getLocalIP(void) {
+    const char* localIP = DEFAULT_CRH;
+    switch(wanipmode) {
+    case IPv4ONLY:
+        if(amxc_string_text_length(&ipv4address)) {
+            localIP = amxc_string_get(&ipv4address, 0);
+        }
+        break;
+    case IPv6PREFERRED:
+        //Prefer IPv6
+        if(amxc_string_text_length(&ipv6address)) {
+            localIP = amxc_string_get(&ipv6address, 0);
+        } else if(amxc_string_text_length(&ipv4address)) {
+            localIP = amxc_string_get(&ipv4address, 0);
+        }
+        break;
+    case IPANY:
+        if(amxc_string_text_length(&ipv4address)) {
+            localIP = amxc_string_get(&ipv4address, 0);
+        } else if(amxc_string_text_length(&ipv6address)) {
+            localIP = amxc_string_get(&ipv6address, 0);
+        }
+        break;
+    default:
+        break;
+    }
+    return localIP;
+}
+
 static void updateLocalIP(void) {
     SAH_TRACEZ_INFO(ME, "cwmp_plugin updateLocalIP");
     amxd_object_t* conn_request = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer.ConnRequest");
     const char* crh_value = DEFAULT_CRH;
     amxd_status_t ret;
 
-    switch(wanipmode) {
-    case IPV4ONLY:
-        if(amxc_string_text_length(&ipv4address)) {
-            crh_value = amxc_string_get(&ipv4address, 0);
-        }
-        SAH_TRACEZ_INFO(ME, "updateLocalIP (%s)", crh_value ? crh_value : "");
-        break;
-    case IPV4ANDIPV6:
-        if(amxc_string_text_length(&ipv6address)) {
-            crh_value = amxc_string_get(&ipv6address, 0);
-        } else if(amxc_string_text_length(&ipv4address)) {
-            crh_value = amxc_string_get(&ipv4address, 0);
-        }
-        SAH_TRACEZ_INFO(ME, "updateLocalIP (%s)", crh_value ? crh_value : "");
-        break;
-    default:
-        break;
+    if(ipv6_timer) {
+        amxp_timer_stop(ipv6_timer);
+        amxp_timer_delete(&ipv6_timer);
     }
+
+    crh_value = getLocalIP();
+    SAH_TRACEZ_INFO(ME, "updateLocalIP (%s)", crh_value ? crh_value : "");
 
     amxd_object_set_cstring_t(conn_request, "LocalIPAddress", crh_value);
     bool updateCRH = amxd_object_get_bool(conn_request, "UpdateConnRequestURL", &ret);
@@ -181,7 +206,6 @@ static void updateLocalIP(void) {
         amxd_trans_apply(&trans, cwmp_plugin_get_dm());
         amxd_trans_clean(&trans);
     }
-    _updateConnectionRequestURL(NULL, NULL, NULL);
 }
 
 
@@ -218,7 +242,7 @@ amxd_status_t _ManagementServer_updateConnectionRequestURL(amxd_object_t* object
         port = GET_UINT32(args, "port");
         amxc_string_new(&url, 0);
 
-        if(!host || !*host || !port || !assembleConnectionRequestURL(object, url, host, port)) { // We might need to split the expression for more precise logging
+        if(!host || !*host || !port || !assembleConnectionRequestURL(object, url, host, port)) {
             retval = amxd_status_invalid_value;
             goto error;
         }
@@ -273,10 +297,8 @@ void _updateConnectionRequestURL(UNUSED const char* const sig_name,
     }
 
     if((!STRING_EMPTY(host)) && (strcmp(DEFAULT_CRH, host) != 0)) {
-        // IPAddress changed so it should start cwmpd here when not already started
         start_cwmpd();
     } else {
-        // IPAddress was cleared, it should stop cwmpd.
         stop_cwmpd();
     }
 
@@ -295,13 +317,55 @@ void _writeInterface(UNUSED const char* const sig_name,
         SAH_TRACEZ_ERROR(ME, "Interface parameter is empty");
         goto exit;
     }
+    SAH_TRACEZ_INFO(ME, "Queries IP address From Interface %s", intf);
+    cwmp_plugin_netmodel_clean_intf_info();
+    cwmp_plugin_netmodel_open_queries(intf);
+exit:
+    SAH_TRACEZ_OUT(ME);
+    return;
+}
 
-    // Close the existing query.
-    if(NULL != query_ipv4) {
+void _writePreferredIPVersion(UNUSED const char* const sig_name,
+                              const amxc_var_t* const data,
+                              UNUSED void* const priv) {
+    const cstring_t mode = GETP_CHAR(data, "parameters.PreferredIPVersion.to");
+
+    if(mode) {
+        if(strcmp(mode, "IPV4ONLY") == 0) {
+            wanipmode = IPv4ONLY;
+        } else if(strcmp(mode, "IPV6PREFERRED") == 0) {
+            wanipmode = IPv6PREFERRED;
+        } else {
+            wanipmode = IPANY;
+        }
+    }
+}
+
+void cwmp_plugin_netmodel_clean_intf_info(void) {
+    if(query_ipv4) {
         netmodel_closeQuery(query_ipv4);
         query_ipv4 = NULL;
-        SAH_TRACEZ_INFO(ME, "Close exiting query for ipv4");
     }
+
+    if(query_ipv6) {
+        netmodel_closeQuery(query_ipv6);
+        query_ipv6 = NULL;
+    }
+    if(ipv6_timer) {
+        amxp_timer_stop(ipv6_timer);
+        amxp_timer_delete(&ipv6_timer);
+    }
+    amxc_string_clean(&ipv4address);
+    amxc_string_clean(&ipv6address);
+}
+
+void cwmp_plugin_netmodel_open_queries(const cstring_t intf) {
+    query_ipv6 = netmodel_openQuery_luckyAddrAddress(intf,
+                                                     ME,
+                                                     "ipv6 global",
+                                                     netmodel_traverse_down,
+                                                     ipv6address_changed_cb,
+                                                     NULL);
 
     query_ipv4 = netmodel_openQuery_luckyAddrAddress(intf,
                                                      ME,
@@ -309,19 +373,10 @@ void _writeInterface(UNUSED const char* const sig_name,
                                                      netmodel_traverse_down,
                                                      ipv4address_changed_cb,
                                                      NULL);
-
-exit:
-    SAH_TRACEZ_OUT(ME);
-    return;
 }
 
-void cwmp_plugin_netmodel_clean_intf_info(void) {
-    SAH_TRACEZ_IN(ME);
-    if(NULL != query_ipv4) {
-        netmodel_closeQuery(query_ipv4);
-        query_ipv4 = NULL;
-    }
-    SAH_TRACEZ_OUT(ME);
+static void ipv6_timer_cb(UNUSED amxp_timer_t* timer, UNUSED void* priv) {
+    updateLocalIP();
 }
 
 static void ipv4address_changed_cb(UNUSED const char* sig_name,
@@ -329,15 +384,34 @@ static void ipv4address_changed_cb(UNUSED const char* sig_name,
                                    UNUSED void* priv) {
     SAH_TRACEZ_IN(ME);
     const cstring_t new_ip = amxc_var_constcast(cstring_t, data);
-    SAH_TRACEZ_INFO(ME, "WAN IP Address changed to %s", new_ip ? new_ip : "");
+    SAH_TRACEZ_INFO(ME, "IPv4 Address changed to (%s)", new_ip ? new_ip : "");
+
+    amxd_object_t* internal_settings = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer.InternalSettings");
+    uint32_t timeout = amxc_var_constcast(uint32_t, amxd_object_get_param_value(internal_settings, "IPV4IPV6WANMaxWaitTime"));
 
     amxc_string_clean(&ipv4address);
     amxc_string_init(&ipv4address, 64);
-    // When new_ip is null or empty (if IPAddress was cleared ) should update crh.
     amxc_string_append(&ipv4address, new_ip ? new_ip : "", new_ip ? strlen(new_ip) : 0);
-    updateLocalIP();
+
+    switch(wanipmode) {
+    case IPv4ONLY:
+    case IPANY:
+        updateLocalIP();
+        break;
+    case IPv6PREFERRED:
+        if(!amxc_string_is_empty(&ipv6address)) {
+            updateLocalIP();
+        } else {
+            amxp_timer_new(&ipv6_timer, ipv6_timer_cb, NULL);
+            amxp_timer_start(ipv6_timer, timeout * 1000);
+        }
+        break;
+    default:
+        break;
+    }
     SAH_TRACEZ_OUT(ME);
 }
+
 
 void cwmp_plugin_netmodel_find_ip(void) {
     SAH_TRACEZ_IN(ME);
@@ -351,14 +425,8 @@ void cwmp_plugin_netmodel_find_ip(void) {
         goto exit;
     }
 
-    // TODO : add a query for ipv6-up
     SAH_TRACEZ_NOTICE(ME, "Opening queries to get wan interface info");
-    query_ipv4 = netmodel_openQuery_luckyAddrAddress(interface,
-                                                     ME,
-                                                     "ipv4",
-                                                     netmodel_traverse_down,
-                                                     ipv4address_changed_cb,
-                                                     NULL);
+    cwmp_plugin_netmodel_open_queries(interface);
 exit:
     SAH_TRACEZ_OUT(ME);
     if(interface) {
@@ -367,58 +435,30 @@ exit:
     return;
 }
 
-static void findAndUpdateLocalIP(const char* interface) {
-    SAH_TRACEZ_NOTICE(ME, "CWMPD listening interface is set to %s", interface);
-    if(!interface || !*interface) {
-        return;
+static void ipv6address_changed_cb(UNUSED const char* sig_name,
+                                   const amxc_var_t* data,
+                                   UNUSED void* priv) {
+    SAH_TRACEZ_IN(ME);
+    const cstring_t new_ip = amxc_var_constcast(cstring_t, data);
+    SAH_TRACEZ_INFO(ME, "IPv6 Address changed to (%s)", new_ip ? new_ip : "");
+
+    amxc_string_clean(&ipv6address);
+    amxc_string_init(&ipv6address, 64);
+    amxc_string_append(&ipv6address, new_ip ? new_ip : "", new_ip ? strlen(new_ip) : 0);
+
+    switch(wanipmode) {
+    case IPv4ONLY:
+        break;
+    case IPv6PREFERRED:
+    case IPANY:
+        updateLocalIP();
+        break;
+    default:
+        break;
     }
-    struct ifaddrs* ifaddr, * ifa;
-    int family, s;
-    char host[NI_MAXHOST];
-    amxd_status_t ret;
-    amxd_object_t* conn_request = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer.ConnRequest");
-    if(!conn_request) {
-        SAH_TRACEZ_ERROR(ME, "Couldn't access dm ConnRequest");
-        return;
-    }
-    if(getifaddrs(&ifaddr) == -1) {
-        SAH_TRACEZ_ERROR(ME, "getifaddrs failed");
-        return;
-    }
-    for(ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-        if(ifa->ifa_addr == NULL) {
-            continue;
-        }
-        family = ifa->ifa_addr->sa_family;
-        if(!((family == AF_INET) || (family == AF_INET6))) {
-            continue;
-        }
-        if(ifa->ifa_name && interface && (strcmp(ifa->ifa_name, interface) == 0)) {
-            s = getnameinfo(ifa->ifa_addr, (family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6),
-                            host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
-            if(s != 0) {
-                SAH_TRACEZ_ERROR(ME, "getnameinfo() failed: %s", gai_strerror(s));
-                continue;
-            }
-            amxc_string_t* ip = (family == AF_INET) ? &ipv4address : &ipv6address;
-            amxc_string_clean(ip);
-            amxc_string_init(ip, NI_MAXHOST);
-            amxc_string_append(ip, host, strlen(host));
-            amxd_object_set_cstring_t(conn_request, "LocalIPAddress", host);
-            bool updateCRH = amxd_object_get_bool(conn_request, "UpdateConnRequestURL", &ret);
-            if((ret == amxd_status_ok) && updateCRH) {
-                amxd_trans_t trans;
-                amxd_trans_init(&trans);
-                amxd_trans_select_object(&trans, conn_request);
-                amxd_trans_set_cstring_t(&trans, "ConnRequestHost", host);
-                amxd_trans_apply(&trans, cwmp_plugin_get_dm());
-            }
-            goto stop;
-        }
-    }
-stop:
-    freeifaddrs(ifaddr);
+    SAH_TRACEZ_OUT(ME);
 }
+
 
 // GCOVR_EXCL_START
 static int amxb_uri_part_to_string(amxc_string_t* buffer, UriTextRangeA* tr) {
@@ -506,21 +546,18 @@ static bool assembleConnectionRequestURL(amxd_object_t* object, amxc_string_t* u
 }
 
 static void cwmp_timer_cb(UNUSED amxp_timer_t* timer, UNUSED void* priv) {
-    SAH_TRACEZ_INFO(ME, "wait-timer-expired start cwmpd again");
+    SAH_TRACEZ_INFO(ME, "wait-timer-expired start cwmpd");
     start_cwmpd();
 }
 
 static void cwmpd_proc_stopped(UNUSED void* priv) {
     stop_cwmpd();
-    SAH_TRACEZ_NOTICE(ME, "cwmpd stopped signal stopped ");
-    // cwmpd is dead, wait for x time then restart it
+    SAH_TRACEZ_NOTICE(ME, "cwmpd stopped !!!");
     amxp_timer_new(&restart_timer, cwmp_timer_cb, NULL);
-    // restart in 10 seconds
     amxp_timer_start(restart_timer, 10000);
 }
 
 static int build_cwmpd_proc_args(amxc_array_t* cmd, UNUSED amxc_var_t* settings) {
-    SAH_TRACEZ_NOTICE(ME, "preparing cwmpd");
     amxc_array_init(cmd, 2);
     amxc_string_t odl_config_opt;
     amxc_string_init(&odl_config_opt, 0);
