@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.21.1 - 2023-02-15(14:14:21 +0000)
+
+### Fixes
+
+- cd router tests are completely failing for tr-069
+
 ## Release v1.21.0 - 2023-02-02(09:48:55 +0000)
 
 ### New
