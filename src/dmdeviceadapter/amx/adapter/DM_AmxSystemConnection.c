@@ -143,8 +143,6 @@ void DM_ENG_Device_SystemConnectionHandleParameterChanged(const char* path, cons
                 /* DNS resolution is needed before sending the bootstrap */
                 DM_ENG_NotificationInterface_engineEvent(EVENT_ENG_CLEAR_ACS_IP);
                 DM_ENG_NotificationInterface_engineEvent(EVENT_ENG_URL_CHANGED);
-            } else if(strcmp("ACSIP", key) == 0) {
-                DM_ENG_NotificationInterface_engineEvent(EVENT_ENG_SRV_RESTART);
             } else if(strcmp("AllowConnectionRequestFromUnknownHost", key) == 0) {
                 DM_ENG_NotificationInterface_engineEvent(EVENT_ENG_SRV_RESTART);
             } else if(strcmp("AllowConnectionRequestFromAddress", key) == 0) {
