@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.21.2 - 2023-02-21(09:31:43 +0000)
+
+### Other
+
+- Implementation of InstanceMode="InstanceAlias" [New]
+
 ## Release v1.21.1 - 2023-02-15(14:14:21 +0000)
 
 ### Fixes
