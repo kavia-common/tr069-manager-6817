@@ -158,6 +158,20 @@ void DM_ENG_Device_SystemConnectionHandleParameterChanged(const char* path, cons
                 DM_ENG_NotificationInterface_timerStart("send_inform_message", 0, 0, DM_ENG_InformMessageScheduler_sendMessage);
             } else if(strcmp("BlockedEvents", key) == 0) {
                 DM_ENG_InformMessageScheduler_blockedEventsChanged();
+            } else if(strcmp("InstanceMode", key) == 0) {
+                amxc_var_t* parameter = amxc_var_from_htable_it(hit);
+                char* value = amxc_var_dyncast(cstring_t, GETP_ARG(parameter, "to"));
+                dm_amx_env_t* amx_acs_env = DM_ENG_Device_GetACSInfo();
+                SAH_TRACEZ_WARNING("DM_DA", "Instance Mode changed to %s", value);
+                if(strcmp(value, "InstanceAlias") == 0) {
+                    amx_acs_env->instanceAlias = true;
+                } else {
+                    amx_acs_env->instanceAlias = false;
+                }
+                if(value) {
+                    free(value);
+                    value = NULL;
+                }
             } else if((strcmp(key, "ConnRequestHost") == 0) ||
                       (strcmp(key, "ConnRequestPort") == 0)) {
                 amxc_var_t* parameter = amxc_var_from_htable_it(hit);
@@ -188,9 +202,6 @@ void DM_ENG_Device_SystemConnectionHandleParameterChanged(const char* path, cons
                 if(value) {
                     free(value);
                 }
-            } else if(strcmp("ACSIPTTL", key) == 0) {
-                // at the moment libtr69-engine open-source has no support for DNS affinity jira ticket PCF-403
-                SAH_TRACEZ_ERROR("DM_DA", "libtr69-engine has no support for ttl DNS ?");
             }
         }
     }
@@ -212,29 +223,6 @@ void DM_ENG_Device_SystemConnectionHandleParameterChanged(const char* path, cons
             }
         }
     }
-}
-
-void DM_ENG_Device_SystemConnectionHandleFinishedTransfer(const char* initiator, const char* announceURL,
-                                                          const char* transferURL, const char* fileType,
-                                                          uint32_t fileSize, const char* targetFileName,
-                                                          bool isDownload, const char* commandKey,
-                                                          uint32_t faultCode, const char* faultString,
-                                                          time_t startTime, time_t completeTime, char* objectName) {
-    // keep compiler happy :)
-    (void) initiator;
-    (void) announceURL;
-    (void) transferURL;
-    (void) fileType;
-    (void) fileSize;
-    (void) targetFileName;
-    (void) isDownload;
-    (void) commandKey;
-    (void) faultCode;
-    (void) faultString;
-    (void) startTime;
-    (void) completeTime;
-    (void) objectName;
-    SAH_TRACEZ_INFO("DM_DA", " DM_ENG_Device_SystemConnectionHandleFinishedTransfer  ");
 }
 
 //---------------------------------------------------------------------------------------------
@@ -275,12 +263,12 @@ static const char* DM_ENG_Device_ConvertToObjectName(DM_ENG_SystemParameter_t pa
     case DM_ENG_MAXDOWNLOADSERRORCODE:
     case DM_ENG_INSTANCEMODE:
     case DM_ENG_AUTOCREATEINSTANCES:
-        return "ManagementServer.";
+        return "Device.ManagementServer.";
     case DM_ENG_MANUFACTURER:
     case DM_ENG_MANUFACTUREROUI:
     case DM_ENG_SERIALNUMBER:
     case DM_ENG_PRODUCTCLASS:
-        return "DeviceInfo.";
+        return "Device.DeviceInfo.";
     case DM_ENG_NTPSTATUS:
         return TIME_PATH;
     case DM_ENG_ACSIPAFFINITY:
@@ -304,7 +292,7 @@ static const char* DM_ENG_Device_ConvertToObjectName(DM_ENG_SystemParameter_t pa
     case DM_ENG_DELIVEREDEVENTS:
     case DM_ENG_BLOCKEDEVENTS:
     case DM_ENG_ALLOWMULTIPLESCHEDULEINFORM:
-        return "ManagementServer.InternalSettings.";
+        return "Device.ManagementServer.InternalSettings.";
     case DM_ENG_CONNECTIONREQUESTHOST:
     case DM_ENG_CONNECTIONREQUESTPORT:
     case DM_ENG_CONNECTIONREQUESTPATH:
@@ -312,7 +300,7 @@ static const char* DM_ENG_Device_ConvertToObjectName(DM_ENG_SystemParameter_t pa
     case DM_ENG_FREQCONNECTIONREQUEST:
     case DM_ENG_LOCALIPADDRESS:
     case DM_ENG_MAXCONNECTIONREQUEST:
-        return "ManagementServer.ConnRequest.";
+        return "Device.ManagementServer.ConnRequest.";
     case DM_ENG_REBOOTBYACS:
     case DM_ENG_LASTSESSION:
     case DM_ENG_BOOTSTRAPSENT:
@@ -322,10 +310,10 @@ static const char* DM_ENG_Device_ConvertToObjectName(DM_ENG_SystemParameter_t pa
     case DM_ENG_ACSIPTTL:
     case DM_ENG_ACSIP:
     case DM_ENG_ACSIPLIST:
-        return "ManagementServer.State.";
+        return "Device.ManagementServer.State.";
     case DM_ENG_GETPARAMETERVALUEREQUESTS:
     case DM_ENG_SESSIONSSINCEBOOT:
-        return "ManagementServer.Stats.";
+        return "Device.ManagementServer.Stats.";
     default: break;
     }
     return NULL;
@@ -556,13 +544,11 @@ char* DM_ENG_Device_SystemConnectionGetParameter(dm_amx_env_t* amx, DM_ENG_Syste
     amxc_string_clean(&path);
     amxc_string_setf(&path, "0.'%s'.%s", object_name, param_name);
     var = GETP_ARG(&value, amxc_string_get(&path, 0));
-    // Get result as char (GETP_CHAR wont work here type can be anything , int , bool etc)
     ret = amxc_var_dyncast(cstring_t, var);
 
 error:
     amxc_var_clean(&value);
     amxc_string_clean(&path);
-    // dont free ret caller will do it
     return ret;
 }
 

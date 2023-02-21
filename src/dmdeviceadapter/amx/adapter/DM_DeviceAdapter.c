@@ -66,6 +66,7 @@
  * @brief
  *
  **/
+#include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <dmengine/DM_ENG_Common.h>
@@ -144,7 +145,8 @@ static char* persistentRPCPath = NULL;
  */
 bool DM_ENG_Device_Init(void** systemCtx, void** acsCtx, const char* rpcPath) {
     bool result;
-    char* tmp;
+    char* tmp = NULL;
+    char* instance_alias = NULL;
 
     result = DM_ENG_Device_SystemConnectionInitialize(&da.system);
     if(result == false) {
@@ -170,9 +172,14 @@ bool DM_ENG_Device_Init(void** systemCtx, void** acsCtx, const char* rpcPath) {
         persistentRPCPath = strdup(rpcPath);
     }
 
-    //TODO!:manage  instance_mode properly.
-    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_INSTANCEMODE, &da.acs.instance_mode) != 0) {
+    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_INSTANCEMODE, &instance_alias) != 0) {
         SAH_TRACEZ_ERROR("DM_DA", "Cannot fetch the DM_ENG_INSTANCEMODE param");
+    }
+
+    if(instance_alias && (strcmp(instance_alias, "InstanceAlias") == 0)) {
+        da.acs.instanceAlias = true;
+    } else {
+        da.acs.instanceAlias = false;
     }
 
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_AUTOCREATEINSTANCES, &tmp) != 0) {
@@ -197,8 +204,6 @@ bool DM_ENG_Device_Release() {
 
     DM_ENG_Device_ACSConnectionCleanup(&da.acs);
     DM_ENG_Device_SystemConnectionCleanup(&da.system);
-    free(da.system.instance_mode);
-    free(da.acs.instance_mode);
     free(persistentRPCPath);
     persistentRPCPath = NULL;
     SAH_TRACEZ_OUT("DM_DA");

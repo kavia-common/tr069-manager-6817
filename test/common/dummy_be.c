@@ -156,51 +156,6 @@ static int amxb_dummy_register(UNUSED void* const ctx,
     return 0;
 }
 
-const char* dummy_path_list[7] = {
-    "Device.",
-    "ManagementServer.",
-    "ManagementServer.InternalSettings.",
-    "ManagementServer.State.",
-    "Hosts.",
-    "DeviceInfo.",
-    NULL
-};
-
-static int amxb_dummy_list(void* const ctx,
-                           const char* path,
-                           UNUSED uint32_t flags,
-                           UNUSED uint32_t whatever,
-                           amxb_request_t* request) {
-
-    int pathlen = strlen(path);
-    if((pathlen == 0) || !strcmp(path, IGD) || !strcmp(path, DEVICE)) {
-
-        if(!request || !request->cb_fn) {
-            return -1;
-        }
-
-        int i = 0;
-        while(dummy_path_list[i]) {
-            // prepare a dummy replay
-            amxc_var_t data;
-            amxc_var_init(&data);
-            amxc_var_set_type(&data, AMXC_VAR_ID_LIST);
-            amxc_var_add(cstring_t, &data, dummy_path_list[i]);
-            request->cb_fn(ctx, &data, request->priv);
-            amxc_var_clean(&data);
-            i++;
-        }
-        //Request done
-        if(request->done_fn) {
-            request->done_fn(ctx, request, 0, request->priv);
-        }
-    } else {
-        fprintf(stderr, "Another Specific use case : DIY here !!!!\n");
-    }
-    amxb_close_request(&request);
-    return 0;
-}
-
 static int dummy_subscribe(UNUSED void* const ctx,
                            UNUSED const char* object) {
     //Do nothing for now
@@ -226,7 +181,7 @@ static amxb_be_funcs_t amxb_dummy_impl = {
     .unsubscribe = dummy_unsubscribe,
     .free = amxb_dummy_free,
     .register_dm = amxb_dummy_register,
-    .list = amxb_dummy_list,
+    .list = NULL,
     .describe = dummy_describe,
     .name = "dummy",
     .size = sizeof(amxb_be_funcs_t),

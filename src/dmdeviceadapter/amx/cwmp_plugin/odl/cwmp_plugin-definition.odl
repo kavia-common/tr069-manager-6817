@@ -174,7 +174,7 @@
         * The factory default value MUST be InstanceNumber.
         * @version 1.0
         */
-        %read-only string InstanceMode {
+        %persistent string InstanceMode {
             constraint enum ["InstanceNumber","InstanceAlias"];
             default "InstanceNumber";
         }
@@ -187,7 +187,7 @@
         * The factory default value MUST be false.
         * @version 1.0
         */
-        %read-only bool AutoCreateInstances = true;
+        %read-only bool AutoCreateInstances = false;
 
       /**
         * Object containing informations about connection request

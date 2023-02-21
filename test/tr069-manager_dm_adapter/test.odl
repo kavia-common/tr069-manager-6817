@@ -74,99 +74,9 @@
     priority = 0;
 }
 
-%define {
-    object ManagementServer {
-        bool EnableCWMP =1;
-        string Username = "cdrouter";
-        uint32 PeriodicInformInterval=10000;
-        bool InstanceWildcardsSupported=1;
-        bool ReturnEmptyListOnPartialPath=1;
-        string ParameterKey = "randomkey";
-        bool VerifyParameterType =1;
-        object InternalSettings {
-            string Datamodel = "TR181";
-            uint32 ReturnEmptyListOnPartialPath = 1;
-        }
-        object ConnRequest {
-            string ConnRequestHost="0.0.0.0";
-            read-only string ConnectionRequestURL="http://test-readonly-url";
-        }
-        object State {
-            string SessionStatus="test";
-            bool RebootByACS =0;
-            bool FactoryResetOccurred = 0;
-            string RebootCommandKey = "reboot";
-            bool BootstrapSent = 1;
-        }
-        object Stats {
-            uint32 GetParameterValuesRequests = 0;
-        }
-    }
-}
 
-%define {
-    object GetParameterNames_Parameter {
-        string writablestring="test";
-        read-only string readonlystring ="test-read-only";
-    }
-}
 
-%define {
-    object GetParameterNames_Object_NextLevel_True {
-        string writablestring ="test";
-        read-only string readonlystring ="test-read-only";
-        object GetParameterNames_Object1_NextLevel_True {
-            string Username = "cdrouter";
-        }
-        object GetParameterNames_Object2_NextLevel_True {
-            string Username = "cdrouter";
-        }
-    }
-}
 
-%define {
-    object GetParameterNames_Object_NextLevel_False {
-        int32 writableInteger =9999;
-        string writablestring ="writable-string";
-        read-only string readonlystring ="test-read-only";
-        object GetParameterNames_Object1{
-            string test1 = "test";
-        }
-        object GetParameterNames_Object2{
-            string test1 = "test";
-        }
-    }
-}
-
-%define {
-    object SetParameterValues_Test_Object{
-        int32 writableInteger =9999;
-        string writablestring ="writable-string";
-        read-only string readonlystring ="test-read-only";
-    }
-}
-
-%define {
-    object Hosts {
-        uint32 nbHosts=0;
-        object Host[] {
-            string MACAddress;
-            string IPAddress;
-        }
-    }
-}
-
-%define {
-    object DeviceInfo {
-        string SerialNumber = "000000123";
-        string DeviceStatus = "Up";
-        string HardwareVersion = "1.1";
-        string SoftwareVersion = "2.7";
-        uint32 testuint = 10;
-        int32 testint = 10;
-        bool testbool=1;
-    }
-}
 
 %define {
     object Device {
@@ -175,12 +85,93 @@
             counted with InterfaceStackNumberOfEntries;
             string data;
         }
+
+        object ManagementServer {
+            bool EnableCWMP =1;
+            string Username = "cdrouter";
+            uint32 PeriodicInformInterval=10000;
+            bool InstanceWildcardsSupported=1;
+            bool ReturnEmptyListOnPartialPath=1;
+            string ParameterKey = "randomkey";
+            bool VerifyParameterType =1;
+
+            object InternalSettings {
+                string Datamodel = "TR181";
+                uint32 ReturnEmptyListOnPartialPath = 1;
+            }
+            object ConnRequest {
+                string ConnRequestHost="0.0.0.0";
+                read-only string ConnectionRequestURL="http://test-readonly-url";
+            }
+            object State {
+                string SessionStatus="test";
+                bool RebootByACS =0;
+                bool FactoryResetOccurred = 0;
+                string RebootCommandKey = "reboot";
+                bool BootstrapSent = 1;
+            }
+            object Stats {
+                uint32 GetParameterValuesRequests = 0;
+            }
+        }
+
+        object GetParameterNames_Parameter {
+            string writablestring="test";
+            read-only string readonlystring ="test-read-only";
+        }
+
+        object GetParameterNames_Object_NextLevel_True {
+            string writablestring ="test";
+            read-only string readonlystring ="test-read-only";
+            object GetParameterNames_Object1_NextLevel_True {
+                string Username = "cdrouter";
+            }
+            object GetParameterNames_Object2_NextLevel_True {
+                string Username = "cdrouter";
+            }
+        }
+
+        object GetParameterNames_Object_NextLevel_False {
+            int32 writableInteger =9999;
+            string writablestring ="writable-string";
+            read-only string readonlystring ="test-read-only";
+            object GetParameterNames_Object1{
+                string test1 = "test";
+            }
+            object GetParameterNames_Object2{
+                string test1 = "test";
+            }
+        }
+
+        object SetParameterValues_Test_Object{
+            int32 writableInteger =9999;
+            string writablestring ="writable-string";
+            read-only string readonlystring ="test-read-only";
+        }
+
+        object Hosts {
+            uint32 nbHosts=0;
+            object Host[] {
+                string MACAddress;
+                string IPAddress;
+            }
+        }
+
+        object DeviceInfo {
+            string SerialNumber = "000000123";
+            string DeviceStatus = "Up";
+            string HardwareVersion = "1.1";
+            string SoftwareVersion = "2.7";
+            uint32 testuint = 10;
+            int32 testint = 10;
+            bool testbool=1;
+        }
+
+        object Time {
+            bool Enable = 1;
+            string Status = "Unsynchronized";
+        }
+
     }
 }
 
-%define {
-    object Time {
-        bool Enable = 1;
-        string Status = "Unsynchronized";
-    }
-}

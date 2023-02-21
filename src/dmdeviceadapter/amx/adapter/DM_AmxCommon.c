@@ -69,55 +69,6 @@
 #include "DM_AmxCommon.h"
 
 
-// Root data model parameters ACS path
-const char* ROOT_DM_PARAMETERS[3] = {
-    "RootDataModelVersion",
-    "InterfaceStackNumberOfEntries",
-    NULL
-};
-
-// Root data model parameters ACS path
-const char* ROOT_DM_INTERNAL_PARAMETER_PATH[3] = {
-    "Device.RootDataModelVersion",
-    "Device.InterfaceStackNumberOfEntries",
-    NULL
-};
-
-const char* DM_ENG_Device_Common_GetRootParameterInternalPath(const char* path) {
-
-    const char* parameterName = DM_ENG_Device_Common_ACSToAMXPath_noalloc(path);
-
-    if(parameterName == NULL) {
-        return NULL;
-    }
-
-    int index = 0;
-    while(ROOT_DM_PARAMETERS[index]) {
-        if(strcmp(ROOT_DM_PARAMETERS[index], parameterName) == 0) {
-            return ROOT_DM_INTERNAL_PARAMETER_PATH[index];
-        }
-        index++;
-    }
-    return NULL;
-}
-
-bool DM_ENG_Device_Common_IsRootParameter(const char* path) {
-
-    const char* parameterName = DM_ENG_Device_Common_ACSToAMXPath_noalloc(path);
-
-    if(parameterName == NULL) {
-        return false;
-    }
-
-    int index = 0;
-    while(ROOT_DM_PARAMETERS[index]) {
-        if(strcmp(ROOT_DM_PARAMETERS[index], parameterName) == 0) {
-            return true;
-        }
-        index++;
-    }
-    return false;
-}
 //---------------------------------------------------------------------------------------------
 /**
  * @addtogroup sah_cwmp_amxdeviceadapter
@@ -174,78 +125,6 @@ bool DM_ENG_Device_Common_AmxConnect(dm_amx_env_t* amx, const char* envVariable,
         return false;
     }
     return true;
-}
-
-//---------------------------------------------------------------------------------------------
-/**
-   @brief
-   Function to convert a TR69 OBJECT path "Device.object.param" into a Amx path "object.param"
-
-   @details
-   Function to convert a TR69 OBJECT path "Device.object.param"  into a Amx path "object.param"
-   No dynamic alloc here no free is needed
-
-   @param acsPath The Tr69 OBJECT path "Device.object." or "Device.object.param"
-
-   @return
-   - NULL if an error occurred
-   - a pointer tot the translated Ambiorix path
- */
-const char* DM_ENG_Device_Common_ACSToAMXPath_noalloc(const char* acsPath) {
-    char* amxPath = NULL;
-    int prefixlen = 0;
-    const char* prefixName = "";
-    prefixName = DM_ENG_getDatamodelPrefix();
-
-    if((acsPath == NULL) || (prefixName == NULL)) {
-        return NULL;
-    }
-
-    if(strlen(acsPath) == 0) { //if path is an empty string, return the top of the name hierarchy
-        return acsPath;
-    }
-
-    if(acsPath[0] == '.') {
-        return NULL; //Path start with '.'
-    }
-
-    if(prefixName != NULL) {
-        prefixlen = strlen(prefixName);
-    }
-
-    if(strncmp(acsPath, prefixName, prefixlen)) {
-        SAH_TRACEZ_ERROR("DM_DA", "Object %s not found, not a correct prefix", acsPath);
-        return NULL;
-    }
-
-    // remove the InternetGatewayDevice. or Device. prefix
-    amxPath = strchr((char*) acsPath, '.');
-    if(amxPath == NULL) {
-        SAH_TRACEZ_ERROR("DM_DA", "Object %s not found", acsPath);
-        return NULL;
-    }
-    amxPath++;
-
-    return amxPath;
-}
-
-//---------------------------------------------------------------------------------------------
-/**
-   @brief
-   Function to convert a TR69 OBJECT path "Device.object.param" into a Amx path "object.param"
-
-   @details
-   Function to convert a TR69 OBJECT path "Device.object.param"  into a Amx path "object.param"
-   the returned string is dynamicaly allocated and need to be freed
-
-   @param acsPath The Tr69 OBJECT path "Device.object." or "Device.object.param"
-
-   @return
-   - NULL if an error occurred
-   - a pointer tot the translated Ambiorix path
- */
-char* DM_ENG_Device_Common_ACSToAMXPath(const char* acsPath) {
-    return strdup(DM_ENG_Device_Common_ACSToAMXPath_noalloc(acsPath));
 }
 
 //---------------------------------------------------------------------------------------------
@@ -309,7 +188,23 @@ bool DM_ENG_Device_Common_CheckSystem(dm_amx_env_t* amx) {
     }
     return true;
 }
+//---------------------------------------------------------------------------------------------
+/**
+   @brief
+   Check if a path is valid.
 
+   @details
+   Check if a path is valid.
+
+   @param path The path to check
+
+   @return
+   - false in case it's not valid path
+   - true if the path is valid
+ */
+bool DM_ENG_Device_Common_IsValidPath(const char* path) {
+    return (path && ((strlen(path) == 0) || (*path && (strncmp(path, "Device.", 7) == 0) && !(path[0] == '.') && !(path[0] == '*'))));
+}
 //---------------------------------------------------------------------------------------------
 /**
    @brief
@@ -379,25 +274,83 @@ bool DM_ENG_Device_Common_IsWildcardPathValid(const char* path) {
     return true;
 }
 
-static void DM_ENG_Device_Common_Resolve_Path_cb(const amxb_bus_ctx_t* bus_ctx, const amxc_var_t* const data, void* priv) {
-    (void) bus_ctx;
-    amxc_var_t* resolved = (amxc_var_t*) priv;
+//---------------------------------------------------------------------------------------------
+/**
+    @brief
+    translate an index based TR069 path into an alias based one
 
-    if(data) {
-        amxc_var_t* object = GETI_ARG(data, 0);
-        const char* path = GETP_CHAR(object, NULL);
-        int i = 0;
-        const char* s_char = path;
-        // only root data object are to be added
-        for(i = 0; s_char[i]; s_char[i] == '.' ? i++ : *s_char++) {
-        }
+    @details
+    translate an indexed TR069 path into an alias path
+    example "Deice.Object.Template.3." -> "Deice.Object.Template.[alias-3]."
+    for more info : https://www.broadband-forum.org/technical/download/TR-069.pdf
+    section 3.6.1
 
-        // Device. already added dont add it twice
-        if((i == 1) && (strcmp(path, TR181_DEVICE_OBJNAME) != 0)) {
-            // add path to list
-            amxc_var_add(cstring_t, resolved, path);
+    @param amx A pointer to the amx system bus environment variable
+    @param path path to resolve
+    @param resolved list of the resolved path
+
+
+    @return
+    - false : error path couldn't be resolved
+    - true : no error path resolved successfully
+ */
+int DM_ENG_Device_Common_IndexToAlias(dm_amx_env_t* amx, const char* path, char** resolved) {
+    int ret = -1;
+    amxc_string_t string;
+    amxc_string_t resolved_path;
+    amxc_llist_t string_list;
+    amxc_llist_init(&string_list);
+    amxc_string_init(&string, 0);
+    amxc_string_init(&resolved_path, 0);
+
+    when_null(path, stop);
+    when_str_empty(path, stop);
+
+    amxc_string_setf(&string, "%s", path);
+    when_failed(amxc_string_split_to_llist(&string, &string_list, '.'), stop);
+
+    /* replace index with alias ==>  Device.IP.Interface.[Alias=="lan"]. or  Device.IP.Interface.lan. */
+    amxc_llist_iterate(it, &string_list) {
+        const char* val = amxc_string_get(amxc_string_from_llist_it(it), 0);
+        amxc_string_t part;
+        amxc_string_init(&part, 0);
+        amxc_string_setf(&part, "%s", val);
+
+        if(amxc_string_is_numeric(&part)) {
+            amxc_var_t get;
+            amxc_var_init(&get);
+            amxc_string_t tmp_string;
+            amxc_string_init(&tmp_string, 0);
+            amxc_string_setf(&tmp_string, "%s%s.Alias", amxc_string_get(&resolved_path, 0), amxc_string_get(&part, 0));
+            int ret = amxb_get(amx->bus_ctx, amxc_string_get(&tmp_string, 0), 0, &get, 10);
+            if((ret == 0) && !amxc_var_is_null(&get)) {
+                amxc_string_clean(&tmp_string);
+                amxc_var_log(&get);
+                amxc_string_setf(&tmp_string, "0.'%s%s.'.Alias", amxc_string_get(&resolved_path, 0), amxc_string_get(&part, 0));
+                amxc_var_t* res = GETP_ARG(&get, amxc_string_get(&tmp_string, 0));
+                amxc_string_clean(&tmp_string);
+                amxc_string_setf(&tmp_string, "[%s].", amxc_var_constcast(cstring_t, res));
+                amxc_string_append(&resolved_path, amxc_string_get(&tmp_string, 0), amxc_string_text_length(&tmp_string));
+            } else {
+                SAH_TRACEZ_WARNING("DM_DA", "amxb_get failed for : %s%s.Alias", amxc_string_get(&resolved_path, 0), amxc_string_get(&part, 0));
+                amxc_string_append(&resolved_path, amxc_string_get(&part, 0), amxc_string_text_length(&part));
+                amxc_string_append(&resolved_path, ".", 1);
+            }
+            amxc_var_clean(&get);
+            amxc_string_clean(&tmp_string);
+        } else {
+            amxc_string_append(&resolved_path, amxc_string_get(&part, 0), amxc_string_text_length(&part));
+            amxc_string_append(&resolved_path, ".", 1);
         }
     }
+    *resolved = strndup(amxc_string_get(&resolved_path, 0), amxc_string_text_length(&resolved_path) - 1);
+    ret = 0;
+
+stop:
+    amxc_string_clean(&string);
+    amxc_string_clean(&resolved_path);
+    amxc_llist_clean(&string_list, NULL);
+    return ret;
 }
 
 //---------------------------------------------------------------------------------------------
@@ -422,7 +375,6 @@ static void DM_ENG_Device_Common_Resolve_Path_cb(const amxb_bus_ctx_t* bus_ctx, 
  */
 bool DM_ENG_Device_Common_Resolve_Path(dm_amx_env_t* amx, const char* path, amxc_var_t* resolved) {
     bool ret = false;
-    int rv = 0;
     amxd_path_t amxd_path;
     amxc_var_init(resolved);
     // resolve the search path
@@ -461,15 +413,7 @@ bool DM_ENG_Device_Common_Resolve_Path(dm_amx_env_t* amx, const char* path, amxc
         }
         amxc_var_clean(&result);
     } else if((strlen(path) == 0) || (strcmp(amx->prefix, path) == 0)) {
-        // listing all of Device. or IGD.
-        int flags = AMXB_FLAG_OBJECTS | AMXB_FLAG_INSTANCES;
-        // find all possible object paths on root data model
-        rv = amxb_list(amx->bus_ctx, "", flags,
-                       DM_ENG_Device_Common_Resolve_Path_cb, (void*) resolved);
-
-        if(rv != 0) {
-            goto stop;
-        }
+        amxc_var_add(cstring_t, resolved, "Device.");
     } else {
         amxc_var_add(cstring_t, resolved, path);
     }

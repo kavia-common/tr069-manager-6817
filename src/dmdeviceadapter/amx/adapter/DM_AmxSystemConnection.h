@@ -72,7 +72,6 @@ bool DM_ENG_Device_SystemConnectionInitialize(dm_amx_env_t* amx);
 void DM_ENG_Device_SystemConnectionCleanup(dm_amx_env_t* amx);
 char* DM_ENG_Device_SystemConnectionGetParameter(dm_amx_env_t* amx, DM_ENG_SystemParameter_t parameter);
 bool DM_ENG_Device_SystemConnectionSetParameter(dm_amx_env_t* amx, DM_ENG_SystemParameter_t parameter, char* pValue);
-void DM_ENG_Device_SystemConnectionHandleFinishedTransferObject(char* objectName);
 bool DM_ENG_Device_SystemConnectionExecuteFunction(dm_amx_env_t* amx, DM_ENG_SystemFunction_t function);
 
 #ifdef __cplusplus

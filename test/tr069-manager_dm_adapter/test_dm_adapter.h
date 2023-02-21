@@ -109,9 +109,11 @@ void test_dmadapter_GetParameterNames_Parameter(void** state);
 
 void test_dmadapter_GetParameterNames_EmptyPath_NextLevel_True(void** state);
 
-void test_dmadapter_GetParameterNames_Object_ListRootObjects(void** state);
+void test_dmadapter_GetParameterNames_DeviceObject_NextLevel_True(void** state);
 
-void test_dmadapter_GetParameterNames_Object_AllDataModel(void** state);
+void test_dmadapter_GetParameterNames_EmptyPath_NextLevel_false(void** state);
+
+void test_dmadapter_GetParameterNames_DeviceObject_NextLevel_False(void** state);
 
 void test_dmadapter_GetParameterNames_Object_NextLevel_False(void** state);
 

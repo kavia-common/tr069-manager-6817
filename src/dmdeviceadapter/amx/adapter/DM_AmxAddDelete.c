@@ -100,7 +100,6 @@ int DM_ENG_Device_AddDeleteObject_Add(dm_amx_env_t* amx, char* objectName, unsig
     int error = 0;
     int rv = 0;
     int type_id = 0;
-    const char* internalPath = NULL;
     amxc_var_t ret;
     amxc_var_t desc;
     amxc_var_init(&ret);
@@ -115,11 +114,10 @@ int DM_ENG_Device_AddDeleteObject_Add(dm_amx_env_t* amx, char* objectName, unsig
         SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "NOT a valid object path");
     }
 
-    internalPath = DM_ENG_Device_Common_ACSToAMXPath_noalloc(objectName);
-    if(internalPath == NULL) {
+    if(!DM_ENG_Device_Common_IsValidPath(objectName)) {
         SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Not a valid parameter Name");
     }
-    amxd_path_setf(&path, false, "%s", internalPath);
+    amxd_path_setf(&path, false, "%s", objectName);
 
     if(amxd_path_is_search_path(&path)) {
         SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Not a valid parameter Name");
@@ -178,7 +176,6 @@ stop:
 
 int DM_ENG_Device_AddDeleteObject_Delete(dm_amx_env_t* amx, char* objectName, DM_ENG_ParameterStatus* pStatus) {
     int error = 0;
-    const char* internalPath = NULL;
     int rv = 0;
     int type_id = 0;
     amxc_var_t ret;
@@ -189,17 +186,16 @@ int DM_ENG_Device_AddDeleteObject_Delete(dm_amx_env_t* amx, char* objectName, DM
     amxd_path_init(&path, "");
     *pStatus = DM_ENG_ParameterStatus_UNDEFINED;
 
-    // check for path validity
+    if(!DM_ENG_Device_Common_IsValidPath(objectName)) {
+        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Invalid objet path")
+    }
+
     if(!((objectName[strlen(objectName) - 1] == '.')
          || ( objectName[strlen(objectName) - 1] == '*'))) {
         SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Invalid object path");
     }
-    internalPath = DM_ENG_Device_Common_ACSToAMXPath_noalloc(objectName);
-    if(internalPath == NULL) {
-        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Invalid objet path")
-    }
 
-    amxd_path_setf(&path, false, "%s", internalPath);
+    amxd_path_setf(&path, false, "%s", objectName);
     // check for path validity
     if(amxd_path_is_search_path(&path)) {
         SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Invalid search path");

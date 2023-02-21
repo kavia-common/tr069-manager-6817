@@ -745,7 +745,8 @@ int DM_CloseHttpSession(bool closeMode) {
 int DM_SendHttpMessage(const char* soap_msg) {
     int msg_len = strlen(soap_msg);
 
-    SAH_TRACEZ_INFO("CWMPD", "sending a new soap message");
+    SAH_TRACEZ_INFO("CWMPD", "sending a new soap message \n >>>>>>>>>>> \n %s \n >>>>>>>>>>>> \n",
+                    (msg_len != 0) ? soap_msg : "EMPTY MESSAGE");
 
     if(pending_msg != soap_msg) {
         CWMPD_FREE(pending_msg);

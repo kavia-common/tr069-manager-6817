@@ -75,26 +75,25 @@ extern "C"
 
 typedef struct dm_amx_env_t_ {
     amxb_bus_ctx_t* bus_ctx;
-    const char* prefix;  /* ACS path prefix */
-    char* instance_mode; /*Aliaces based adressing instance mode*/
+    const char* prefix; /* ACS path prefix */
+    bool instanceAlias; /* Aliaces based adressing instance mode */
     bool autoCreateInstances;
 } dm_amx_env_t;
 
 typedef struct dm_deviceadapter_t_ {
-    dm_amx_env_t acs;    /* connection used for ACS , restricted access*/
-    dm_amx_env_t system; /* Connection used for internal com*/
+    dm_amx_env_t acs;    /* Connection used for ACS restricted access */
+    dm_amx_env_t system; /* Connection used for internal com */
 } dm_deviceadapter_t;
 
 
 dm_amx_env_t* DM_ENG_Device_GetACSInfo();
 dm_amx_env_t* DM_ENG_Device_GetSystemInfo();
 
-#define MANAGEMENTSERVER_TRANSFERS_NODE "ManagementServer.QueuedTransfers.Entry."
-#define MANAGEMENTSERVER_PATH           "ManagementServer."
-#define MGMT_SRV_CONNREQUEST            "ManagementServer.ConnRequest."
-#define MGMT_SRV_INTERNALSETTINGS       "ManagementServer.InternalSettings."
-#define DEVICEINFO_PATH                 "DeviceInfo."
-#define TIME_PATH                       "Time."
+#define MANAGEMENTSERVER_PATH           "Device.ManagementServer."
+#define MGMT_SRV_CONNREQUEST            "Device.ManagementServer.ConnRequest."
+#define MGMT_SRV_INTERNALSETTINGS       "Device.ManagementServer.InternalSettings."
+#define DEVICEINFO_PATH                 "Device.DeviceInfo."
+#define TIME_PATH                       "Device.Time."
 #define AMXB_BACKEND                    "AMXB_BACKEND"
 #define AMXB_URI                        "AMXB_URI"
 /* ubus specefic values*/
