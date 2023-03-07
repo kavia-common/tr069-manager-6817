@@ -280,10 +280,8 @@ static int DM_ENG_Device_GetParameterNames_GetNames(dm_amx_env_t* amx, bool next
                         free(object_path);
                         object_path = NULL;
                     }
-                } else if((rv == AMXB_ERROR_NOT_SUPPORTED_SCHEME) || (rv == AMXB_ERROR_NOT_SUPPORTED_OP)) {
-                    SAH_TRACEZ_WARNING("DM_DA", "Skipping Object [%s]", amxc_string_get(&childPath, 0));
                 } else {
-                    SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "amxb_describe failed for child [%s], abort", amxc_string_get(&childPath, 0));
+                    SAH_TRACEZ_WARNING("DM_DA", "Object [%s] doesn't exist on target", amxc_string_get(&childPath, 0));
                 }
 
                 amxc_var_clean(&childobject);
