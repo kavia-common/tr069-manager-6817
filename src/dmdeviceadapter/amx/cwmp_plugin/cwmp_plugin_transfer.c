@@ -125,7 +125,6 @@ static int proc_build_cb(amxc_array_t* cmd, amxc_var_t* settings) {
     when_null(script, stop);
     when_null(fileName, stop);
 
-    amxc_array_append_data(cmd, strdup("/bin/sh"));
     amxc_array_append_data(cmd, strdup(script));
     amxc_array_append_data(cmd, strdup(fileName));
     ret = 0;
