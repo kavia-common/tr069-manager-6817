@@ -1,6 +1,7 @@
 #!/bin/sh
 
-ulimit -c unlimited
+[ -f /etc/environment ] && source /etc/environment
+ulimit -c ${ULIMIT_CONFIGURATION:-0}
 name="cwmp_plugin"
 
 case $1 in
