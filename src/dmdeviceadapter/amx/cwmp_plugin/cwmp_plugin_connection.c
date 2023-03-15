@@ -574,13 +574,15 @@ static void open_cwmpd_listening_port(void) {
     amxd_object_t* mgmt_server = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer");
     amxd_object_t* conn_req = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer.ConnRequest");
     amxd_object_t* internal_settings = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer.InternalSettings");
-    int conn_req_port;
-    const char* interface, * allowed_address;
+    int conn_req_port, local_ip_version;
+    const char* interface, * allowed_address, * local_ip;
     amxc_var_t args, ret;
 
     conn_req_port = amxc_var_constcast(uint32_t, amxd_object_get_param_value(conn_req, "ConnRequestPort"));
     allowed_address = amxc_var_constcast(cstring_t, amxd_object_get_param_value(internal_settings, "AllowConnectionRequestFromAddress"));
     interface = amxc_var_constcast(cstring_t, amxd_object_get_param_value(mgmt_server, "Interface"));
+    local_ip = amxc_var_constcast(cstring_t, amxd_object_get_param_value(conn_req, "LocalIPAddress"));
+    local_ip_version = (isAddressIpV6(local_ip) == true) ? 6 : 4;
     amxc_var_init(&args);
     amxc_var_init(&ret);
     amxc_var_set_type(&args, AMXC_VAR_ID_HTABLE);
@@ -589,6 +591,7 @@ static void open_cwmpd_listening_port(void) {
     amxc_var_add_key(cstring_t, &args, "interface", interface);
     amxc_var_add_key(uint32_t, &args, "destination_port", conn_req_port);
     amxc_var_add_key(cstring_t, &args, "source_prefix", allowed_address);
+    amxc_var_add_key(uint32_t, &args, "ipversion", local_ip_version);
     amxc_var_add_key(bool, &args, "enable", true);
     SAH_TRACEZ_INFO("FIREWALL", "Opening cwmpd listening port %d for %s", conn_req_port, ((allowed_address[0]) ? allowed_address : "all"));
     if(amxm_execute_function("fw", "fw", "set_service", &args, &ret)) {
