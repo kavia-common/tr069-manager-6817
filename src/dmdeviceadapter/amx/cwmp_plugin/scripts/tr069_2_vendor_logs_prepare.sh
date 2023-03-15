@@ -7,7 +7,7 @@
 
 
 # $1 will contain the file full name
-[ -f $1] && rm $1;
+[ -f $1 ] && rm $1;
 
 #send the syslog file
 cp /var/log/messages $1;

@@ -192,8 +192,7 @@ static int filetransfer_run_task(const char* fileName, const char* script, filet
     SAH_TRACEZ_INFO(ME, "Filetransfer starting task [%s %s]", script, fileName);
 
     amxp_slot_connect(proc->proc->sigmngr, "stop", NULL, proc_finished_cb, (void*) ctx);
-    amxp_proc_ctrl_start(proc, 300 * 1000, &settings);
-    ret = 0;
+    ret = amxp_proc_ctrl_start(proc, 300 * 1000, &settings);
 stop:
     if(ret != 0) {
         if(proc) {
