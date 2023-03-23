@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.22.0 - 2023-03-23(15:23:42 +0000)
+
+### Other
+
+- Use sah_libc-ares instead of opensource_c-ares
+
 ## Release v1.21.3 - 2023-03-15(11:16:29 +0000)
 
 ### Changes
