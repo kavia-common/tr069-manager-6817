@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.22.1 - 2023-03-30(10:06:34 +0000)
+
+### Fixes
+
+- fix fw upgrade fail
+- Box does not upload the backup file
+- open firewall port according to the IP version of ConRequestURL
+- no errors generated for non existing objects
+- Device.ManagementServer is missing in version 0.5.1
+
 ## Release v1.22.0 - 2023-03-23(15:23:42 +0000)
 
 ### Other
