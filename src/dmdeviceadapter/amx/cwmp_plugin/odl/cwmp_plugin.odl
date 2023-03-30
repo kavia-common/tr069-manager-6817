@@ -1,6 +1,7 @@
 %config {
     name = "cwmp_plugin";
     import-dbg = false;
+    system-signals = [ 17 ];
 
     // SAHTRACE
     sahtrace = {

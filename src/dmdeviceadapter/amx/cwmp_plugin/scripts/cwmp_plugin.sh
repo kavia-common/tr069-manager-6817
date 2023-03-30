@@ -4,15 +4,21 @@
 ulimit -c ${ULIMIT_CONFIGURATION:-0}
 name="cwmp_plugin"
 
+proxypath="Device.ManagementServer."
+realpath="ManagementServer."
+
 case $1 in
     start|boot)
         source /etc/environment
+        ubus -t 30 wait_for ProxyManager
+        ubus call ProxyManager register "{'proxy' : '$proxypath','real' : '$realpath'}"
         LD_LIBRARY_PATH=/opt/prplos/usr/lib cwmp_plugin -D
         ;;
     stop|shutdown)
         if [ -f /var/run/cwmp_plugin.pid ]; then
             kill `cat /var/run/cwmp_plugin.pid`
         fi
+        ubus call ProxyManager unregister "{'proxy' : '$proxypath','real' : '$realpath'}"
         ;;
     debuginfo)
 	ubus-cli "ManagementServer.?"
