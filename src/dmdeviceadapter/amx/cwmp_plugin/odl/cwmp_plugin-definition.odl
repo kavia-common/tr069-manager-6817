@@ -35,7 +35,7 @@
         * @version 1.0
         */
         %persistent string Username {
-            constraint maxvalue 256;
+            on action validate call check_maximum 256;
             default "cdrouter";
         }
 
@@ -48,7 +48,7 @@
         */
         %persistent string Password {
             on action read call hide_value;
-            constraint maxvalue 256;
+            on action validate call check_maximum 256;
             default "cdrouter";
         }
 
@@ -63,7 +63,7 @@
         * @version 1.0
         */
         %persistent uint32 PeriodicInformInterval {
-            constraint minvalue 1;
+            on action validate call check_minimum 1;
             default 432000;
         }
 
@@ -115,7 +115,7 @@
         * @version 1.0
         */
         %persistent string ConnectionRequestUsername {
-            constraint maxvalue 256;
+            on action validate call check_maximum 256;
             default "acs";
         }
 
@@ -126,7 +126,7 @@
         */
         %persistent string ConnectionRequestPassword {
             on action read call hide_value;
-            constraint maxvalue 256;
+            on action validate call check_maximum 256;
             default "acs";
         }
 
@@ -141,7 +141,7 @@
         * @error EACCESS, errors related to getting objects, function_exec_failed, invalid_parameter
         * @version 1.0
         */
-        void updateConnectionRequestURL(%in mandatory bool update, %in string host, %in uint16 port);
+        void updateConnectionRequestURL(%in %mandatory bool update, %in string host, %in uint16 port);
 
       /**
         * Indicates whether or not the ACS will manage upgrades for the CPE. If True, the CPE SHOULD NOT use other means other than the ACS to seek out available upgrades. If False, the CPE MAY use other means for this purpose.
@@ -175,7 +175,7 @@
         * @version 1.0
         */
         %persistent string InstanceMode {
-            constraint enum ["InstanceNumber","InstanceAlias"];
+            on action validate call check_enum ["InstanceNumber","InstanceAlias"];
             default "InstanceNumber";
         }
 
@@ -221,7 +221,7 @@
             * @version 1.0
             */
             %persistent uint32 ConnRequestPort {
-                constraint range [0,65535];
+                on action validate call check_range [0,65535];
                 default 50805;
             }
 
@@ -242,7 +242,7 @@
             * @version 1.0
             */
             %persistent string ConnRequestPathType {
-                constraint enum ["Fixed-Default","Random","Randomize","Fixed-MacBased"];
+                on action validate call check_enum ["Fixed-Default","Random","Randomize","Fixed-MacBased"];
                 default "Random";
             }
 
@@ -268,7 +268,7 @@
             * @version 1.0
             */
             %persistent uint32 FreqConnectionRequest {
-                constraint minvalue 60;
+                on action validate call check_minimum 60;
                 default 3600;
             }
 
@@ -277,7 +277,7 @@
             * @version 1.0
             */
             %persistent uint32 MaxConnectionRequest {
-                constraint minvalue 1;
+                on action validate call check_minimum 1;
                 default 50;
             }
       }
@@ -292,7 +292,7 @@
             * @version 1.0
             */
             %read-only string Datamodel {
-                constraint enum ["TR098","TR106","TR181"];
+                on action validate call check_enum ["TR098","TR106","TR181"];
                 default "TR181";
             }
 
@@ -365,7 +365,7 @@
             * @version 1.0
             */
             %persistent string SSLAcceptExpired {
-                constraint enum ["Never", "Always", "NTP"];
+                on action validate call check_enum ["Never", "Always", "NTP"];
                 default "NTP";
             }
 
@@ -420,7 +420,7 @@
             *   - IPANY: use the first available WAN IP
             */
             %persistent string PreferredIPVersion {
-              constraint enum ["IPV4ONLY","IPV6PREFERRED","IPANY"];
+              on action validate call check_enum ["IPV4ONLY","IPV6PREFERRED","IPANY"];
               default "IPANY";
             }
 
@@ -466,7 +466,7 @@
             * @version 1.0
             */
             string Type {
-                constraint enum ["Off","Passive","Active","Forced"];
+                on action validate call check_enum ["Off","Passive","Active","Forced"];
                 default "Off";
             }
           /**
@@ -531,7 +531,7 @@
             * @version 1.0
             */
             %persistent string Initiator {
-                constraint enum ["ACS","Autonomous"];
+                on action validate call check_enum ["ACS","Autonomous"];
                 default "ACS";
             }
           /**
@@ -568,7 +568,7 @@
             * @version 1.0
             */
             %persistent string Status {
-                constraint enum ["Initial","Transferring","Applying","Applied","Finished"];
+                on action validate call check_enum ["Initial","Transferring","Applying","Applied","Finished"];
                 default "Initial";
             }
           /**
@@ -678,7 +678,7 @@
             * @version 1.0
             */
             string SessionStatus {
-                constraint enum ["Initializing","Idle","Busy","ServerDown"];
+                on action validate call check_enum ["Initializing","Idle","Busy","ServerDown"];
                 default "Initializing";
             }
 

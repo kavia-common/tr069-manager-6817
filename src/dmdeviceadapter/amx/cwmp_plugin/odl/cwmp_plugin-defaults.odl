@@ -1,4 +1,4 @@
-datamodel {
+%populate {
   object ManagementServer {
     parameter EnableCWMP=1;
     parameter InstanceWildcardsSupported=1;
