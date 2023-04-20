@@ -587,7 +587,7 @@ static void open_cwmpd_listening_port(void) {
     amxc_var_init(&ret);
     amxc_var_set_type(&args, AMXC_VAR_ID_HTABLE);
     amxc_var_add_key(cstring_t, &args, "id", FIREWALL_CONN_REQUEST_ID);
-    amxc_var_add_key(cstring_t, &args, "protocol", "TCP");
+    amxc_var_add_key(cstring_t, &args, "protocol", "6");
     amxc_var_add_key(cstring_t, &args, "interface", interface);
     amxc_var_add_key(uint32_t, &args, "destination_port", conn_req_port);
     amxc_var_add_key(cstring_t, &args, "source_prefix", allowed_address);
