@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.22.3 - 2023-04-20(13:14:16 +0000)
+
+### Fixes
+
+- service protocol should be integers
+
 ## Release v1.22.2 - 2023-04-17(11:24:49 +0000)
 
 ### Fixes
