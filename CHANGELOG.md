@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.22.4 - 2023-04-26(15:30:33 +0000)
+
+### Fixes
+
+- [odl] Remove deprecated odl keywords
+
 ## Release v1.22.3 - 2023-04-20(13:14:16 +0000)
 
 ### Fixes
