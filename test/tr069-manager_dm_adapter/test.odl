@@ -101,7 +101,7 @@
             }
             object ConnRequest {
                 string ConnRequestHost="0.0.0.0";
-                read-only string ConnectionRequestURL="http://test-readonly-url";
+                %read-only string ConnectionRequestURL="http://test-readonly-url";
             }
             object State {
                 string SessionStatus="test";
@@ -117,12 +117,12 @@
 
         object GetParameterNames_Parameter {
             string writablestring="test";
-            read-only string readonlystring ="test-read-only";
+            %read-only string readonlystring ="test-read-only";
         }
 
         object GetParameterNames_Object_NextLevel_True {
             string writablestring ="test";
-            read-only string readonlystring ="test-read-only";
+            %read-only string readonlystring ="test-read-only";
             object GetParameterNames_Object1_NextLevel_True {
                 string Username = "cdrouter";
             }
@@ -134,7 +134,7 @@
         object GetParameterNames_Object_NextLevel_False {
             int32 writableInteger =9999;
             string writablestring ="writable-string";
-            read-only string readonlystring ="test-read-only";
+            %read-only string readonlystring ="test-read-only";
             object GetParameterNames_Object1{
                 string test1 = "test";
             }
@@ -146,7 +146,7 @@
         object SetParameterValues_Test_Object{
             int32 writableInteger =9999;
             string writablestring ="writable-string";
-            read-only string readonlystring ="test-read-only";
+            %read-only string readonlystring ="test-read-only";
         }
 
         object Hosts {
