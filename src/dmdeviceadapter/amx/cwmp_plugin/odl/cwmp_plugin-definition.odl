@@ -517,7 +517,7 @@
         * object representing CWMP subscriptions
         * @version 1.0
         */
-        object Subscription[] {
+        %protected object Subscription[] {
           /**
             * The subscription path
             * @version 1.0
