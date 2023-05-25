@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.23.0 - 2023-05-25(14:53:48 +0000)
+
+### New
+
+-  Add support for ManageableDevices
+
 ## Release v1.22.4 - 2023-04-26(15:30:33 +0000)
 
 ### Fixes
