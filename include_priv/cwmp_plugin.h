@@ -148,6 +148,10 @@ void proc_finished_cb(const char* const event_name,
 
 void cwmp_plugin_transfer_init(void);
 
+void cwmp_plugin_manageableDevice_init(void);
+
+void cwmp_plugin_manageableDevice_clean(void);
+
 int cwmp_proc_ctx_new(cwmp_proc_ctx_t** ctx,
                       amxp_proc_ctrl_t* proc,
                       proc_ctrl_cb_t cb,

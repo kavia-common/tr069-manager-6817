@@ -190,6 +190,68 @@
         %read-only bool AutoCreateInstances = false;
 
       /**
+        * The minimum time, in seconds, between Active Notifications resulting from changes to the ManageableDeviceNumberOfEntries (if Active Notification is enabled).
+        * @version 1.0
+        */
+        uint32 ManageableDeviceNotificationLimit;
+
+      /**
+        * Each entry in this table corresponds to a distinct LAN Device that supports Device-Gateway Association according to [Annex F/TR-069a2] as indicated by the presence of the DHCP option specified in that Annex.
+        * @version 1.0
+        */
+        object ManageableDevice[] {
+        /**
+          * Alias for the instance
+          * @version 1.0
+          */
+          %unique %key string Alias {
+            on action validate call check_maximum 64;
+          }
+
+        /**
+           * The number of entries in the ManageableDevice table.
+           * @version 1.0
+           */
+          counted with ManageableDeviceNumberOfEntries;
+
+        /**
+          * Organizationally unique identifier of the Device manufacturer as provided to the Gateway by the Device. Represented as a six hexadecimal-digit 
+          * value using all upper-case letters and including any leading zeros. Possible patterns:
+          * @version 1.0
+          */
+          %read-only string ManufacturerOUI {
+            on action validate call check_maximum 6;
+          }
+
+        /**
+          * Serial number of the Device as provided to the Gateway by the Device.
+          * @version 1.0
+          */
+          %read-only string SerialNumber {
+            on action validate call check_maximum 64;
+          }
+
+        /**
+          * Identifier of the class of product for which the Device's serial number applies as provided to the Gateway by the Device.
+          * @version 1.0
+          */
+          %read-only string ProductClass {
+            on action validate call check_maximum 64;
+          }
+
+        /**
+          * Comma-separated list (maximum number of characters 1024) of strings. Each list item MUST be the Path Name of a row in the Hosts.Host table.
+          * If the referenced object is deleted, the corresponding item MUST be removed from the list. References all the Hosts.Host table entries, 
+          * whether active or inactive, that correspond to this physical LAN device. There can be multiple such entries if the device has more than one network interface.
+          * For example: Device.Hosts.Host.1,Device.Hosts.Host.5
+          * @version 1.0
+          */
+          %read-only string Host {
+            on action validate call check_maximum 1024;
+          }
+      }
+
+      /**
         * Object containing informations about connection request
         */
         %persistent %protected object ConnRequest {

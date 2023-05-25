@@ -67,6 +67,8 @@ requires "DeviceInfo.";
 requires "Time.";
 requires "NetModel.Intf.";
 requires "Firewall.";
+requires "DHCPv4Server.";
+requires "DHCPv6Server.";
 
 %define {
     entry-point cwmp_plugin.cwmp_plugin_main;
