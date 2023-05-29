@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.23.1 - 2023-05-29(13:22:06 +0000)
+
+### Fixes
+
+- ManagementServer.Subscription not BBF compliant
+
 ## Release v1.23.0 - 2023-05-25(14:53:48 +0000)
 
 ### New
