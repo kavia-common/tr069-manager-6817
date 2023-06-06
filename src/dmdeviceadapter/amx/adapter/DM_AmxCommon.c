@@ -57,6 +57,8 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 **
 ****************************************************************************/
+#include <amxc/amxc_macros.h>
+#include <amxc/amxc_string.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -294,14 +296,23 @@ bool DM_ENG_Device_Common_IsWildcardPathValid(const char* path) {
     - false : error path couldn't be resolved
     - true : no error path resolved successfully
  */
-int DM_ENG_Device_Common_IndexToAlias(dm_amx_env_t* amx, const char* path, char** resolved) {
+int DM_ENG_Device_Common_IndexToAlias(dm_amx_env_t* amx, const char* acspath, const char* path, char** resolved) {
     int ret = -1;
     amxc_string_t string;
     amxc_string_t resolved_path;
     amxc_llist_t string_list;
     amxc_llist_init(&string_list);
+    amxc_llist_t path_list;
+    amxc_llist_init(&path_list);
     amxc_string_init(&string, 0);
+    amxc_string_t tmp_string;
+    amxc_string_init(&tmp_string, 0);
     amxc_string_init(&resolved_path, 0);
+    amxc_llist_it_t* it_path = NULL;
+
+    amxd_path_t amxpath;
+    amxd_path_init(&amxpath, acspath);
+    char* fixed_part = amxd_path_get_fixed_part(&amxpath, false);
 
     when_null(path, stop);
     when_str_empty(path, stop);
@@ -309,47 +320,66 @@ int DM_ENG_Device_Common_IndexToAlias(dm_amx_env_t* amx, const char* path, char*
     amxc_string_setf(&string, "%s", path);
     when_failed(amxc_string_split_to_llist(&string, &string_list, '.'), stop);
 
-    /* replace index with alias ==>  Device.IP.Interface.[Alias=="lan"]. or  Device.IP.Interface.lan. */
+    if(fixed_part) {
+        amxc_string_setf(&string, "%s", fixed_part);
+        when_failed(amxc_string_split_to_llist(&string, &path_list, '.'), stop);
+        it_path = amxc_llist_get_first(&path_list);
+    }
+
+    /* replace index with alias ==>  Device.IP.Interface.3. ->  Device.IP.Interface.[lan]. */
     amxc_llist_iterate(it, &string_list) {
-        const char* val = amxc_string_get(amxc_string_from_llist_it(it), 0);
+        char* alias = NULL;
         amxc_string_t part;
+        const char* val = amxc_string_get(amxc_string_from_llist_it(it), 0);
+        const char* orig_part = (it_path) ? amxc_string_get(amxc_string_from_llist_it(it_path), 0) : NULL;
+
+        if(it_path && orig_part && *orig_part) {
+            amxc_string_append(&resolved_path, orig_part, strlen(orig_part));
+            amxc_string_append(&resolved_path, ".", 1);
+            it_path = amxc_llist_it_get_next(it_path);
+            continue;
+        }
         amxc_string_init(&part, 0);
         amxc_string_setf(&part, "%s", val);
-
         if(amxc_string_is_numeric(&part)) {
             amxc_var_t get;
             amxc_var_init(&get);
-            amxc_string_t tmp_string;
-            amxc_string_init(&tmp_string, 0);
             amxc_string_setf(&tmp_string, "%s%s.Alias", amxc_string_get(&resolved_path, 0), amxc_string_get(&part, 0));
-            int ret = amxb_get(amx->bus_ctx, amxc_string_get(&tmp_string, 0), 0, &get, 10);
-            if((ret == 0) && !amxc_var_is_null(&get)) {
-                amxc_string_clean(&tmp_string);
-                amxc_var_log(&get);
-                amxc_string_setf(&tmp_string, "0.'%s%s.'.Alias", amxc_string_get(&resolved_path, 0), amxc_string_get(&part, 0));
-                amxc_var_t* res = GETP_ARG(&get, amxc_string_get(&tmp_string, 0));
-                amxc_string_clean(&tmp_string);
-                amxc_string_setf(&tmp_string, "[%s].", amxc_var_constcast(cstring_t, res));
-                amxc_string_append(&resolved_path, amxc_string_get(&tmp_string, 0), amxc_string_text_length(&tmp_string));
-            } else {
-                SAH_TRACEZ_WARNING("DM_DA", "amxb_get failed for : %s%s.Alias", amxc_string_get(&resolved_path, 0), amxc_string_get(&part, 0));
-                amxc_string_append(&resolved_path, amxc_string_get(&part, 0), amxc_string_text_length(&part));
-                amxc_string_append(&resolved_path, ".", 1);
+
+            if((amxb_get(amx->bus_ctx, amxc_string_get(&tmp_string, 0), 0, &get, 10) == 0) && !amxc_var_is_null(&get)) {
+                const amxc_htable_t* htable = amxc_var_constcast(amxc_htable_t, GETI_ARG(&get, 0));
+                amxc_htable_iterate(hit, htable) {
+                    amxc_var_t* alias_var = amxc_var_from_htable_it(hit);
+                    const char* val = amxc_var_constcast(cstring_t, GETP_ARG(alias_var, "Alias"));
+                    if(val) {
+                        alias = strdup(val);
+                        break;
+                    }
+                }
             }
             amxc_var_clean(&get);
             amxc_string_clean(&tmp_string);
+        }
+
+        if(alias && *alias) {
+            amxc_string_setf(&tmp_string, "[%s].", alias);
+            amxc_string_append(&resolved_path, amxc_string_get(&tmp_string, 0), amxc_string_text_length(&tmp_string));
         } else {
             amxc_string_append(&resolved_path, amxc_string_get(&part, 0), amxc_string_text_length(&part));
             amxc_string_append(&resolved_path, ".", 1);
         }
+        free(alias);
+        amxc_string_clean(&tmp_string);
+        amxc_string_clean(&part);
     }
     *resolved = strndup(amxc_string_get(&resolved_path, 0), amxc_string_text_length(&resolved_path) - 1);
     ret = 0;
-
 stop:
     amxc_string_clean(&string);
     amxc_string_clean(&resolved_path);
-    amxc_llist_clean(&string_list, NULL);
+    amxd_path_clean(&amxpath);
+    amxc_llist_clean(&string_list, amxc_string_list_it_free);
+    amxc_llist_clean(&path_list, amxc_string_list_it_free);
     return ret;
 }
 

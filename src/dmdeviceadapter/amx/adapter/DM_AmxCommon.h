@@ -123,7 +123,7 @@ bool DM_ENG_Device_Common_Resolve_Path(dm_amx_env_t* amx, const char* path, amxc
 DM_ENG_ParameterType DM_ENG_Device_Common_ConvertParameterType(u_int32_t type);
 int DM_ENG_Device_Common_AddSubscription(amxc_llist_t* list, dm_amx_env_t* amx, const char* path, const char* filter, notification_cb_t cb, int* subscriptionID);
 int DM_ENG_Device_Common_DeleteSubscription(amxc_llist_t* list, dm_amx_env_t* amx, int id);
-int DM_ENG_Device_Common_IndexToAlias(dm_amx_env_t* amx, const char* path, char** resolved);
+int DM_ENG_Device_Common_IndexToAlias(dm_amx_env_t* amx, const char* acspath, const char* path, char** resolved);
 DM_Subscription_t* DM_ENG_Device_Common_FindSubscriptionByID(amxc_llist_t* list, int id);
 DM_Subscription_t* DM_ENG_Device_Common_FindSubscription(amxc_llist_t* list, const char* path);
 void DM_ENG_Device_Common_Cleanup_Subscription(amxc_llist_t* slist, dm_amx_env_t* amx);

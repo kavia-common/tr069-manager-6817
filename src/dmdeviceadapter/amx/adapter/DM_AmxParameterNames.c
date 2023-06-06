@@ -71,8 +71,7 @@
 
 #include "DM_AmxCommon.h"
 #include "DM_DeviceAdapter.h"
-extern char* ROOT_DM_PARAMETERS[];
-extern char* ROOT_DM_INTERNAL_PARAMETER_PATH[];
+
 // //---------------------------------------------------------------------------------------------
 // /**
 //  * @addtogroup sah_cwmp_amxdeviceadapter
@@ -142,7 +141,7 @@ stop:
    - false if an error occurred
    - true if succesfull
  */
-static bool DM_ENG_Device_GetParameterNames_GetParameters(const char* path, bool incObject, amxc_var_t* object, DM_ENG_ParameterInfoStruct** pnsList) {
+static bool DM_ENG_Device_GetParameterNames_GetParameters(const char* acspath, const char* path, bool incObject, amxc_var_t* object, DM_ENG_ParameterInfoStruct** pnsList) {
     bool ret = false;
     DM_ENG_ParameterInfoStruct* dmis = NULL;
     const amxc_htable_t* htable = NULL;
@@ -152,7 +151,7 @@ static bool DM_ENG_Device_GetParameterNames_GetParameters(const char* path, bool
 
     int type_id = GET_INT32(object, "type_id");
     if(acsInfo->instanceAlias) {
-        DM_ENG_Device_Common_IndexToAlias(acsInfo, path, &object_path);
+        DM_ENG_Device_Common_IndexToAlias(acsInfo, acspath, path, &object_path);
     }
 
     if(incObject) {
@@ -215,7 +214,7 @@ stop:
    Returns 0 (zero) if OK or a fault code (9002, ...) according to the TR-069.
  */
 
-static int DM_ENG_Device_GetParameterNames_GetNames(dm_amx_env_t* amx, bool nextlevel, const char* path, DM_ENG_ParameterInfoStruct** pnsList) {
+static int DM_ENG_Device_GetParameterNames_GetNames(dm_amx_env_t* amx, bool nextlevel, const char* acspath, const char* path, DM_ENG_ParameterInfoStruct** pnsList) {
     int error = 0;
     int rv = 0;
     int type_id = 0;
@@ -240,7 +239,7 @@ static int DM_ENG_Device_GetParameterNames_GetNames(dm_amx_env_t* amx, bool next
 
     object = GETI_ARG(&result, 0);
 
-    if(!DM_ENG_Device_GetParameterNames_GetParameters(path, !nextlevel, object, pnsList)) {
+    if(!DM_ENG_Device_GetParameterNames_GetParameters(acspath, path, !nextlevel, object, pnsList)) {
         SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "GetParameterNames(nextLevel=TRUE) failed, object [%s]", path);
     }
 
@@ -270,7 +269,7 @@ static int DM_ENG_Device_GetParameterNames_GetNames(dm_amx_env_t* amx, bool next
                     type_id = GET_INT32(GETI_ARG(&childobject, 0), "type_id");
 
                     if(amx->instanceAlias) {
-                        DM_ENG_Device_Common_IndexToAlias(amx, amxc_string_get(&childPath, 0), &object_path);
+                        DM_ENG_Device_Common_IndexToAlias(amx, acspath, amxc_string_get(&childPath, 0), &object_path);
                     }
 
                     dmis = DM_ENG_newParameterInfoStruct((object_path != NULL) ? object_path : amxc_string_get(&childPath, 0), (type_id == 2) || (type_id == 3));
@@ -290,7 +289,7 @@ static int DM_ENG_Device_GetParameterNames_GetNames(dm_amx_env_t* amx, bool next
                 const char* childName = amxc_var_constcast(cstring_t, child);
                 amxc_string_clean(&childPath);
                 amxc_string_setf(&childPath, "%s%s.", path, childName);
-                error = DM_ENG_Device_GetParameterNames_GetNames(amx, false, amxc_string_get(&childPath, 0), pnsList);
+                error = DM_ENG_Device_GetParameterNames_GetNames(amx, false, acspath, amxc_string_get(&childPath, 0), pnsList);
                 amxc_string_clean(&childPath);
             }
         }
@@ -336,7 +335,7 @@ int DM_ENG_Device_GetParameterNames_PartialPath(dm_amx_env_t* amx_env, char* pat
         const amxc_llist_t* path_list = amxc_var_constcast(amxc_llist_t, &objects);
         amxc_llist_iterate(it, path_list) {
             const char* objpath = amxc_var_constcast(cstring_t, amxc_var_from_llist_it(it));
-            error = DM_ENG_Device_GetParameterNames_GetNames(amx_env, nextLevel, objpath, infoList);
+            error = DM_ENG_Device_GetParameterNames_GetNames(amx_env, nextLevel, path, objpath, infoList);
             if(error != 0) {
                 GotoStop("GPN Failed on object [%s]", objpath);
             }
@@ -400,7 +399,7 @@ int DM_ENG_Device_GetParameterNames_Parameter(dm_amx_env_t* amx_env, char* path,
             amxc_var_t* parameter = GETP_ARG(&object, amxc_string_get(&paramName, 0));
 
             if(amx_env->instanceAlias) {
-                DM_ENG_Device_Common_IndexToAlias(amx_env, amxd_path_get(&paramPath, AMXD_OBJECT_TERMINATE), &object_path);
+                DM_ENG_Device_Common_IndexToAlias(amx_env, path, amxd_path_get(&paramPath, AMXD_OBJECT_TERMINATE), &object_path);
             }
             if(!DM_ENG_Device_GetParameterNames_GetParameter((object_path != NULL) ? object_path : amxd_path_get(&paramPath, AMXD_OBJECT_TERMINATE), parameter, infoList)) {
                 free(object_path);

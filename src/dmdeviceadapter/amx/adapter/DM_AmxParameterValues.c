@@ -152,7 +152,7 @@ stop:
    - false if an error occurred
    - true if succesfull
  */
-static int DM_ENG_Device_GetParameterValues_ParseValues(dm_amx_env_t* amx, amxc_var_t* object, void* data) {
+static int DM_ENG_Device_GetParameterValues_ParseValues(dm_amx_env_t* amx, const char* acspath, amxc_var_t* object, void* data) {
     SAH_TRACEZ_IN("DM_DA");
     int error = 0;
     DM_ENG_ParameterValueStruct** pvsList = (DM_ENG_ParameterValueStruct**) data;
@@ -178,7 +178,7 @@ static int DM_ENG_Device_GetParameterValues_ParseValues(dm_amx_env_t* amx, amxc_
             amxc_string_init(&param_name, 0);
             amxc_string_setf(&param_name, "%s%s", key, paramkey);
             if(amx->instanceAlias) {
-                DM_ENG_Device_Common_IndexToAlias(amx, amxc_string_get(&param_name, 0), &alias_path);
+                DM_ENG_Device_Common_IndexToAlias(amx, acspath, amxc_string_get(&param_name, 0), &alias_path);
             }
 
             dmvs = DM_ENG_newParameterValueStruct(alias_path != NULL ? alias_path : amxc_string_get(&param_name, 0),
@@ -231,7 +231,7 @@ int DM_ENG_Device_GetParameterValues_GetValues(dm_amx_env_t* amx, const char* pa
             SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Failed to get object path [%s] error [%d] ", path, ret);
         }
     }
-    error = DM_ENG_Device_GetParameterValues_ParseValues(amx, &get, pvsList);
+    error = DM_ENG_Device_GetParameterValues_ParseValues(amx, path, &get, pvsList);
 
 stop:
     SAH_TRACEZ_OUT("DM_DA");
