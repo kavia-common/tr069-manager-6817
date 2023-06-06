@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.24.0 - 2023-06-06(09:14:24 +0000)
+
+### New
+
+- InstanceAlias mode add support for mixed paths
+
 ## Release v1.23.2 - 2023-06-05(08:54:35 +0000)
 
 ## Release v1.23.1 - 2023-05-29(13:22:06 +0000)
