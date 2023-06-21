@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.25.0 - 2023-06-21(13:08:33 +0000)
+
+### New
+
+- ManagementServer DM add specific params
+
+### Fixes
+
+- Split cwmp_plugin/cwmpd config
+
 ## Release v1.24.0 - 2023-06-06(09:14:24 +0000)
 
 ### New
