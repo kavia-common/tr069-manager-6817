@@ -1,0 +1,33 @@
+
+%config {
+    import-dbg = false;
+    system-signals = [ 17 ];
+
+    // SAHTRACE
+    sahtrace = {
+        type = "syslog",
+        level = 200
+    };
+
+    prefix_file = "/etc/amx/cwmp_plugin/cwmp_plugin-prefix.odl";
+
+    // tr069 service configuration
+    tr069-service = {
+        // Path where to store temporary values for RPC's that need to survive a reboot
+        cwmpd_persistent_rpc_path = "/etc/config/cwmp_plugin",
+        cwmpd_pid_file = "/var/run/cwmp.pid",
+        cwmpd_certs_file = "/usr/lib/cwmp/cwmpdcerts.pem",
+        cwmpd_adapter_path = "/usr/lib/libdmda_amx.so"
+    };
+
+    backends = ["/usr/bin/mods/amxb/mod-amxb-ubus.so"];
+
+    trace-zones = {
+        CWMPD = 200,
+        DM_DA = 200,
+        DM_ENGINE = 200,
+        DM_COM = 200,
+        DM_COMMON = 200,
+        DM_HS = 200
+    };
+}

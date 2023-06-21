@@ -13,7 +13,7 @@
     definition_file = "${name}-definition.odl";
     defaults_file = "${name}-defaults.odl";
     save_file = "${rw_data_path}/${name}/odl/${name}.odl";
-    prefix_file = "/etc/amx/cwmp_plugin/cwmp_plugin-prefix.odl";
+    prefix_file = "${name}-prefix.odl";
     
     // Use ODL persistent storage
     storage-type = "odl";
@@ -27,29 +27,15 @@
         directory = "${storage-path}/odl"
     };
 
-    tr069-service = {
-        // Path where to store temporary values for RPC's that need to survive a reboot
-        cwmpd_persistent_rpc_path = "/etc/config/cwmp_plugin",
-        cwmpd_pid_file = "/var/run/cwmp.pid",
-        cwmpd_certs_file = "/usr/lib/cwmp/cwmpdcerts.pem",
-        cwmpd_adapter_path = "/usr/lib/libdmda_amx.so"
-    };
-
     firewall = {
         controller = "/usr/lib/amx/modules/mod-fw-amx.so"
     };
 
-    odl_config = "${cfg-dir}/${name}/${name}.odl";
+    odl_config = "${cfg-dir}/${name}/cwmpd-config.odl";
     backends = ["/usr/bin/mods/amxb/mod-amxb-ubus.so"];
 
     trace-zones = {
         CWMP_PLUGIN = 200,
-        CWMPD = 200,
-        DM_DA = 200,
-        DM_ENGINE = 200,
-        DM_COM = 200,
-        DM_COMMON = 200,
-        DM_HS = 200,
         ftx = 200,
         ftx_func = 200
     };
