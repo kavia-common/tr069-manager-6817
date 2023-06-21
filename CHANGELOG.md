@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.26.0 - 2023-06-21(16:44:53 +0000)
+
+### New
+
+- Use acls permissions for cwmp user
+
 ## Release v1.25.0 - 2023-06-21(13:08:33 +0000)
 
 ### New
