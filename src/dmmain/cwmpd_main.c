@@ -82,7 +82,7 @@ static application_t cwmp_app;// app instance
 static amxb_bus_ctx_t* sys_bus_ctx = NULL;
 static amxb_bus_ctx_t* acs_bus_ctx = NULL;
 static amxo_parser_t parser;
-static amxd_object_t* root = NULL;
+static amxo_parser_t parser_prefix;
 
 bool is_ipaddr(const char* ip) {
     struct in6_addr result;
@@ -129,8 +129,12 @@ void cwmp_add_sahtrace_zones(amxc_var_t* trace_zones) {
 
 static cwmp_status_t cwmp_app_parse_config(void) {
     cwmp_status_t ret = cwmp_status_ko;
+    amxd_object_t* root = NULL;
+    amxd_object_t* prefix = NULL;
+    const char* prefix_file = NULL;
     amxo_parser_init(&parser);
     amxd_object_new(&root, amxd_object_singleton, "root");
+    amxd_object_new(&prefix, amxd_object_singleton, "prefix");
     int retval = amxo_parser_parse_file(&parser, cwmp_app.odl_config, root);
     when_false_trace(retval != -1, exit, ERROR, "CWMPD: ODL parsing failed - message = %s", amxo_parser_get_message(&parser));
     amxc_var_t* config = &parser.config;
@@ -142,6 +146,7 @@ static cwmp_status_t cwmp_app_parse_config(void) {
     cwmp_app.persistent_rpc_path = GETP_CHAR(tr069_config, "cwmpd_persistent_rpc_path");
     cwmp_app.trustedCA = GETP_CHAR(tr069_config, "cwmpd_certs_file");
     cwmp_app.pidFile = GETP_CHAR(tr069_config, "cwmpd_pid_file");
+    prefix_file = GETP_CHAR(config, "prefix_file");
 
     // Set tracelevel
     amxc_var_t* trace = amxc_var_get_key(config, "sahtrace", AMXC_VAR_FLAG_DEFAULT);
@@ -154,10 +159,15 @@ static cwmp_status_t cwmp_app_parse_config(void) {
         cwmp_add_sahtrace_zones(trace_zones);
     }
 
+    amxo_parser_init(&parser_prefix);
+    retval = amxo_parser_parse_file(&parser, prefix_file, prefix);
+    when_false_trace(retval != -1, exit, ERROR, "CWMPD: ODL parsing failed - message = %s", amxo_parser_get_message(&parser));
+    cwmp_app.prefix = GETP_CHAR(&parser.config, "vendor_prefix");
     // ODL parsing config OK
     ret = cwmp_status_ok;
 exit:
     amxd_object_delete(&root);
+    amxd_object_delete(&prefix);
     return ret;
 }
 
@@ -318,6 +328,7 @@ static cwmp_status_t cwmp_app_settings(int argc, char** argv) {
     if(cwmp_status_ko == cwmp_app_parse_config()) {
         SAH_TRACEZ_ERROR("CWMPD", "Failed to parse cwmpd config");
         amxo_parser_clean(&parser);
+        amxo_parser_clean(&parser_prefix);
         return rc;
     }
     /* Daemonize if needed */

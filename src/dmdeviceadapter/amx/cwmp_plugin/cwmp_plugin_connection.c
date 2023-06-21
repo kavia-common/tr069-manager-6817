@@ -58,6 +58,7 @@
 **
 ****************************************************************************/
 
+#include <amxc/amxc_variant.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>

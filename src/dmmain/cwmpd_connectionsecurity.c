@@ -95,27 +95,35 @@ void cwmp_server_maxConnectionsAdd(void) {
 bool cwmp_server_maxConnectionsReached(void) {
     time_t now;
     time(&now);
-    char* maxconnectionrequest = NULL;
+    bool ret = false;
     unsigned int mc = DEFAULT_MAX_CONNECTIONREQUEST;
-    char* freqconnectionrequest = NULL;
     unsigned int fc = DEFAULT_FREQ_CONNECTION_REQUEST;
     amxc_llist_it_t* cur = NULL;
     amxc_llist_it_t* next = NULL;
+    const char* prefix = cwmp_app_getconf().prefix;
+    amxc_string_t maxconnectionrequestPath;
+    amxc_string_t freqconnectionrequestPath;
+    DM_ENG_ParameterValueStruct** params_values_st = NULL;
+    char* paramsArray[3];
+    amxc_string_init(&maxconnectionrequestPath, 0);
+    amxc_string_init(&freqconnectionrequestPath, 0);
 
-    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_MAXCONNECTIONREQUEST, &maxconnectionrequest) != 0) {
-        SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the MaxConnectionRequest");
-    }
-    if(maxconnectionrequest != NULL) {
-        mc = atoi(maxconnectionrequest);
-        free(maxconnectionrequest);
+    amxc_string_setf(&maxconnectionrequestPath, "ManagementServer.%sMaxConnectionRequest", prefix);
+    amxc_string_setf(&freqconnectionrequestPath, "ManagementServer.%sFreqConnectionRequest", prefix);
+
+    paramsArray[0] = strdup(amxc_string_get(&maxconnectionrequestPath, 0));
+    paramsArray[1] = strdup(amxc_string_get(&freqconnectionrequestPath, 0));
+    paramsArray[2] = NULL;
+
+    if(DM_ENG_GetParameterValues(DM_ENG_EntityType_SYSTEM, (char**) paramsArray, &params_values_st) != 0) {
+        SAH_TRACEZ_ERROR("CWMPD", "Failed to fetch MaxConnectionRequest/FreqConnectionRequest");
     }
 
-    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_FREQCONNECTIONREQUEST, &freqconnectionrequest) != 0) {
-        SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the FreqConnectionRequest");
-    }
-    if(freqconnectionrequest != NULL) {
-        fc = atoi(freqconnectionrequest);
-        free(freqconnectionrequest);
+    if(DM_ENG_tablen((void**) params_values_st) < 2) {
+        SAH_TRACEZ_ERROR("CWMPD", "Failed to fetch MaxConnectionRequest/FreqConnectionRequest");
+    } else {
+        mc = atoi(params_values_st[0]->value);
+        fc = atoi(params_values_st[1]->value);
     }
 
     cur = amxc_llist_get_first(&connection_timestamp_list);
@@ -131,10 +139,18 @@ bool cwmp_server_maxConnectionsReached(void) {
     // 2*mc: due to the basic/digest authentication, 2 "physical"  connection requests are send per "logical" connection request
     if(amxc_llist_size(&connection_timestamp_list) > 2 * mc) {
         SAH_TRACEZ_INFO("CWMPD", "The maximum number of connections per period is reached.");
-        return true;
+        ret = true;
     }
 
-    return false;
+    amxc_string_clean(&maxconnectionrequestPath);
+    amxc_string_clean(&freqconnectionrequestPath);
+    if(params_values_st) {
+        DM_ENG_deleteAllParameterValueStruct(params_values_st);
+        free(params_values_st);
+    }
+    free(paramsArray[0]);
+    free(paramsArray[1]);
+    return ret;
 }
 
 void cwmp_server_maxConnectionsCleanup(void) {

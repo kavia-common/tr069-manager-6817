@@ -13,6 +13,7 @@
     definition_file = "${name}-definition.odl";
     defaults_file = "${name}-defaults.odl";
     save_file = "${rw_data_path}/${name}/odl/${name}.odl";
+    prefix_file = "/etc/amx/cwmp_plugin/cwmp_plugin-prefix.odl";
     
     // Use ODL persistent storage
     storage-type = "odl";
@@ -54,11 +55,9 @@
     };
 }
 
-#include "${name}-${storage-type}.odl";
-
 import "${name}.so" as "${name}";
-#include "mod_sahtrace.odl";
 
+include "${prefix_file}";
 include "${definition_file}";
 include "${defaults_file}";
 

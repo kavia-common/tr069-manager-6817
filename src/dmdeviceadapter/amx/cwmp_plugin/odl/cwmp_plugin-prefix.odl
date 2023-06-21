@@ -1,0 +1,3 @@
+%config {
+   %global vendor_prefix = "X_PRPL-COM_";
+}

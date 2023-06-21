@@ -97,6 +97,7 @@ struct application {
     int traceLevel;
     sah_trace_type traceType;
     server_state_t state;
+    const char* prefix;
     const char* trustedCA;
     const char* ssl_client_priv_key;
     const char* ssl_client_cert;

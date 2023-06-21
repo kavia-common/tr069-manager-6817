@@ -180,6 +180,24 @@
         }
 
       /**
+        * This parameter defines the time window in which MaxConnectionRequest may occur.
+        * @version 1.0
+        */
+        %persistent uint32 "${vendor_prefix}FreqConnectionRequest" {
+            on action validate call check_minimum 60;
+            default 3600;
+        }
+
+      /**
+        * This parameter defines the maximum number of connection requests per FreqConnectionRequest.
+        * @version 1.0
+        */
+        %persistent uint32 "${vendor_prefix}MaxConnectionRequest" {
+            on action validate call check_minimum 1;
+            default 50;
+        }        
+
+      /**
         * Enable or disable the Auto-Create Instance Mechanism. When AliasBasedAddressing is true, AutoCreateInstances indicates whether or not the CPE will automatically create instances while processing a SetParameterValues RPC (as defined in [A.3.2.1/TR-069]).
         * - A true value indicates that the CPE will perform auto-creation of instances when the Alias-Based Addressing Mechanism is used in SetParameterValues RPC.
         * - A false value indicates that the CPE will not create new object instances. Instead, it will reject the setting of parameters in unrecognized instances and respond with a fault code.
@@ -323,24 +341,6 @@
             */
             %read-only bool UpdateConnRequestHost {
                 default true;
-            }
-
-          /**
-            * This parameter defines the time window in which MaxConnectionRequest may occur.
-            * @version 1.0
-            */
-            %persistent uint32 FreqConnectionRequest {
-                on action validate call check_minimum 60;
-                default 3600;
-            }
-
-          /**
-            * This parameter defines the maximum number of connection requests per FreqConnectionRequest.
-            * @version 1.0
-            */
-            %persistent uint32 MaxConnectionRequest {
-                on action validate call check_minimum 1;
-                default 50;
             }
       }
 
