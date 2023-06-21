@@ -57,6 +57,7 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 **
 ****************************************************************************/
+#include <amxc/amxc_variant.h>
 #include <errno.h>
 #include <signal.h>
 #include <stdio.h>
@@ -84,6 +85,7 @@
 #include "DM_DeviceAdapter.h"
 #include "DM_AmxCommon.h"
 #include <dmengine/DM_ENG_Device.h>
+#include <debug/sahtrace_macros.h>
 
 #define ME "DM_DA"
 
@@ -121,24 +123,27 @@ void DM_ENG_Device_ACSConnectionHandleNotification(const char* path, const amxc_
     DM_ENG_NotificationMode mode = DM_ENG_NotificationMode_OFF;
     int id = -1;
     const amxc_htable_t* htable = NULL;
-    const amxc_var_t* parameters = GETP_ARG(data, "parameters");
+    const amxc_var_t* parameters = NULL;
+    amxc_var_t filtred;
+    dm_amx_env_t* acs = DM_ENG_Device_GetACSInfo();
     char** acclist;
-    DM_ENG_ParameterValueStruct* pvsList = NULL;
-    DM_Subscription_t* sub = DM_ENG_Device_Common_FindSubscription(&acsSubsList, path);
-
-    if(sub == NULL) {
-        return;
-    }
-
-    htable = amxc_var_constcast(amxc_htable_t, parameters);
     char* acs_path = NULL;
     char* value = NULL;
+    DM_ENG_ParameterValueStruct* pvsList = NULL;
+    DM_Subscription_t* sub = DM_ENG_Device_Common_FindSubscription(&acsSubsList, path);
+    amxc_var_init(&filtred);
+    amxc_var_copy(&filtred, data);
+    amxa_filter_notif(&filtred, acs->acl_rules);
+    when_null(sub, stop);
+
+
+    parameters = GETP_ARG(&filtred, "parameters");
+
+    htable = amxc_var_constcast(amxc_htable_t, parameters);
     amxc_htable_iterate(hit, htable) {
         amxc_var_t* parameter = NULL;
         const char* key = amxc_htable_it_get_key(hit);
-        if(key == NULL) {
-            return;
-        }
+        when_null(key, stop);
 
         //Do we have a subscription for this parameter
         amxc_llist_for_each(infoit, &sub->subscription_info_list) {
@@ -148,30 +153,20 @@ void DM_ENG_Device_ACSConnectionHandleNotification(const char* path, const amxc_
                 break;
             }
         }
-
-        if(id == -1) {
-            return;
-        }
+        when_true(id == -1, stop);
 
         acs_path = DM_ENG_GetParameterAttributesCacheEllementPath(id);
-        if(acs_path == NULL) {
-            // return there is no subscription for this parameter
-            return;
-        }
+        when_null(acs_path, stop);
 
         parameter = amxc_var_from_htable_it(hit);
         value = amxc_var_dyncast(cstring_t, GETP_ARG(parameter, "to"));
-
-        if((strncmp(acs_path, "Device.IP.Interface.", 20) == 0) && (!value || !*value )) {
-            goto stop;
-        }
+        when_true((strncmp(acs_path, "Device.IP.Interface.", 20) == 0) && (!value || !*value ), stop);
 
         set_subscription_new_value(acs_path, value);
 
         if(DM_ENG_ValueWasCachedInParameterAttributesCache(acs_path, value) == 0) {
             DM_ENG_GetParameterAttributesCacheEllement(acs_path, &mode, &acclist);
             SAH_TRACEZ_INFO("DM_DA", "notificationmode for element %s = %d", acs_path, mode);
-            dm_amx_env_t* acs = DM_ENG_Device_GetACSInfo();
             if(DM_ENG_Device_GetParameterValues_GetValues(acs, acs_path, &pvsList) != 0) {
                 SAH_TRACEZ_ERROR("DM_DA", "Could not get ParameterValueStruct for param %s", acs_path);
                 goto stop;
@@ -183,6 +178,7 @@ void DM_ENG_Device_ACSConnectionHandleNotification(const char* path, const amxc_
     }
 
 stop:
+    amxc_var_clean(&filtred);
     free(value);
     free(acs_path);
     return;
@@ -313,6 +309,8 @@ bool DM_ENG_Device_ACSConnectionInitialize(dm_amx_env_t* amx) {
 void DM_ENG_Device_ACSConnectionCleanup(dm_amx_env_t* amx) {
     SAH_TRACEZ_IN("DM_DA");
     DM_ENG_Device_Common_Cleanup_Subscription(&acsSubsList, amx);
+    amxc_var_delete(&amx->acl_rules);
+    amx->acl_rules = NULL;
     // amx bus connection cleanup
     amxb_free(&amx->bus_ctx);
     amx->bus_ctx = NULL;
@@ -417,6 +415,11 @@ bool DM_ENG_Device_ACSConnectionAddSubscription(dm_amx_env_t* amx, const char* s
     SAH_TRACEZ_INFO("DM_DA", "Event subscription [%s]", subscriptionPath);
 
     if(!DM_ENG_Device_Common_IsValidPath(subscriptionPath)) {
+        return false;
+    }
+
+    if(!amxa_is_subs_allowed(amx->acl_rules, subscriptionPath, AMXA_PERMIT_SUBS_VAL_CHANGE)) {
+        SAH_TRACEZ_ERROR("DM_DA", "notification not allowed for %s", subscriptionPath);
         return false;
     }
 

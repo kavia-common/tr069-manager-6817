@@ -217,9 +217,18 @@ int DM_ENG_Device_GetParameterValues_GetValues(dm_amx_env_t* amx, const char* pa
     amxc_var_t get;
     amxc_var_init(&get);
     int ret = 0;
+    amxc_llist_t filters;
+    amxc_llist_init(&filters);
 
     if(strlen(path) == 0) {
         path = "Device.";
+    }
+
+    amxa_resolve_search_paths(amx->bus_ctx, amx->acl_rules, path);
+    amxa_get_filters(amx->acl_rules, AMXA_PERMIT_GET, &filters, path);
+
+    if(!amxa_is_get_allowed(&filters, path)) {
+        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "cwmp has no access rights to [%s] ", path);
     }
 
     ret = amxb_get(amx->bus_ctx, path, (path[strlen(path) - 1] == '.') ? 20 : 1, &get, 10);
@@ -231,10 +240,15 @@ int DM_ENG_Device_GetParameterValues_GetValues(dm_amx_env_t* amx, const char* pa
             SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Failed to get object path [%s] error [%d] ", path, ret);
         }
     }
+
+    if(path[strlen(path) - 1] == '.') {
+        amxa_filter_get_resp(&get, &filters);
+    }
     error = DM_ENG_Device_GetParameterValues_ParseValues(amx, path, &get, pvsList);
 
 stop:
     SAH_TRACEZ_OUT("DM_DA");
+    amxc_llist_clean(&filters, amxc_string_list_it_free);
     amxc_var_clean(&get);
     return error;
 }
@@ -337,6 +351,7 @@ int DM_ENG_Device_SetParameterValues_Validate(dm_amx_env_t* amx, DM_ENG_Paramete
             free(tempString);
         }
     }
+    amxa_resolve_search_paths(amx->bus_ctx, amx->acl_rules, amxd_path_get(&obj_path, AMXD_OBJECT_TERMINATE));
 
     parameters = GETP_ARG(&obj_desc, "0.parameters");
 
@@ -364,6 +379,11 @@ int DM_ENG_Device_SetParameterValues_Validate(dm_amx_env_t* amx, DM_ENG_Paramete
         if(GET_INT32(GETP_ARG(parameter, "attributes"), "read-only")) {
             DM_ENG_Device_SetParameterValuesFault(faultsList, parameterList[*i]->parameterName, DM_ENG_READ_ONLY_PARAMETER, nbFaults);
             SetErrorGotoStop(DM_ENG_INVALID_ARGUMENTS, "parameter is read-only");
+        }
+
+        if(!amxa_is_set_allowed(amx->bus_ctx, amx->acl_rules, amxd_path_get(&obj_path, AMXD_OBJECT_TERMINATE), amxd_path_get_param(&obj_path))) {
+            DM_ENG_Device_SetParameterValuesFault(faultsList, parameterList[*i]->parameterName, DM_ENG_READ_ONLY_PARAMETER, nbFaults);
+            SetErrorGotoStop(DM_ENG_INVALID_ARGUMENTS, "cwmp have no write access to [%s%s]", amxd_path_get(&obj_path, AMXD_OBJECT_TERMINATE), amxd_path_get_param(&obj_path));
         }
 
         (*i)++;

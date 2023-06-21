@@ -125,6 +125,8 @@ void test_dmadapter_GetParameterNames_Object_NextLevel_True_searchPath(void** st
 
 void test_dmadapter_GetParametersValues_Parameters(void** state);
 
+void test_dmadapter_GetParametersValues_Parameter_noAccessRights(void** state);
+
 void test_dmadapter_GetParametersValues_RootParameters(void** state);
 
 void test_dmadapter_GetParametersValues_Object(void** state);

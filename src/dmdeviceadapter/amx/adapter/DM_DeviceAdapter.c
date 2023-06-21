@@ -143,7 +143,7 @@ static char* persistentRPCPath = NULL;
 /**
  * Performs the necessary initializations of the device adapter if any, when starting the DM Agent.
  */
-bool DM_ENG_Device_Init(void** systemCtx, void** acsCtx, const char* rpcPath) {
+bool DM_ENG_Device_Init(void** systemCtx, void** acsCtx, const char* rpcPath, const char* aclfile) {
     bool result;
     char* tmp = NULL;
     char* instance_alias = NULL;
@@ -191,6 +191,9 @@ bool DM_ENG_Device_Init(void** systemCtx, void** acsCtx, const char* rpcPath) {
     } else {
         da.acs.autoCreateInstances = true;
     }
+
+    da.acs.acl = aclfile;
+    da.acs.acl_rules = amxa_parse_files(aclfile);
 
     return result;
 }

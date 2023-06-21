@@ -58,6 +58,7 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 **
 ****************************************************************************/
+#include <amxc/amxc_llist.h>
 #include <amxc/amxc_string.h>
 #include <amxc/amxc_variant.h>
 #include <stdio.h>
@@ -102,6 +103,9 @@ static bool DM_ENG_Device_GetParameterNames_GetParameter(const char* object_path
     const char* param_name = NULL;
     amxc_var_t* attributes = NULL;
     int is_read_only = 0;
+    dm_amx_env_t* acsInfo = DM_ENG_Device_GetACSInfo();
+    amxc_llist_t filters;
+    amxc_llist_init(&filters);
 
     param_name = GETP_CHAR(parameter, "name");
 
@@ -110,6 +114,13 @@ static bool DM_ENG_Device_GetParameterNames_GetParameter(const char* object_path
     }
 
     amxc_string_setf(&paramPath, "%s%s", object_path, param_name);
+    amxa_get_filters(acsInfo->acl_rules, AMXA_PERMIT_GET, &filters, amxc_string_get(&paramPath, 0));
+
+
+    if(!amxa_is_get_allowed(&filters, amxc_string_get(&paramPath, 0))) {
+        ret = true;
+        GotoStop("Filtred Path [%s], no access rights", amxc_string_get(&paramPath, 0));
+    }
 
     // Find parameter attributes
     attributes = GET_ARG(parameter, "attributes");
@@ -120,6 +131,7 @@ static bool DM_ENG_Device_GetParameterNames_GetParameter(const char* object_path
 
     ret = true;
 stop:
+    amxc_llist_clean(&filters, amxc_string_list_it_free);
     amxc_string_clean(&paramPath);
     return ret;
 }
@@ -148,8 +160,19 @@ static bool DM_ENG_Device_GetParameterNames_GetParameters(const char* acspath, c
     amxc_var_t* parameters = NULL;
     dm_amx_env_t* acsInfo = DM_ENG_Device_GetACSInfo();
     char* object_path = NULL;
+    amxc_llist_t filters;
+    amxc_llist_init(&filters);
 
     int type_id = GET_INT32(object, "type_id");
+
+    amxa_resolve_search_paths(acsInfo->bus_ctx, acsInfo->acl_rules, path);
+    amxa_get_filters(acsInfo->acl_rules, AMXA_PERMIT_GET, &filters, path);
+
+    if(!amxa_is_get_allowed(&filters, path)) {
+        ret = true;
+        GotoStop("Object Filtred out [%s], user cwmp has no access rights", path);
+    }
+
     if(acsInfo->instanceAlias) {
         DM_ENG_Device_Common_IndexToAlias(acsInfo, acspath, path, &object_path);
     }
@@ -192,6 +215,7 @@ stop:
         free(object_path);
         object_path = NULL;
     }
+    amxc_llist_clean(&filters, amxc_string_list_it_free);
     return ret;
 }
 //---------------------------------------------------------------------------------------------
@@ -258,14 +282,18 @@ static int DM_ENG_Device_GetParameterNames_GetNames(dm_amx_env_t* amx, bool next
                 amxc_string_init(&childPath, 0);
                 amxc_var_t childobject;
                 amxc_var_init(&childobject);
+                amxc_llist_t filters;
+                amxc_llist_init(&filters);
                 DM_ENG_ParameterInfoStruct* dmis = NULL;
                 int type_id = 0;
                 const char* childName = amxc_var_constcast(cstring_t, child);
                 amxc_string_setf(&childPath, "%s%s.", path, childName);
                 flags = AMXB_FLAG_OBJECTS | AMXB_FLAG_INSTANCES;
+                amxa_resolve_search_paths(amx->bus_ctx, amx->acl_rules, amxc_string_get(&childPath, 0));
+                amxa_get_filters(amx->acl_rules, AMXA_PERMIT_GET, &filters, path);
                 rv = amxb_describe(amx->bus_ctx, amxc_string_get(&childPath, 0), flags, &childobject, 1);
 
-                if(rv == 0) {
+                if((rv == 0) && (amxa_is_get_allowed(&filters, amxc_string_get(&childPath, 0)))) {
                     type_id = GET_INT32(GETI_ARG(&childobject, 0), "type_id");
 
                     if(amx->instanceAlias) {
@@ -282,7 +310,7 @@ static int DM_ENG_Device_GetParameterNames_GetNames(dm_amx_env_t* amx, bool next
                 } else {
                     SAH_TRACEZ_WARNING("DM_DA", "Object [%s] doesn't exist on target", amxc_string_get(&childPath, 0));
                 }
-
+                amxc_llist_clean(&filters, amxc_string_list_it_free);
                 amxc_var_clean(&childobject);
                 amxc_string_clean(&childPath);
             } else {
@@ -401,6 +429,9 @@ int DM_ENG_Device_GetParameterNames_Parameter(dm_amx_env_t* amx_env, char* path,
             if(amx_env->instanceAlias) {
                 DM_ENG_Device_Common_IndexToAlias(amx_env, path, amxd_path_get(&paramPath, AMXD_OBJECT_TERMINATE), &object_path);
             }
+
+            amxa_resolve_search_paths(amx_env->bus_ctx, amx_env->acl_rules, amxd_path_get(&paramPath, AMXD_OBJECT_TERMINATE));
+
             if(!DM_ENG_Device_GetParameterNames_GetParameter((object_path != NULL) ? object_path : amxd_path_get(&paramPath, AMXD_OBJECT_TERMINATE), parameter, infoList)) {
                 free(object_path);
                 SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Could not get the object parameters [%s]", amxd_path_get(&paramPath, AMXD_OBJECT_TERMINATE));

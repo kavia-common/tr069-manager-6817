@@ -1,0 +1,54 @@
+{
+    "Device": {
+        "Reboot": {
+            "%Order": 2,
+            "%ACL": "0xA10"
+        },
+        "ManagementServer": {
+            "%Order": 2,
+            "%ACL": "0xFFF"
+        },
+        "SetParameterValues_Test_Object": {
+            "%Order": 2,
+            "%ACL": "0xFFF"
+        },
+        "Hosts": {
+            "%Order": 2,
+            "%ACL": "0xFFF"
+        },
+        "Hosts.Host": {
+            "%Order": 2,
+            "%ACL": "0xFFF"
+        },
+        "GetParameterNames_Object_NextLevel_False": {
+            "%Order": 2,
+            "%ACL": "0xFFF"
+        },
+        "GetParameterNames_Object_NextLevel_True": {
+            "%Order": 2,
+            "%ACL": "0xFFF"
+        },
+        "GetParameterNames_Parameter": {
+            "%Order": 2,
+            "%ACL": "0xFFF"
+        },
+        "NoAccessRights": {
+            "%Order": 2,
+            "%ACL": "0x0"
+        },
+        "Boot": {
+            "%Order": 2,
+            "%ACL": "0xA10"
+        },
+        "RootDataModelVersion": {
+            "%Order": 2,
+            "%ACL": "0x23"
+        },
+        "DeviceInfo": {
+            "%Order": 2,
+            "%ACL": "0xFFF"
+        },
+        "%Order": 1,
+        "%ACL": "0xFFF"
+    }
+}

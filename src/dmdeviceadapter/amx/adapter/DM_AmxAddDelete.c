@@ -66,6 +66,7 @@
 #include <dmengine/DM_ENG_Error.h>
 #include <debug/sahtrace.h>
 #include <string.h>
+#include <debug/sahtrace_macros.h>
 
 #include "DM_AmxCommon.h"
 
@@ -96,10 +97,8 @@
    - 0 if succesfull
  */
 int DM_ENG_Device_AddDeleteObject_Add(dm_amx_env_t* amx, char* objectName, unsigned int* pInstanceNumber, DM_ENG_ParameterStatus* pStatus) {
-    SAH_TRACEZ_IN("DM_DA");
-    int error = 0;
+    int error = DM_ENG_INVALID_PARAMETER_NAME;
     int rv = 0;
-    int type_id = 0;
     amxc_var_t ret;
     amxc_var_t desc;
     amxc_var_init(&ret);
@@ -109,50 +108,35 @@ int DM_ENG_Device_AddDeleteObject_Add(dm_amx_env_t* amx, char* objectName, unsig
 
     *pStatus = DM_ENG_ParameterStatus_UNDEFINED;
     *pInstanceNumber = 0;
-    // check for path validity
-    if(objectName[strlen(objectName) - 1] != '.') {
-        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "NOT a valid object path");
-    }
-
-    if(!DM_ENG_Device_Common_IsValidPath(objectName)) {
-        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Not a valid parameter Name");
-    }
     amxd_path_setf(&path, false, "%s", objectName);
 
-    if(amxd_path_is_search_path(&path)) {
-        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Not a valid parameter Name");
-    }
-    // get object data
-    rv = amxb_describe(amx->bus_ctx, amxd_path_get(&path, AMXD_OBJECT_TERMINATE),
-                       0, &desc, 2);
+    when_true_trace(objectName[strlen(objectName) - 1] != '.', stop, ERROR,
+                    "Add failed : Not valid object path [%s]", objectName);
+    when_false_trace(DM_ENG_Device_Common_IsValidPath(objectName), stop, ERROR,
+                     "Add failed : Not valid object path [%s]", objectName);
+    when_true_trace(amxd_path_is_search_path(&path), stop, ERROR,
+                    "Add failed : Not valid object path [%s]", objectName);
+    when_failed_trace(amxb_describe(amx->bus_ctx, amxd_path_get(&path, AMXD_OBJECT_TERMINATE), 0, &desc, 2), stop, ERROR,
+                      "Add failed : Not valid object path [%s]", objectName);
+    when_false_trace(GET_INT32(GETI_ARG(&desc, 0), "type_id") == amxd_object_template, stop, ERROR,
+                     "Add failed : not a template? [%s]", objectName);
+    when_false_trace(amxa_is_add_allowed(amx->bus_ctx, amx->acl_rules, objectName), stop, ERROR,
+                     "Add failed : cwmp has no access right to [%s]", objectName);
 
-    if((rv != 0) || amxc_var_is_null(&desc)) {
-        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Not a valid parameter Name");
-    }
-    type_id = GET_INT32(GETI_ARG(&desc, 0), "type_id");
-
-    if(type_id != amxd_object_template) {
-        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Object is Not a template");
-    }
-
-    // else its a valid object , add instance
-    rv = amxb_add(amx->bus_ctx, amxd_path_get(&path, AMXD_OBJECT_TERMINATE),
-                  0, NULL, NULL, &ret, 2);
+    rv = amxb_add(amx->bus_ctx, amxd_path_get(&path, AMXD_OBJECT_TERMINATE), 0, NULL, NULL, &ret, 2);
 
     if((rv != 0) || amxc_var_is_null(&ret)) {
-        //TODO!: check for error type?
-        // SetErrorGotoStop(DM_ENG_RESOURCES_EXCEEDED, "Resources exceeded");
         SetErrorGotoStop(DM_ENG_INTERNAL_ERROR, "Add Instance failed");
     } else {
         *pInstanceNumber = GET_INT32(GETI_ARG(&ret, 0), "index");
         *pStatus = DM_ENG_ParameterStatus_APPLIED;
     }
+    error = 0;
 
 stop:
     amxc_var_clean(&desc);
     amxc_var_clean(&ret);
     amxd_path_clean(&path);
-    SAH_TRACEZ_OUT("DM_DA");
     return error;
 }
 
@@ -175,9 +159,8 @@ stop:
  */
 
 int DM_ENG_Device_AddDeleteObject_Delete(dm_amx_env_t* amx, char* objectName, DM_ENG_ParameterStatus* pStatus) {
-    int error = 0;
+    int error = DM_ENG_INVALID_PARAMETER_NAME;
     int rv = 0;
-    int type_id = 0;
     amxc_var_t ret;
     amxc_var_t desc;
     amxc_var_init(&ret);
@@ -185,49 +168,34 @@ int DM_ENG_Device_AddDeleteObject_Delete(dm_amx_env_t* amx, char* objectName, DM
     amxd_path_t path;
     amxd_path_init(&path, "");
     *pStatus = DM_ENG_ParameterStatus_UNDEFINED;
-
-    if(!DM_ENG_Device_Common_IsValidPath(objectName)) {
-        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Invalid objet path")
-    }
-
-    if(!((objectName[strlen(objectName) - 1] == '.')
-         || ( objectName[strlen(objectName) - 1] == '*'))) {
-        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Invalid object path");
-    }
-
     amxd_path_setf(&path, false, "%s", objectName);
-    // check for path validity
-    if(amxd_path_is_search_path(&path)) {
-        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Invalid search path");
-    }
-    // get object data
-    rv = amxb_describe(amx->bus_ctx, amxd_path_get(&path, AMXD_OBJECT_TERMINATE),
-                       0, &desc, 2);
 
-    if((rv != 0) || amxc_var_is_null(&desc)) {
-        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Not a valid parameter Name");
-    }
+    when_false_trace(DM_ENG_Device_Common_IsValidPath(objectName), stop, ERROR,
+                     "del failed : Not valid object path [%s]", objectName);
+    when_true_trace(objectName[strlen(objectName) - 1] != '.', stop, ERROR,
+                    "del failed : Not valid object path [%s]", objectName);
+    when_true_trace(amxd_path_is_search_path(&path), stop, ERROR,
+                    "del failed : Not valid object path [%s]", objectName);
+    when_failed_trace(amxb_describe(amx->bus_ctx, amxd_path_get(&path, AMXD_OBJECT_TERMINATE), 0, &desc, 2), stop, ERROR,
+                      "del failed : Not valid object path [%s]", objectName);
+    when_false_trace(GET_INT32(GETI_ARG(&desc, 0), "type_id") == amxd_object_instance, stop, ERROR,
+                     "del failed : not a valid instance [%s]", objectName);
+    when_false_trace(amxa_is_del_allowed(amx->bus_ctx, amx->acl_rules, objectName), stop, ERROR,
+                     "Add failed : cwmp has no access right to delete [%s]", objectName);
 
-    type_id = GET_INT32(GETI_ARG(&desc, 0), "type_id");
+    rv = amxb_del(amx->bus_ctx, amxd_path_get(&path, AMXD_OBJECT_TERMINATE), 0, NULL, &ret, 2);
 
-    if(type_id != amxd_object_instance) {
-        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Object is Not a instance");
-    }
-
-    // else its a valid object , add instance
-    rv = amxb_del(amx->bus_ctx, amxd_path_get(&path, AMXD_OBJECT_TERMINATE),
-                  0, NULL, &ret, 2);
     if((rv != 0) || amxc_var_is_null(&ret)) {
         SetErrorGotoStop(DM_ENG_INTERNAL_ERROR, "Delete Instance failed");
     } else {
         *pStatus = DM_ENG_ParameterStatus_APPLIED;
     }
+    error = 0;
 
 stop:
     amxc_var_clean(&desc);
     amxc_var_clean(&ret);
     amxd_path_clean(&path);
-    SAH_TRACEZ_IN("DM_DA");
     return error;
 }
 

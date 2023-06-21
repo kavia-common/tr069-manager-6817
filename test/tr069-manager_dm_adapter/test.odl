@@ -172,6 +172,10 @@
             string Status = "Unsynchronized";
         }
 
+        object NoAccessRights {
+            string Status = "dummy";
+        }
+
     }
 }
 

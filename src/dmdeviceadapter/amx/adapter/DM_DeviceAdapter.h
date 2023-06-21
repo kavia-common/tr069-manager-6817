@@ -61,6 +61,7 @@
 #ifndef __DM_DEVICE_ADAPTER_H__
 #define __DM_DEVICE_ADAPTER_H__
 
+#include <amxc/amxc_variant.h>
 #ifdef __cplusplus
 extern "C"
 {
@@ -78,6 +79,8 @@ typedef struct dm_amx_env_t_ {
     const char* prefix; /* ACS path prefix */
     bool instanceAlias; /* Aliaces based adressing instance mode */
     bool autoCreateInstances;
+    const char* acl;
+    amxc_var_t* acl_rules;
 } dm_amx_env_t;
 
 typedef struct dm_deviceadapter_t_ {

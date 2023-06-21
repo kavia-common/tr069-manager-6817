@@ -46,6 +46,7 @@ install: all
 	$(INSTALL) -D -p -m 0755 output/$(MACHINE)/libdmda_amx/libdmda_amx.so $(DEST)$(LIBDIR)/libdmda_amx.so
 	$(INSTALL) -D -p -m 0755 output/$(MACHINE)/cwmpd/cwmpd $(DEST)$(BINDIR)/cwmpd
 	$(INSTALL) -D -p -m 0660 acl/admin/cwmp_plugin.json $(DEST)$(ACLDIR)/admin/cwmp_plugin.json
+	$(INSTALL) -D -p -m 0660 acl/cwmp/cwmp_plugin.json $(DEST)$(ACLDIR)/cwmp/cwmp_plugin.json
 
 package: all
 	$(INSTALL) -D -p -m 0644 output/$(MACHINE)/cwmp_plugin/cwmp_plugin.so $(PKGDIR)/usr/lib/amx/cwmp_plugin/cwmp_plugin.so
@@ -65,6 +66,7 @@ package: all
 	$(INSTALL) -D -p -m 0755 output/$(MACHINE)/libdmda_amx/libdmda_amx.so $(PKGDIR)$(LIBDIR)/libdmda_amx.so
 	$(INSTALL) -D -p -m 0755 output/$(MACHINE)/cwmpd/cwmpd $(PKGDIR)$(BINDIR)/cwmpd
 	$(INSTALL) -D -p -m 0660 acl/admin/cwmp_plugin.json $(PKGDIR)$(ACLDIR)/admin/cwmp_plugin.json
+	$(INSTALL) -D -p -m 0660 acl/cwmp/cwmp_plugin.json $(PKGDIR)$(ACLDIR)/cwmp/cwmp_plugin.json
 	cd $(PKGDIR) && $(TAR) -czvf ../$(COMPONENT)-$(VERSION).tar.gz .
 	cp $(PKGDIR)../$(COMPONENT)-$(VERSION).tar.gz .
 	make -C packages

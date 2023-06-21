@@ -147,6 +147,7 @@ static cwmp_status_t cwmp_app_parse_config(void) {
     cwmp_app.trustedCA = GETP_CHAR(tr069_config, "cwmpd_certs_file");
     cwmp_app.pidFile = GETP_CHAR(tr069_config, "cwmpd_pid_file");
     prefix_file = GETP_CHAR(config, "prefix_file");
+    cwmp_app.aclfile = GETP_CHAR(tr069_config, "cwmpd_acl_file");
 
     // Set tracelevel
     amxc_var_t* trace = amxc_var_get_key(config, "sahtrace", AMXC_VAR_FLAG_DEFAULT);
@@ -298,8 +299,6 @@ int cwmp_app_engineEventHandler(const char* eventType) {
         /* Start http Server */
         if(cwmp_server_start() != cwmp_status_ok) {
             SAH_TRACEZ_ERROR("CWMPD", "Starting HTTP server failed");
-            // if we reach this point propably cwmpd need a restart exit
-            // the app as it's already dead and can't answer to ACS requests
             raise(SIGTERM);
         }
     } else if(strcmp(eventType, EVENT_ENG_CLEAR_ACS_IP) == 0) {
@@ -349,7 +348,7 @@ static cwmp_status_t cwmp_app_init_dmengine() {
         return rc;
     }
     //Connect to Data-model
-    if(DM_COM_DMCONNECT(cwmp_app.persistent_rpc_path, (void**) &sys_bus_ctx, (void**) &acs_bus_ctx) != 0) {
+    if(DM_COM_DMCONNECT(cwmp_app.persistent_rpc_path, cwmp_app.aclfile, (void**) &sys_bus_ctx, (void**) &acs_bus_ctx) != 0) {
         SAH_TRACEZ_ERROR("CWMPD", "Failed to initialize DM_COM");
         return rc;
     }

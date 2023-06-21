@@ -104,6 +104,7 @@ struct application {
     const char* pidFile;
     const char* persistent_rpc_path;
     const char* da_path;
+    const char* aclfile;
 };
 
 typedef struct application application_t;

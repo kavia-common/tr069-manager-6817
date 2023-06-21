@@ -39,7 +39,7 @@ else
 endif
 
 LDFLAGS += $(STAGING_LIBDIR) -ldl -lsahtrace \
-		  -lamxc -lamxd -lamxo -lamxb -lamxp \
+		  -lamxc -lamxd -lamxo -lamxb -lamxp -lamxa \
 		  -ldmengine -ldmcommon -ldmcom -ldmxml_ixml
 
 ifeq ($(COVERAGE), y)

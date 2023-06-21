@@ -92,6 +92,7 @@ int main(void) {
         cmocka_unit_test(test_dmadapter_GetParameterNames_DeviceObject_NextLevel_False),
         cmocka_unit_test(test_dmadapter_GetParameterNames_DeviceObject_NextLevel_True),
         cmocka_unit_test(test_dmadapter_GetParametersValues_Parameters),
+        cmocka_unit_test(test_dmadapter_GetParametersValues_Parameter_noAccessRights),
         cmocka_unit_test(test_dmadapter_GetParametersValues_RootParameters),
         cmocka_unit_test(test_dmadapter_GetParametersValues_Object),
         cmocka_unit_test(test_dmadapter_GetParametersValues_searchPath_Parameter),

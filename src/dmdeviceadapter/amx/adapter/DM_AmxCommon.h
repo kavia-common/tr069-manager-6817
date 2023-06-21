@@ -73,6 +73,7 @@ extern "C"
 #include <amxd/amxd_path.h>
 #include <amxd/amxd_object.h>
 #include <amxb/amxb.h>
+#include <amxa/amxa.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <dmengine/DM_ENG_ParameterType.h>
@@ -89,6 +90,8 @@ extern "C"
 #define EVENT_ENG_URL_CHANGED      "ACS_URL_CHANGED"
 #define EVENT_ENG_SRV_START        "HTTP_SERVER_START"
 #define EVENT_ENG_CLEAR_ACS_IP     "CLIENT_CLEAR_ACS_IP"
+
+#define ME "DM_DA"
 
 // tr181-device name on the bus
 #define TR181_DEVICE_OBJNAME "Device."

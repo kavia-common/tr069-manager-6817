@@ -1,0 +1,9 @@
+{
+   "Device.ManagementServer.": {
+       "Order": 2,
+       "Param": "rw-n",
+       "Obj": "rw-n",
+       "InstantiatedObj": "rw-n",
+       "CommandEvent": "rw-n"
+   }
+}

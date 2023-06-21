@@ -107,6 +107,7 @@
 
 static const char* dm_dev_adapter_path = "../../output/x86_64-linux-gnu/libdmda_amx/libdmda_amx.so";
 static const char* acache_file = "/tmp/cwmp_acache.txt";
+static const char* acl_file = "./acl_test.json";
 char* g_randomCpeUrl = NULL;
 
 /* Some functions needed to implement tests not really used */
@@ -276,7 +277,7 @@ void test_dmadapter_connection(UNUSED void** state) {
 
     void* systemctx = NULL;
     void* acsctx = NULL;
-    int rv = DM_ENG_DataModelConnect(acache_file, &systemctx, &acsctx);
+    int rv = DM_ENG_DataModelConnect(acache_file, acl_file, &systemctx, &acsctx);
     // connect to bus
     rv += DM_ENG_ActivateNotification(DM_ENG_EntityType_SYSTEM, inform, transferComplete, requestDownload,
                                       getRPCMethods, timerStart, timerStop, timerTimeRemaining, engineEvent);
@@ -644,6 +645,7 @@ void test_dmadapter_GetParameterNames_DeviceObject_NextLevel_True(UNUSED void** 
     assert_int_equal(check_parameter_name(param_info_st, "Device.InterfaceStackNumberOfEntries", 0), 0);
     assert_int_equal(check_parameter_name(param_info_st, "Device.ManagementServer.", 0), 0);
     assert_int_equal(check_parameter_name(param_info_st, "Device.DeviceInfo.", 0), 0);
+    assert_int_not_equal(check_parameter_name(param_info_st, "Device.NoAccessRights.", 0), 0);
 #if PRINT_RESULT
     for(int i = 0; i < num_param; i++) {
         printf("-> Parameter/Object [%s] , Writable= %d\n", param_info_st[i]->parameterName, param_info_st[i]->writable);
@@ -756,6 +758,39 @@ void test_dmadapter_GetParametersValues_Parameters(UNUSED void** state) {
     assert_string_equal(params_values_st[2]->parameterName, paramPath3);
     assert_int_equal(params_values_st[2]->type, DM_ENG_ParameterType_UINT);
     assert_string_equal(params_values_st[2]->value, "10");
+
+    if(rv == 0) {
+    #if PRINT_RESULT
+        printf("-----------------------------test_amx_GetParametersValues_Parameters---------------------------------\n");
+        for(int i = 0; i < nb_param; i++) {
+            printf("--> Parameter [%s] : type= %d , val= %s \n", (char*) params_values_st[i]->parameterName,
+                   params_values_st[i]->type, (char*) params_values_st[i]->value);
+        }
+        printf("-----------------------------test_amx_GetParametersValues_Parameters---------------------------------\n");
+    #endif
+        if(params_values_st) {
+            DM_ENG_deleteAllParameterValueStruct(params_values_st);
+            free(params_values_st);
+        }
+    }
+}
+
+void test_dmadapter_GetParametersValues_Parameter_noAccessRights(UNUSED void** state) {
+    int num_param = 4;
+    char* paramPath1 = "Device.NoAccessRights.Status";
+
+    DM_ENG_ParameterValueStruct** params_values_st = NULL;
+    char* paramsArray[num_param + 1];
+    paramsArray[0] = paramPath1;
+    paramsArray[1] = NULL;
+
+    int rv = DM_ENG_GetParameterValues(DM_ENG_EntityType_ACS, (char**) paramsArray, &params_values_st);
+    assert_int_not_equal(rv, 0);
+
+    int nb_param = DM_ENG_tablen((void**) params_values_st);
+    assert_int_equal(nb_param, 0);
+
+
 
     if(rv == 0) {
     #if PRINT_RESULT
