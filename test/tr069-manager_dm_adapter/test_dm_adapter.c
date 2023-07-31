@@ -257,6 +257,7 @@ int test_dmadapter_teardown(UNUSED void** state) {
     DM_ENG_DeactivateNotification(DM_ENG_EntityType_ANY);
     DM_ENG_Device_Unload();
 
+    handle_events();
     amxb_be_remove_all();
 
     amxo_parser_clean(&parser);
