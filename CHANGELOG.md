@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.26.2 - 2023-07-31(12:26:10 +0000)
+
+### Fixes
+
+- fix unit tests in tr069-manager
+
 ## Release v1.26.1 - 2023-07-31(05:38:39 +0000)
 
 ### Fixes
