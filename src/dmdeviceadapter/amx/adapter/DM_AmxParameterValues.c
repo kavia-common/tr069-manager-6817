@@ -234,7 +234,7 @@ int DM_ENG_Device_GetParameterValues_GetValues(dm_amx_env_t* amx, const char* pa
     ret = amxb_get(amx->bus_ctx, path, (path[strlen(path) - 1] == '.') ? 20 : 1, &get, 10);
 
     if((ret != AMXB_STATUS_OK) || amxc_var_is_null(&get)) {
-        if((ret == AMXB_ERROR_NOT_SUPPORTED_SCHEME) || (ret == AMXB_ERROR_NOT_SUPPORTED_OP)) {
+        if((ret == AMXB_ERROR_NOT_SUPPORTED_SCHEME)) {
             SetErrorGotoStop(0, "Skip non tr181-component, path [%s] %d", path, ret);
         } else {
             SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Failed to get object path [%s] error [%d] ", path, ret);
