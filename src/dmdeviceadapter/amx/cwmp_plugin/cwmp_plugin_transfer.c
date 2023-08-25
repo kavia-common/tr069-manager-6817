@@ -203,6 +203,36 @@ stop:
     return ret;
 }
 
+static void filetransfer_flash_firmware(const char* image_file) {
+    SAH_TRACEZ_INFO(ME, "Attemp to flash image %s", image_file);
+    amxc_var_t args;
+    amxc_string_t url;
+    amxb_bus_ctx_t* bus_ctx = amxb_be_who_has("DeviceInfo.");
+
+    when_null_trace(image_file, stop, ERROR, "there is no image to flash");
+    when_null_trace(bus_ctx, stop, ERROR, "DeviceInfo ctx not found?");
+
+    amxc_var_init(&args);
+    amxc_string_init(&url, 0);
+    amxc_var_set_type(&args, AMXC_VAR_ID_HTABLE);
+    amxc_string_setf(&url, "file:///tmp/flash.swu");
+
+    amxc_var_add_key(cstring_t, &args, "URL", amxc_string_get(&url, 0));
+    amxc_var_add_key(bool, &args, "AutoActivate", true);
+
+    if(amxb_call(bus_ctx, "DeviceInfo.FirmwareImage.[active].", "Download", &args, NULL, 5)) {
+        SAH_TRACEZ_ERROR(ME, "Failed to Call DeviceInfo.FirmwareImage Download");
+        if(access(image_file, F_OK) == 0) {
+            remove(image_file);
+        }
+    }
+
+stop:
+    amxc_var_clean(&args);
+    amxc_string_clean(&url);
+    return;
+}
+
 static void filetransfer_download_finished(const char* path) {
     const char* fileType = NULL;
     const char* targetFileName = NULL;
@@ -216,7 +246,8 @@ static void filetransfer_download_finished(const char* path) {
     when_null_trace(targetFileName, stop, ERROR, "targetFileName is null?");
 
     if(strstr(fileType, "1")) {
-        script = DL_FW_UPGRADE_SCRIPT;
+        filetransfer_flash_firmware(targetFileName);
+        goto stop;
     } else if(strstr(fileType, "2")) {
         script = DL_WEB_CONTENT_SCRIPT;
     } else if(strstr(fileType, "3")) {
@@ -404,16 +435,21 @@ stop:
 static void filetransfer_download_set_target_file(ftx_request_t* filetransfer_request, amxc_var_t* args) {
     const char* targetFileName = GETP_CHAR(args, "TargetFileName");
     const char* cmdKey = GETP_CHAR(args, "CommandKey");
+    const char* fileType = GETP_CHAR(args, "FileType");
     amxd_object_t* transfer = amxd_dm_findf(cwmp_plugin_get_dm(), TRANSFER_ENTRY_PATH "[CommandKey == '%s'].", cmdKey);
     amxc_string_t file_name;
     amxc_string_init(&file_name, 0);
 
     when_null_trace(transfer, stop, ERROR, "failed to find transfer with key [%s]", cmdKey);
 
-    if(targetFileName && *targetFileName) {
-        amxc_string_setf(&file_name, "/tmp/%s", targetFileName);
+    if(strstr(fileType, "1")) {
+        amxc_string_setf(&file_name, "/tmp/%s", "flash.swu");
     } else {
-        amxc_string_setf(&file_name, "/tmp/dl_%s", cmdKey);
+        if(targetFileName && *targetFileName) {
+            amxc_string_setf(&file_name, "/tmp/%s", targetFileName);
+        } else {
+            amxc_string_setf(&file_name, "/tmp/dl_%s", cmdKey);
+        }
     }
 
     ftx_request_set_target_file(filetransfer_request, amxc_string_get(&file_name, 0));
