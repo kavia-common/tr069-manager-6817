@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.27.0 - 2023-08-25(13:24:27 +0000)
+
+### New
+
+- fw upgrade rewire to DeviceInfo upgrade API
+
 ## Release v1.26.2 - 2023-07-31(12:26:10 +0000)
 
 ### Fixes
