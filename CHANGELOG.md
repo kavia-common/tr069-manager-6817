@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.27.1 - 2023-09-06(10:07:48 +0000)
+
+### Fixes
+
+- Wrong behavior GPV with invalid path
+
 ## Release v1.27.0 - 2023-08-25(13:24:27 +0000)
 
 ### New
