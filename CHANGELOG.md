@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.27.2 - 2023-10-12(16:58:32 +0000)
+
+### Other
+
+- [VZ] TR-069 failed to retrieve parametershttps
+
 ## Release v1.27.1 - 2023-09-06(10:07:48 +0000)
 
 ### Fixes
