@@ -1,3 +1,5 @@
+#include "mod_sahtrace.odl";
+
 %config {
     name = "cwmp_plugin";
     import-dbg = false;
@@ -6,7 +8,7 @@
     // SAHTRACE
     sahtrace = {
         type = "syslog",
-        level = 200
+        level = "${default_log_level}"
     };
 
     // main files
@@ -37,9 +39,9 @@
     backends = ["/usr/bin/mods/amxb/mod-amxb-ubus.so"];
 
     trace-zones = {
-        CWMP_PLUGIN = 200,
-        ftx = 200,
-        ftx_func = 200
+        CWMP_PLUGIN = "${default_log_level}",
+        ftx = "${default_log_level}",
+        ftx_func = "${default_log_level}"
     };
 }
 
