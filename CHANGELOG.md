@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.29.1 - 2023-11-20(13:06:11 +0000)
+
+### Other
+
+- [prplos][Mxl-osp][tr69-manager] All tr69 cdrouter tests are failing
+
 ## Release v1.29.0 - 2023-10-24(08:33:43 +0000)
 
 ### Other
