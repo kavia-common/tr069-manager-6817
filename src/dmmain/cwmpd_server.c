@@ -296,10 +296,6 @@ static cwmp_status_t cwmp_server_reply_http_unauthorized(struct lws* wsi) {
         return cwmp_status_ko;
     }
 
-    if(lws_add_http_header_content_length(wsi, 0, &p, end)) {
-        return cwmp_status_ko;
-    }
-
     if(lws_finalize_write_http_header(wsi, start, &p, end)) {
         return cwmp_status_ko;
     }
