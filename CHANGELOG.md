@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.29.2 - 2023-11-22(12:04:27 +0000)
+
+### Other
+
+- ACS Session not created when ManagementServer.URL parameter is updated
+
 ## Release v1.29.1 - 2023-11-20(13:06:11 +0000)
 
 ### Other
