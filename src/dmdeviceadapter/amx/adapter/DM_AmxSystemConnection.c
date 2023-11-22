@@ -136,6 +136,7 @@ void DM_ENG_Device_SystemConnectionHandleParameterChanged(const char* path, cons
                    - First time connection of the CPE to the ACS after the ACS URL has been modified in any way. */
                 /* DNS resolution is needed before sending the bootstrap */
                 DM_ENG_NotificationInterface_engineEvent(EVENT_ENG_CLEAR_ACS_IP);
+                DM_ENG_NotificationInterface_engineEvent(EVENT_ENG_SRV_STOP);
                 DM_ENG_NotificationInterface_engineEvent(EVENT_ENG_URL_CHANGED);
             } else if(strcmp("AllowConnectionRequestFromUnknownHost", key) == 0) {
                 DM_ENG_NotificationInterface_engineEvent(EVENT_ENG_SRV_RESTART);

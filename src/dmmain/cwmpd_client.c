@@ -586,6 +586,7 @@ static cwmp_status_t cwmp_client_get_acsip() {
         acs_server_ip = strdup(acs_server_host);
     } else {
         //try to reuse the same ip from the last session
+        SAH_TRACEZ_INFO("CWMPD", "Try to reuse the same ip from the last session");
         if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM,
                                            DM_ENG_ACSIP,
                                            &acs_server_ip) != 0) {
@@ -711,6 +712,13 @@ cwmp_status_t cwmp_client_stop() {
 }
 
 void cwmp_client_clear_ACSIP() {
+    SAH_TRACEZ_INFO("CWMPD", "CLEAN ACSIP From data model");
+    if(DM_ENG_SetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ACSIP, "") != 0) {
+        SAH_TRACEZ_ERROR("CWMPD", "ACSIP failed to update data model");
+    }
+    if(DM_ENG_SetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ACSIPLIST, "") != 0) {
+        SAH_TRACEZ_ERROR("CWMPD", "failed to update data model ACSIPLIST");
+    }
     CWMPD_FREE(acs_server_ip);
 }
 

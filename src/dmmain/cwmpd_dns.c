@@ -95,8 +95,6 @@ static amxp_timer_t* dns_timeout_timer = NULL;
 static int dns_ttl_val = 0;
 // list of ACS addresses with ttl.
 static amxc_llist_t ainfo_list;
-static int ainfo_count = 0;
-static int last_ip_index = -1;
 
 static void ainfo_list_clean(amxc_llist_it_t* it) {
     addr_info_t* ainfo = amxc_container_of(it, addr_info_t, it);
@@ -159,6 +157,7 @@ static void cwmp_dns_update_dm() {
         SAH_TRACEZ_ERROR("CWMPD", "failed to update data model ACSIPLIST");
     }
     amxc_string_clean(&addr_list_str);
+    amxc_llist_clean(&ainfo_list, ainfo_list_clean);
 }
 
 //3.1 ACS Discovery
@@ -190,7 +189,6 @@ static void cwmp_dns_read_ai(struct ares_addrinfo* ai) {
     //clean any old data
     amxc_llist_clean(&ainfo_list, ainfo_list_clean);
     amxc_llist_init(&ainfo_list);
-    ainfo_count = 0;
     dns_ttl_val = INT_MAX;
     const struct ares_addrinfo_node* ai_cur;
     char ip[46] = "";
@@ -228,7 +226,6 @@ static void cwmp_dns_read_ai(struct ares_addrinfo* ai) {
         }
         amxc_llist_it_init(&new_addrinfo->it);
         amxc_llist_append(&ainfo_list, &new_addrinfo->it);
-        ainfo_count++;
     }
 }
 
@@ -444,7 +441,6 @@ static void cwmp_dns_set_static_ip(const char* host) {
     amxc_llist_clean(&ainfo_list, ainfo_list_clean);//clean old ips
     amxc_llist_it_init(&new_addrinfo->it);
     amxc_llist_append(&ainfo_list, &new_addrinfo->it);
-    ainfo_count++;
 
     if(DM_ENG_SetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ACSIPLIST, host) != 0) {
         SAH_TRACEZ_ERROR("CWMPD", "ACSIP : failed to update data model");
@@ -546,35 +542,37 @@ cwmp_status_t cwmp_dns_stop() {
 // new IP address. This behavior ensures that CPEs will balance their requests between different ACSs
 // if multiple IP addresses represent different ACSs.
 void cwmp_dns_get_random_ip(char** ip) {
+    char* acsiplist = NULL;
+    int64_t count = 0;
+    amxc_string_t addr_list_str;
+    amxc_var_t ip_list;
+    amxc_string_init(&addr_list_str, 0);
+    amxc_var_init(&ip_list);
 
-    if(ainfo_count <= 0) {
-        if(dns_clean_timer == NULL) {
-            //No DNS cache, start a new DNS query
-            cwmp_dns_resolve(false);
-        }
-    } else {
-        int count = 0;
-        addr_info_t* random_ip = NULL;
-        amxc_llist_it_t* addr = NULL;
-        srand(time(0));
-        int rand_ip = (rand() % ainfo_count);//stupid, but enought for our use case
-        if((rand_ip == last_ip_index) && (ainfo_count > 1)) {
-            rand_ip = ((rand_ip + 1) >= ainfo_count) ? (rand_ip - 1) : (rand_ip + 1);
-            rand_ip = (rand_ip < 0) ? 0 : rand_ip;
-        }
-        last_ip_index = rand_ip;
-        //find a new IP
-        addr = amxc_llist_get_first(&ainfo_list);
-        while(count != rand_ip) {
-            addr = amxc_llist_it_get_next(addr);
+    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ACSIPLIST, &acsiplist) != 0) {
+        SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the ACSIP list");
+    }
+    if((acsiplist != NULL) && (strlen(acsiplist) > 1)) {
+        amxc_string_set(&addr_list_str, acsiplist);
+        amxc_string_csv_to_var(&addr_list_str, &ip_list, NULL);
+        amxc_var_for_each(var, &ip_list) {
             count++;
         }
-        random_ip = amxc_llist_it_get_data(addr, addr_info_t, it);
-        if(!addr || !random_ip) {
-            SAH_TRACEZ_ERROR("CWMPD", "Failed to get new ACS IP");
-            return;
+        if(count >= 1) {
+            int rand_index = (rand() % count);
+            amxc_var_t* ip_var = amxc_var_get_index(&ip_list, rand_index, AMXC_VAR_FLAG_DEFAULT);
+            const char* ipaddr = amxc_var_constcast(cstring_t, ip_var);
+            if(ipaddr != NULL) {
+                SAH_TRACEZ_ERROR("CWMPD", "Select  ip [%s] from list", ipaddr);
+                *ip = strdup(ipaddr);
+            }
         }
-        SAH_TRACEZ_INFO("CWMPD", "trying ACS ip [%s]", random_ip->ip);
-        *ip = strdup(random_ip->ip);
+    } else {
+        SAH_TRACEZ_INFO("CWMPD", "There is no ip on datamodel");
+        if(dns_clean_timer == NULL) {
+            //No DNS cache, start a new DNS query
+            SAH_TRACEZ_ERROR("CWMPD", "Start a new dsn resolution");
+            cwmp_dns_resolve(false);
+        }
     }
 }
