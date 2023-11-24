@@ -43,6 +43,11 @@
         ftx = "${default_log_level}",
         ftx_func = "${default_log_level}"
     };
+
+    pcm_svc_config = {
+        "Objects" = "ManagementServer",
+        "BackupFiles" = "${name}"
+    };
 }
 
 import "${name}.so" as "${name}";
@@ -71,3 +76,5 @@ requires "DHCPv6Server.";
     on event "dm:object-changed" call writePreferredIPVersion
         filter 'path == "ManagementServer.InternalSettings." && contains("parameters.PreferredIPVersion")';
 }
+
+#include "mod_pcm_svc.odl";
