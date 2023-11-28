@@ -44,7 +44,7 @@ CFLAGS += -Werror -Wall -Wextra \
 ifeq ($(CC_NAME),g++)
 	CFLAGS += -std=c++2a
 else
-	CFLAGS += -std=c11
+	CFLAGS += -std=gnu11
 endif
 
 LDFLAGS += -ldl $(STAGING_LIBDIR) -lwebsockets \

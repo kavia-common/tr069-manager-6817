@@ -35,7 +35,7 @@ CFLAGS += -D_GNU_SOURCE -DSAHTRACES_ENABLED -DSAHTRACES_LEVEL_DEFAULT=700 \
 ifeq ($(CC_NAME),g++)
 	CFLAGS += -std=c++2a
 else
-	CFLAGS += -std=c11
+	CFLAGS += -std=gnu11
 endif
 
 LDFLAGS += $(STAGING_LIBDIR) -ldl -lsahtrace \

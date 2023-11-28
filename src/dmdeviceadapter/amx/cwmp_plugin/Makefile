@@ -35,7 +35,7 @@ CFLAGS += -D_DEFAULT_SOURCE
 ifeq ($(CC_NAME),g++)
     CFLAGS += -std=c++2a
 else
-	CFLAGS += -Wstrict-prototypes -Wold-style-definition -Wnested-externs -std=c11
+	CFLAGS += -Wstrict-prototypes -Wold-style-definition -Wnested-externs -std=gnu11
 endif
 
 LDFLAGS += $(STAGING_LIBDIR) -shared -fPIC
