@@ -45,7 +45,6 @@ install: all
 	$(INSTALL) -D -p -m 0755 src/dmdeviceadapter/amx/cwmp_plugin/scripts/tr069_3_conf_apply.sh $(DEST)$(BINDIR)/tr069_3_conf_apply
 	$(INSTALL) -D -p -m 0755 output/$(MACHINE)/libdmda_amx/libdmda_amx.so $(DEST)$(LIBDIR)/libdmda_amx.so
 	$(INSTALL) -D -p -m 0755 output/$(MACHINE)/cwmpd/cwmpd $(DEST)$(BINDIR)/cwmpd
-	$(INSTALL) -D -p -m 0660 acl/admin/cwmp_plugin.json $(DEST)$(ACLDIR)/admin/cwmp_plugin.json
 	$(INSTALL) -D -p -m 0660 acl/cwmp/cwmp_plugin.json $(DEST)$(ACLDIR)/cwmp/cwmp_plugin.json
 
 package: all
@@ -65,7 +64,6 @@ package: all
 	$(INSTALL) -D -p -m 0755 src/dmdeviceadapter/amx/cwmp_plugin/scripts/tr069_3_conf_apply.sh $(PKGDIR)$(BINDIR)/tr069_3_conf_apply
 	$(INSTALL) -D -p -m 0755 output/$(MACHINE)/libdmda_amx/libdmda_amx.so $(PKGDIR)$(LIBDIR)/libdmda_amx.so
 	$(INSTALL) -D -p -m 0755 output/$(MACHINE)/cwmpd/cwmpd $(PKGDIR)$(BINDIR)/cwmpd
-	$(INSTALL) -D -p -m 0660 acl/admin/cwmp_plugin.json $(PKGDIR)$(ACLDIR)/admin/cwmp_plugin.json
 	$(INSTALL) -D -p -m 0660 acl/cwmp/cwmp_plugin.json $(PKGDIR)$(ACLDIR)/cwmp/cwmp_plugin.json
 	cd $(PKGDIR) && $(TAR) -czvf ../$(COMPONENT)-$(VERSION).tar.gz .
 	cp $(PKGDIR)../$(COMPONENT)-$(VERSION).tar.gz .
