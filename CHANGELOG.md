@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.30.1 - 2023-12-04(14:29:21 +0000)
+
+### Other
+
+- The DUT no longer listens to connection requests on the port after updating the ACS URL
+
 ## Release v1.30.0 - 2023-12-01(15:53:02 +0000)
 
 ### Security
