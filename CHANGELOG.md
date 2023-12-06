@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.30.2 - 2023-12-06(15:17:05 +0000)
+
+### Other
+
+- [TR-069] Connection Request Failed
+
 ## Release v1.30.1 - 2023-12-04(14:29:21 +0000)
 
 ### Other
