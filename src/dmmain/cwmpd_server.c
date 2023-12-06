@@ -290,9 +290,7 @@ static cwmp_status_t cwmp_server_reply_http_unauthorized(struct lws* wsi) {
         return cwmp_status_ko;
     }
 
-    if(lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_CONTENT_TYPE,
-                                    (const unsigned char*) "text/html", 9,
-                                    &p, end)) {
+    if(lws_add_http_header_content_length(wsi, 0, &p, end)) {
         return cwmp_status_ko;
     }
 
@@ -301,6 +299,27 @@ static cwmp_status_t cwmp_server_reply_http_unauthorized(struct lws* wsi) {
     }
     DM_ENG_FREE(requestDigestMsg);
     return cwmp_status_ok;
+}
+
+static int cwmp_server_reply_http_no_content(struct lws* wsi) {
+    unsigned char buf[LWS_PRE + 1024];
+    unsigned char* start = &buf[LWS_PRE];
+    unsigned char* p = start;
+    unsigned char* end = &buf[sizeof(buf) - LWS_PRE - 1];
+
+    if(lws_add_http_header_status(wsi, HTTP_STATUS_NO_CONTENT, &p, end)) {
+        return 1;
+    }
+
+    if(lws_add_http_header_content_length(wsi, 0, &p, end)) {
+        return 1;
+    }
+
+    if(lws_finalize_write_http_header(wsi, start, &p, end)) {
+        return 1;
+    }
+
+    return 0;
 }
 
 // 3.2.2: The CPE MUST accept Connection Requests from any source that has the correct authentication parameters for the target CPE.
@@ -385,11 +404,14 @@ static int cwmp_server_handle_request(struct lws* wsi, char* in, int len) {
     if(cwmp_server_validate_authentication(wsi, requested_uri) == cwmp_status_ko) {
         SAH_TRACEZ_INFO("CWMPD", "Ask ACS to provide authentication headers");
         cwmp_server_reply_http_unauthorized(wsi);
+        if(lws_http_transaction_completed(wsi)) {
+            rc = -1;
+        }
     } else {
         //authentication OK, schedule a new session
         if(DM_ENG_RequestConnection(DM_ENG_EntityType_ACS) == 0) {
             // Send a HTTP response with either the code 200 or 204
-            lws_return_http_status(wsi, HTTP_STATUS_NO_CONTENT, NULL);
+            cwmp_server_reply_http_no_content(wsi);
             rc = -1;//close TCP connection immediately
         } else {
             lws_return_http_status(wsi, HTTP_STATUS_SERVICE_UNAVAILABLE, HTTP_STRING_SVR_BUSY);
