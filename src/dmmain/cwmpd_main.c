@@ -139,6 +139,9 @@ static cwmp_status_t cwmp_app_parse_config(void) {
     cwmp_app.da_path = GETP_CHAR(tr069_config, "cwmpd_adapter_path");
     cwmp_app.persistent_rpc_path = GETP_CHAR(tr069_config, "cwmpd_persistent_rpc_path");
     cwmp_app.trustedCA = GETP_CHAR(tr069_config, "cwmpd_certs_file");
+    cwmp_app.ssl_client_cert = GETP_CHAR(tr069_config, "cwmpd_client_certs");
+    cwmp_app.ssl_client_priv_key = GETP_CHAR(tr069_config, "cwmpd_client_privatekey");
+
     cwmp_app.pidFile = GETP_CHAR(tr069_config, "cwmpd_pid_file");
     prefix_file = GETP_CHAR(config, "prefix_file");
     cwmp_app.aclfile = GETP_CHAR(tr069_config, "cwmpd_acl_file");
