@@ -61,8 +61,6 @@ requires "DeviceInfo.";
 requires "Time.";
 requires "NetModel.Intf.";
 requires "Firewall.";
-requires "DHCPv4Server.";
-requires "DHCPv6Server.";
 
 %define {
     entry-point cwmp_plugin.cwmp_plugin_main;
@@ -70,7 +68,11 @@ requires "DHCPv6Server.";
 
 %populate {
     on event "dm:object-changed" call updateConnectionRequestURL
-        filter 'path == "ManagementServer.ConnRequest." && (contains("parameters.ConnRequestHost") || contains("parameters.ConnRequestPort") || contains("parameters.ConnRequestPath"))';
+        filter 'path == "ManagementServer.ConnRequest." && (contains("parameters.ConnRequestHost"))';
+    on event "dm:object-changed" call updateConnectionRequestPath
+        filter 'path == "ManagementServer.ConnRequest." && contains("parameters.ConnRequestPath")';
+    on event "dm:object-changed" call updateConnectionRequestPort
+        filter 'path == "ManagementServer.ConnRequest." && contains("parameters.ConnRequestPort")';
     on event "dm:object-changed" call writeInterface
         filter 'path == "ManagementServer." && contains("parameters.Interface")';
     on event "dm:object-changed" call writePreferredIPVersion

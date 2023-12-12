@@ -54,17 +54,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <signal.h>
-#include <getopt.h>
-#include <ctype.h>
-#include <sys/types.h>
-#include <string.h>
-#include <errno.h>
-#include <sys/ioctl.h>
-#include <arpa/inet.h>
-#include <net/if.h>
-#include <netinet/in.h>
-
 #include <debug/sahtrace.h>
 #include "dmmain/cwmpd.h"
 #include <dmcom/dm_com_digest.h>
@@ -88,139 +77,6 @@ char* g_randomCpeUrl = NULL;
 static struct lws_context_creation_info lws_server_ctx_info;
 static struct lws_context* lws_server_ctx = NULL; /* server lws context */
 static struct lws_vhost* lws_server_vhost = NULL; /* server vhost */
-
-static int server_getHWAddressFromIp(const char* ip, char* macbuf, size_t buflen) {
-    char ifbuf[1024];
-    int total;
-    struct ifconf ifc;
-    struct ifreq* ifr;
-    int sock;
-    int i;
-    char ipbuf[INET6_ADDRSTRLEN];
-
-    ipbuf[0] = '\0';
-    macbuf[0] = 0;
-    sock = socket(AF_INET, SOCK_DGRAM, 0);
-    if(sock < 0) {
-        SAH_TRACEZ_ERROR("CWMPD", "cannot create socket");
-        return 1;
-    }
-
-    ifc.ifc_len = sizeof(ifbuf);
-    ifc.ifc_buf = ifbuf;
-    if(ioctl(sock, SIOCGIFCONF, &ifc) < 0) {
-        SAH_TRACEZ_ERROR("CWMPD", "ioctl failed");
-        close(sock);
-        return 1;
-    }
-
-    ifr = ifc.ifc_req;
-    total = ifc.ifc_len / sizeof(struct ifreq);
-    for(i = 0; i < total; i++) {
-        struct ifreq* item = &ifr[i];
-        struct sockaddr_in* sa = (struct sockaddr_in*) &item->ifr_addr;
-        switch(sa->sin_family) {
-        case AF_INET:
-        case AF_INET6:
-            if(inet_ntop(sa->sin_family, &sa->sin_addr, ipbuf, sizeof(ipbuf)) == NULL) {
-                close(sock);
-                return -1;
-            }
-            break;
-        default:
-            break;
-        }
-        if(strcmp(ipbuf, ip) == 0) {
-            if(ioctl(sock, SIOCGIFHWADDR, item) < 0) {
-                SAH_TRACEZ_ERROR("CWMPD", "ioctl(SIOCGIFHWADDR) failed");
-                close(sock);
-                return 1;
-            }
-            snprintf(macbuf, buflen, "%02hhx:%02hhx:%02hhx:%02hhx:%02x:%02hhx\n",
-                     item->ifr_hwaddr.sa_data[0], item->ifr_hwaddr.sa_data[1],
-                     item->ifr_hwaddr.sa_data[2], item->ifr_hwaddr.sa_data[3],
-                     item->ifr_hwaddr.sa_data[4], item->ifr_hwaddr.sa_data[5]);
-        }
-    }
-    close(sock);
-    return 0;
-}
-
-static char* server_generateMacBasedPath(const char* ip) {
-    char token[] = "ABCDE67FGHqrtuvwSTU48VWabcdefIJKL39MNPQRghijkmnpxyz2";
-    unsigned char nb_tokens = strlen(token);
-    unsigned short rnd_idx = 59;
-    char* path = (char*) calloc(1, sizeof(char) * (CPE_URL_SIZE + 1));
-    char macAddress[40] = {0};
-    char* seed = macAddress;
-    char tmp[40] = {0};
-
-    // Use MACAddress as Connection Request Path
-    memset(macAddress, 0, sizeof(macAddress));
-    server_getHWAddressFromIp(ip, macAddress, sizeof(macAddress));
-    sprintf(tmp, "%.2X:%.2X:%.2X:%.2X:%.2X:%.2X", macAddress[0], macAddress[1], macAddress[2], macAddress[3], macAddress[4], macAddress[5]);
-    SAH_TRACEZ_INFO("CWMPD", "MACAddress: %s", tmp);
-
-    for(uint i = 0; i < CPE_URL_SIZE; i++) {
-        if(!*seed) { // end of seed string reached, recommence from start
-            seed = macAddress;
-        }
-        rnd_idx = (rnd_idx << 1) ^ *seed++;
-        path[i] = token[rnd_idx % nb_tokens];
-    }
-    return path;
-}
-
-// Create the randomly chosen CPE URL (This URL is provided in the inform message
-// and is used by the ACS to connect to the CPE HTTP Server). The Randomly Chosen
-// URL must be used by the DM_ENGINE to build the inform message.
-static int cwmp_server_create_url() {
-    char* random_cpe_url = NULL;
-    char* url_env = getenv("TR069_URL_PATH");
-    if(url_env) {
-        random_cpe_url = strdup(url_env);
-    } else {
-        char* pathType = NULL;
-        if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_CONNECTIONREQUESTPATHTYPE, &pathType) != 0) {
-            SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch DM_ENG_CONNECTIONREQUESTPATHTYPE");
-            return -1;
-        }
-        if(strcmp(pathType, "Fixed-Default") == 0) {
-            if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_CONNECTIONREQUESTPATH, &random_cpe_url) != 0) {
-                SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch DM_ENG_CONNECTIONREQUESTPATH");
-                return -1;
-            }
-        } else if(strncmp(pathType, "Random", strlen("Random")) == 0) {
-            random_cpe_url = (char*) malloc(CPE_URL_SIZE + 1);
-            _generateRandomString(random_cpe_url, CPE_URL_SIZE);
-        } else if(strcmp(pathType, "Fixed-MacBased") == 0) {
-            char* host = NULL;
-            if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_LOCALIPADDRESS, &host) != 0) {
-                SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the local ip address");
-                return -1;
-            }
-            random_cpe_url = server_generateMacBasedPath(host);
-            free(host);
-        } else {
-            SAH_TRACEZ_ERROR("CWMPD", "Not a valid path type, generating random url");
-            random_cpe_url = (char*) malloc(CPE_URL_SIZE + 1);
-            _generateRandomString(random_cpe_url, CPE_URL_SIZE);
-        }
-
-        free(pathType);
-    }
-
-    if(DM_ENG_SetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_CONNECTIONREQUESTPATH, random_cpe_url) != 0) {
-        SAH_TRACEZ_ERROR("CWMPD", "failed to set the random path in the datamodel");
-        free(random_cpe_url);
-        return -1;
-    }
-    free(g_randomCpeUrl);
-    g_randomCpeUrl = strdup(random_cpe_url);
-    SAH_TRACEZ_INFO("CWMPD", "CPE URL: %s", g_randomCpeUrl);
-    free(random_cpe_url);
-    return 0;
-}
 
 // 3.2.2: The Connection Request MUST use an HTTP 1.1 GET to a specific URL designated by the CPE. The
 //URL value is available as read-only Parameter on the CPE. The path of this URL value SHOULD be
@@ -502,8 +358,9 @@ cwmp_status_t cwmp_server_init() {
         goto error;
     }
     SAH_TRACEZ_INFO("CWMPD", "Connection request host %s, port = %s", server_host, server_port);
-    // Create the randomly chosen CPE URL
-    if(cwmp_server_create_url() != 0) {
+
+    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_CONNECTIONREQUESTPATH, &g_randomCpeUrl) != 0) {
+        SAH_TRACEZ_ERROR("CWMPD", "failed to get the random path in the datamodel");
         goto error;
     }
 

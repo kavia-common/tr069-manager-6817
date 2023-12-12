@@ -52,117 +52,67 @@
 **
 ****************************************************************************/
 
-#include <stdlib.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include <debug/sahtrace.h>
+#include <debug/sahtrace_macros.h>
+
 #include <amxc/amxc.h>
 #include <amxc/amxc_macros.h>
-#include <amxm/amxm.h>
+#include <amxp/amxp.h>
 #include "cwmp_plugin.h"
 
-#include <debug/sahtrace.h>
 
-#include <netmodel/client.h>
 
-static cwmp_plugin_app_t app;
-static amxm_shared_object_t* fw_module = NULL;
+int cwmp_proc_ctx_new(cwmp_proc_ctx_t** ctx,
+                      amxp_proc_ctrl_t* proc,
+                      proc_ctrl_cb_t cb,
+                      proc_ctrl_clean_cb_t clean_cb,
+                      void* priv) {
+    int ret = -1;
+    when_null(ctx, stop);
+    when_null(cb, stop);
 
-static void load_fw_controller(void) {
-    const char* controller = GETP_CHAR(cwmp_plugin_get_config(), "firewall.controller");
+    *ctx = (cwmp_proc_ctx_t*) calloc(1, sizeof(cwmp_proc_ctx_t));
+    when_null(*ctx, stop);
 
-    when_null(controller, exit);
-    if(amxm_so_open(&fw_module, "fw", controller)) {
-        SAH_TRACEZ_ERROR(ME, "Couldn't open fw controller (%s)", controller);
-        goto exit;
+    (*ctx)->cb = cb;
+    (*ctx)->clean_cb = clean_cb;
+    (*ctx)->proc = proc;
+    (*ctx)->priv = priv;
+    ret = 0;
+stop:
+    if((ret != 0) && (*ctx != NULL)) {
+        free(*ctx);
+        *ctx = NULL;
     }
-exit:
+    return ret;
+}
+
+void proc_finished_cb(const char* const event_name,
+                      UNUSED const amxc_var_t* const event_data,
+                      void* const priv) {
+    cwmp_proc_ctx_t* context = NULL;
+    SAH_TRACEZ_INFO(ME, "proc signal [%s], private data [%p]", event_name, priv);
+
+    when_null(priv, stop);
+    context = (cwmp_proc_ctx_t*) priv;
+    when_null(context, stop);
+    when_null(context->cb, clean);
+    context->cb(context->priv);
+    when_null(context->clean_cb, clean);
+    context->clean_cb(context->priv);
+
+clean:
+    if(context->proc) {
+        amxp_proc_ctrl_delete(&context->proc);
+    }
+    free(context);
+stop:
     return;
 }
 
-static void cwmp_plugin_init(amxd_dm_t* dm, amxo_parser_t* parser) {
-    SAH_TRACEZ_INFO(ME, "cwmp_plugin started");
-    app.dm = dm;
-    app.parser = parser;
 
-    const char* uri = (const char*) amxc_array_get_data_at(amxb_list_uris(), 0);
-    const amxc_llist_t* backends = NULL;
-    backends = amxc_var_constcast(amxc_llist_t, GET_ARG(cwmp_plugin_get_config(), "backends"));
-    const char* backend = amxc_var_constcast(cstring_t, amxc_var_from_llist_it(amxc_llist_get_first(backends)));
-
-    // setenv variables to be used by the Adapter to connect to bus
-    if(!STRING_EMPTY(uri)) {
-        setenv("AMXB_URI", uri, 1);
-        app.amxb_bus_ctx = amxb_find_uri(uri);
-    }
-    if(!STRING_EMPTY(backend)) {
-        setenv("AMXB_BACKEND", backend, 1);
-    }
-
-    load_fw_controller();
-    cwmp_plugin_netmodel_init();
-    cwmp_plugin_transfer_init();
-    cwmp_plugin_manageableDevice_init();
-}
-
-static void cwmp_plugin_exit(UNUSED amxd_dm_t* dm,
-                             UNUSED amxo_parser_t* parser) {
-    app.dm = NULL;
-    app.parser = NULL;
-    app.amxb_bus_ctx = NULL;
-    stop_cwmpd();
-    cwmp_plugin_netmodel_cleanup();
-    cwmp_plugin_manageableDevice_clean();
-    unsetenv("AMXB_URI");
-    unsetenv("AMXB_BACKEND");
-    SAH_TRACEZ_INFO(ME, "cwmp_plugin stopped");
-    if(fw_module) {
-        amxm_so_close(&fw_module);
-    }
-}
-
-void cwmp_plugin_netmodel_init(void) {
-    netmodel_initialize();
-    cwmp_plugin_netmodel_find_ip();
-}
-
-void cwmp_plugin_netmodel_cleanup(void) {
-    cwmp_plugin_netmodel_close_queries();
-    netmodel_cleanup();
-}
-
-amxd_dm_t* cwmp_plugin_get_dm(void) {
-    return app.dm;
-}
-
-amxo_parser_t* cwmp_plugin_get_parser(void) {
-    return app.parser;
-}
-
-amxc_var_t* cwmp_plugin_get_config(void) {
-    return &(app.parser->config);
-}
-
-amxb_bus_ctx_t* cwmp_plugin_get_bus(void) {
-    return app.amxb_bus_ctx;
-}
-
-int _cwmp_plugin_main(int reason, amxd_dm_t* dm, amxo_parser_t* parser) {
-
-    int retval = 0;
-
-    //SAH_TRACEZ_INFO(ME, "cwmp_plugin_main, reason: %i", reason);
-    switch(reason) {
-    case AMXO_START: // START
-        cwmp_plugin_init(dm, parser);
-        break;
-    case AMXO_STOP: // STOP
-        cwmp_plugin_exit(dm, parser);
-        break;
-    default:
-        retval = -1;
-        break;
-    }
-
-    return retval;
-}
-
+// GCOVR_EXCL_STOP

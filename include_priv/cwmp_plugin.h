@@ -104,10 +104,7 @@ amxo_parser_t* PRIVATE cwmp_plugin_get_parser(void);
 amxc_var_t* PRIVATE cwmp_plugin_get_config(void);
 amxb_bus_ctx_t* PRIVATE cwmp_plugin_get_bus(void);
 
-void cwmp_plugin_netmodel_init(void);
-void cwmp_plugin_netmodel_find_ip(void);
-void cwmp_plugin_netmodel_clean_intf_info(void);
-void cwmp_plugin_netmodel_cleanup(void);
+
 
 //Dm functions
 amxd_status_t _ManagementServer_updateConnectionRequestURL(amxd_object_t* object,
@@ -124,6 +121,14 @@ void _updateConnectionRequestURL(const char* const sig_name,
                                  const amxc_var_t* const data,
                                  void* const priv);
 
+void _updateConnectionRequestPath(UNUSED const char* const sig_name,
+                                  UNUSED const amxc_var_t* const data,
+                                  UNUSED void* const priv);
+
+void _updateConnectionRequestPort(UNUSED const char* const sig_name,
+                                  UNUSED const amxc_var_t* const data,
+                                  UNUSED void* const priv);
+
 void _writeInterface(const char* const sig_name,
                      const amxc_var_t* const data,
                      void* const priv);
@@ -136,9 +141,31 @@ void start_cwmpd(void);
 
 void stop_cwmpd(void);
 
+bool isAddressIpV6(const char* address);
+
 void proc_finished_cb(const char* const event_name,
                       const amxc_var_t* const event_data,
                       void* const priv);
+
+//amxp_proc_ctrl_t* get_cwmpd_proc(void);
+
+void cwmp_plugin_netmodel_open_queries(const char* intf_path);
+
+void cwmp_plugin_netmodel_close_queries(void);
+
+void cwmp_plugin_netmodel_init(void);
+
+void cwmp_plugin_netmodel_find_ip(void);
+
+void cwmp_plugin_netmodel_cleanup(void);
+
+void open_cwmpd_listening_port(void);
+
+void close_cwmpd_listening_port(void);
+
+void cwmp_plugin_update_conreq_host(const char* ip);
+
+void cwmp_plugin_update_conreq_port(uint16_t port);
 
 void cwmp_plugin_transfer_init(void);
 
