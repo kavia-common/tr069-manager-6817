@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.30.4 - 2023-12-12(13:07:53 +0000)
+
+### Other
+
+- [TR-69] cwmpd add client cert and private key
+
 ## Release v1.30.3 - 2023-12-11(16:11:30 +0000)
 
 ### Other
