@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.30.5 - 2023-12-12(16:10:45 +0000)
+
+### Fixes
+
+- Fw rule for conn_req recreated multiple times on wan reset
+
 ## Release v1.30.4 - 2023-12-12(13:07:53 +0000)
 
 ### Other
