@@ -138,9 +138,15 @@ static cwmp_status_t cwmp_app_parse_config(void) {
     amxc_var_t* tr069_config = amxc_var_get_key(config, "tr069-service", AMXC_VAR_FLAG_DEFAULT);
     cwmp_app.da_path = GETP_CHAR(tr069_config, "cwmpd_adapter_path");
     cwmp_app.persistent_rpc_path = GETP_CHAR(tr069_config, "cwmpd_persistent_rpc_path");
-    cwmp_app.trustedCA = GETP_CHAR(tr069_config, "cwmpd_certs_file");
-    cwmp_app.ssl_client_cert = GETP_CHAR(tr069_config, "cwmpd_client_certs");
-    cwmp_app.ssl_client_priv_key = GETP_CHAR(tr069_config, "cwmpd_client_privatekey");
+    if(access(GETP_CHAR(tr069_config, "cwmpd_certs_file"), F_OK) == 0) {
+        cwmp_app.trustedCA = GETP_CHAR(tr069_config, "cwmpd_certs_file");
+    }
+    if(access(GETP_CHAR(tr069_config, "cwmpd_client_certs"), F_OK) == 0) {
+        cwmp_app.ssl_client_cert = GETP_CHAR(tr069_config, "cwmpd_client_certs");
+    }
+    if(access(GETP_CHAR(tr069_config, "cwmpd_client_privatekey"), F_OK) == 0) {
+        cwmp_app.ssl_client_priv_key = GETP_CHAR(tr069_config, "cwmpd_client_privatekey");
+    }
 
     cwmp_app.pidFile = GETP_CHAR(tr069_config, "cwmpd_pid_file");
     prefix_file = GETP_CHAR(config, "prefix_file");
