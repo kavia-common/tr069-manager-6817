@@ -323,6 +323,17 @@ static int cwmp_client_connection_established_cb(struct lws* wsi) {
     SAH_TRACEZ_INFO("CWMPD", "Server return code [%d]", http_status);
 
     if(http_status == HTTP_NO_CONTENT) {
+        bool empty_http_sent = false;
+        if(pending_msg && (strcmp(pending_msg, "") == 0)) {
+            SAH_TRACEZ_INFO("CWMPD", "Empty HTTP POST sent");
+            empty_http_sent = true;
+        }
+
+        if(DM_ENG_IsReadyToClose(DM_ENG_EntityType_ACS) && empty_http_sent) {
+            SAH_TRACEZ_INFO("CWMPD", "Close Session");
+            lws_wsi_close(wsi, LWS_TO_KILL_ASYNC);
+        }
+
         //closing free any message
         CWMPD_FREE(pending_msg);
     } else if(http_status == HTTP_STATUS_UNAUTHORIZED) {
