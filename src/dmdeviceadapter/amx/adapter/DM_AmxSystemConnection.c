@@ -206,6 +206,7 @@ void DM_ENG_Device_SystemConnectionHandleParameterChanged(const char* path, cons
         const char* syncronized = GETP_CHAR(parameters, "Status.to");
         if(syncronized && (strcmp("Synchronized", syncronized) == 0)) {
             char* periodicInformTime = NULL;
+            DM_ENG_InformMessageScheduler_time_synchronized_notification();
             if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM,
                                                DM_ENG_PERIODICINFORMTIME,
                                                &periodicInformTime) == 0) {
