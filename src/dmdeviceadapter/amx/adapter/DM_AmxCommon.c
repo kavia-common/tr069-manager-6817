@@ -149,6 +149,8 @@ DM_ENG_ParameterType DM_ENG_Device_Common_ConvertParameterType(u_int32_t type) {
     case AMXC_VAR_ID_UINT64:
         return DM_ENG_ParameterType_UINT;
     case AMXC_VAR_ID_CSTRING:
+    case AMXC_VAR_ID_CSV_STRING:
+    case AMXC_VAR_ID_SSV_STRING:
         return DM_ENG_ParameterType_STRING;
     case AMXC_VAR_ID_BOOL:
         return DM_ENG_ParameterType_BOOLEAN;

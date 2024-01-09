@@ -85,53 +85,6 @@
 
 /**
    @brief
-   Simple Helper to search the right parameter type
-
-   @details
-   Helper :search the right parameter type
-   used to work arround ubus problem of the types supported.
-
-   @param bus_ctx bus env variable
-   @param object object Path
-   @param parameter parameter name without the object prefix
-
-   @return
-   type (integer id of the type)
- */
-static int DM_ENG_Device_GetParameterValues_FindType(amxb_bus_ctx_t* bus_ctx, const char* object, const char* parameter) {
-    int type = -1;
-    int rv = 0;
-    amxc_var_t desc;
-    amxc_var_t* param_var = NULL;
-    amxc_string_t paramPath;
-    amxc_string_init(&paramPath, 0);
-    amxc_var_init(&desc);
-
-    rv = amxb_describe(bus_ctx, object, AMXB_FLAG_PARAMETERS, &desc, 1);
-
-    if(((rv != 0) || amxc_var_is_null(&desc))) {
-        type = -1;
-        goto stop;
-    }
-    amxc_string_setf(&paramPath, "0.parameters.%s", parameter);
-
-    param_var = GETP_ARG(&desc, amxc_string_get(&paramPath, 0));
-    if(!param_var) {
-        type = -1;
-        goto stop;
-    }
-    type = GET_INT32(param_var, "type_id");
-
-stop:
-    amxc_string_clean(&paramPath);
-    amxc_var_clean(&desc);
-    return type;
-}
-
-
-
-/**
-   @brief
    Simple Helper to read and parse the result variant
 
    @details
@@ -153,6 +106,8 @@ static int DM_ENG_Device_GetParameterValues_ParseValues(dm_amx_env_t* amx, const
     DM_ENG_ParameterValueStruct* dmvs = NULL;
     const amxc_htable_t* htable = NULL;
     amxc_string_t param_name;
+    amxc_var_t desc;
+    amxc_var_init(&desc);
 
     htable = amxc_var_constcast(amxc_htable_t, GETI_ARG(object, 0));
 
@@ -161,16 +116,31 @@ static int DM_ENG_Device_GetParameterValues_ParseValues(dm_amx_env_t* amx, const
         amxc_var_t* hit_val = amxc_var_from_htable_it(hit);
         const amxc_htable_t* param = amxc_var_constcast(amxc_htable_t, hit_val);
 
+        if(amxb_describe(amx->bus_ctx, key, AMXB_FLAG_PARAMETERS, &desc, 1)) {
+            SAH_TRACEZ_WARNING("DM_DA", "amxb_describe failed for [%s], parameter types maybe reported wrong in the GPV response", key);
+        }
+
         amxc_htable_iterate(hit_param, param) {
-            const char* paramkey = amxc_htable_it_get_key(hit_param);
+            int32_t type = -1;
+            char* param_val = NULL;
             char* alias_path = NULL;
+            const char* paramkey = amxc_htable_it_get_key(hit_param);
             amxc_var_t* param_var = amxc_var_from_htable_it(hit);
             amxc_var_t* value = GETP_ARG(param_var, paramkey);
 
-            u_int32_t type = DM_ENG_Device_GetParameterValues_FindType(amx->bus_ctx, key, paramkey);
-            char* param_val = amxc_var_dyncast(cstring_t, value);
+            amxc_string_init(&param_name, 0);
+            amxc_string_setf(&param_name, "0.parameters.%s", paramkey);
+            type = GET_INT32(GETP_ARG(&desc, amxc_string_get(&param_name, 0)), "type_id");
+
+            if(type == -1) {
+                type = amxc_var_type_of(value);
+            }
+
+            param_val = amxc_var_dyncast(cstring_t, value);
+            amxc_string_clean(&param_name);
             amxc_string_init(&param_name, 0);
             amxc_string_setf(&param_name, "%s%s", key, paramkey);
+
             if(amx->instanceAlias) {
                 DM_ENG_Device_Common_IndexToAlias(amx, acspath, amxc_string_get(&param_name, 0), &alias_path);
             }
@@ -182,7 +152,9 @@ static int DM_ENG_Device_GetParameterValues_ParseValues(dm_amx_env_t* amx, const
             error = 0;
             amxc_string_clean(&param_name);
             free(param_val);
+            free(alias_path);
         }
+        amxc_var_clean(&desc);
     }
 
     SAH_TRACEZ_OUT("DM_DA");
