@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.30.7 - 2024-01-09(13:36:02 +0000)
+
+### Fixes
+
+- Issue : HOP-5294 Performance issue on getParameterValues
+
 ## Release v1.30.6 - 2023-12-15(16:41:35 +0000)
 
 ### Other
