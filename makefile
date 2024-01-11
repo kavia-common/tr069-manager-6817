@@ -50,6 +50,7 @@ install: all
 package: all
 	$(INSTALL) -D -p -m 0644 output/$(MACHINE)/cwmp_plugin/cwmp_plugin.so $(PKGDIR)/usr/lib/amx/cwmp_plugin/cwmp_plugin.so
 	$(INSTALL) -d -m 0755 $(PKGDIR)$(BINDIR)
+	rm -f $(PKGDIR)$(BINDIR)/cwmp_plugin
 	ln -sfr $(PKGDIR)$(BINDIR)/amxrt $(PKGDIR)$(BINDIR)/cwmp_plugin
 	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin.odl $(PKGDIR)/etc/amx/cwmp_plugin/cwmp_plugin.odl
 	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-defaults.odl $(PKGDIR)/etc/amx/cwmp_plugin/cwmp_plugin-defaults.odl
