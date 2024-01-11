@@ -615,6 +615,7 @@
         * @version 1.0
         */
         %persistent object ACSTransfer[] {
+            %protected %persistent %unique %key string Alias;
           /**
             * Parameter indicating who started the transfer
             * ACS : transfer was requested by the ACS
@@ -622,6 +623,7 @@
             * @version 1.0
             */
             %persistent string Initiator {
+                userflags %upc;
                 on action validate call check_enum ["ACS","Autonomous"];
                 default "ACS";
             }
@@ -629,17 +631,23 @@
             * ACS transfer request commandkey
             * @version 1.0
             */
-            %persistent string CommandKey;
+            %persistent string CommandKey {
+              userflags %upc;
+            }
           /**
             * ACS Transfer Type (true if the transfer is download false otherwise)
             * @version 1.0
             */
-            %persistent bool IsDownload;
+            %persistent bool IsDownload {
+              userflags %upc;
+            }
           /**
             * Download or upload URL
             * @version 1.0
             */
-            %persistent string Url;
+            %persistent string Url {
+              userflags %upc;
+            }
            /**
             * A string describing the file type:
             *  Possible tr69 download strings:
@@ -653,12 +661,15 @@
             *   - 2 Vendor Log File
             * @version 1.0
             */
-            %persistent string FileType;
+            %persistent string FileType {
+                userflags %upc;
+            }
             /**
             * Parameter indicating the current status of the transfer
             * @version 1.0
             */
             %persistent string Status {
+                userflags %upc;
                 on action validate call check_enum ["Initial","Transferring","Applying","Applied","Finished"];
                 default "Initial";
             }
@@ -666,72 +677,98 @@
             * Parameter indicating the file size
             * @version 1.0
             */
-            %persistent uint32 FileSize;
+            %persistent uint32 FileSize {
+              userflags %upc;
+            }
           /**
             * Parameter indicating the file name
             * @version 1.0
             */
-            %persistent string TargetFileName;
+            %persistent string TargetFileName {
+              userflags %upc;
+            }
           /**
             * Parameter indicating the downloaded file name on the system
             * @version 1.0
             */
-            %persistent string SaveFileName;
+            %persistent string SaveFileName {
+              userflags %upc;
+            }
           /**
             * username for download authentication
             * @version 1.0
             */
-            %persistent string Username;
+            %persistent string Username {
+              userflags %upc;
+            }
           /**
             * password for download authentication
             * @version 1.0
             */
-            %persistent string Password;
+            %persistent string Password {
+              userflags %upc;
+            }
             /**
             * Transfer real Start Time
             * @version 1.0
             */
-            %persistent datetime StartTime;
+            %persistent datetime StartTime {
+              userflags %upc;
+            }
             /**
             * Transfer real complete time
             * @version 1.0
             */
-            %persistent datetime CompleteTime;
+            %persistent datetime CompleteTime {
+              userflags %upc;
+            }
             /**
             * Transfer Fault code
             * @version 1.0
             */
-            %persistent uint32 FaultCode;
+            %persistent uint32 FaultCode {
+              userflags %upc;
+            }
 
             /**
             * Transfer Fault error 
             * @version 1.0
             */
-            %persistent string FaultString;
+            %persistent string FaultString {
+              userflags %upc;
+            }
 
             /**
             * TR069 Transfer SuccessURL
             * @version 1.0
             */
-            %persistent string SuccessURL;
+            %persistent string SuccessURL {
+              userflags %upc;
+            }
 
             /**
             * TR069 Transfer FailureURL
             * @version 1.0
             */
-            %persistent string FailureURL;
+            %persistent string FailureURL {
+              userflags %upc;
+            }
 
             /**
             * delay before start the transfer
             * @version 1.0
             */
-            %persistent uint32 DelaySeconds;
+            %persistent uint32 DelaySeconds {
+              userflags %upc;
+            }
 
             /**
             * Unique identifier for the subscription on the transfer node
             * @version 1.0
             */
-            %persistent int32 SubscriptionId;
+            %persistent int32 SubscriptionId {
+              userflags %upc;
+            }
         }
     }
       /**

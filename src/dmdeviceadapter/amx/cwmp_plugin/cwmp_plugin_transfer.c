@@ -227,7 +227,8 @@ stop:
     return;
 }
 
-static void filetransfer_download_finished(const char* path) {
+static bool filetransfer_download_finished(const char* path) {
+    bool finished = true;
     const char* fileType = NULL;
     const char* targetFileName = NULL;
     const char* script = NULL;
@@ -241,6 +242,8 @@ static void filetransfer_download_finished(const char* path) {
 
     if(strstr(fileType, "1")) {
         filetransfer_flash_firmware(targetFileName);
+        /* will be finished after the reboot */
+        finished = false;
         goto stop;
     } else if(strstr(fileType, "2")) {
         script = DL_WEB_CONTENT_SCRIPT;
@@ -255,10 +258,11 @@ static void filetransfer_download_finished(const char* path) {
         SAH_TRACEZ_ERROR(ME, "Failed to start task [%s %s]", script, targetFileName);
     }
 stop:
-    return;
+    return finished;
 }
 
 static void transfer_update_status(const char* path,
+                                   const char* status,
                                    amxc_ts_t* start_time,
                                    amxc_ts_t* complete_time,
                                    uint32_t error_code) {
@@ -269,7 +273,7 @@ static void transfer_update_status(const char* path,
 
     amxd_trans_select_object(&trans, transfer);
     amxd_trans_set_attr(&trans, amxd_tattr_change_ro, true);
-    amxd_trans_set_value(cstring_t, &trans, "Status", "Finished");
+    amxd_trans_set_value(cstring_t, &trans, "Status", status);
     amxd_trans_set_value(amxc_ts_t, &trans, "StartTime", start_time);
     amxd_trans_set_value(amxc_ts_t, &trans, "CompleteTime", complete_time);
     amxd_trans_set_value(uint32_t, &trans, "FaultCode", error_code);
@@ -284,7 +288,7 @@ static bool filetransfer_request_cb(ftx_request_t* req, void* userdata) {
     amxc_ts_t* ts_end;
     char time_start_str[64] = {0};
     char time_end_str[64] = {0};
-    ftx_error_code_t error_code;
+    uint32_t error_code;
     ftx_request_type_t request_type;
     amxc_string_t status_path;
     int* index = NULL;
@@ -294,7 +298,7 @@ static bool filetransfer_request_cb(ftx_request_t* req, void* userdata) {
 
     amxc_string_init(&status_path, 0);
     index = (int*) userdata;
-    error_code = ftx_request_get_error_code(req);
+    error_code = (uint32_t) ftx_request_get_error_code(req);
     ts_start = ftx_request_get_start_time(req);
     ts_end = ftx_request_get_end_time(req);
     request_type = ftx_request_get_type(req);
@@ -306,11 +310,15 @@ static bool filetransfer_request_cb(ftx_request_t* req, void* userdata) {
                     error_code, ftx_request_get_error_reason(req), time_start_str, time_end_str);
 
     amxc_string_setf(&status_path, TRANSFER_ENTRY_PATH_FMT, *index);
-    transfer_update_status(amxc_string_get(&status_path, 0), ts_start, ts_end, (uint32_t) error_code);
 
-    if((error_code == ftx_error_code_no_error) && (request_type == ftx_request_type_download)) {
-        filetransfer_download_finished(amxc_string_get(&status_path, 0));
+    const char* status = "Finished";
+    if((error_code == 0) && (request_type == ftx_request_type_download)) {
+        if(filetransfer_download_finished(amxc_string_get(&status_path, 0)) == false) {
+            status = "Applying";
+        }
     }
+
+    transfer_update_status(amxc_string_get(&status_path, 0), status, ts_start, ts_end, error_code);
 
     ftx_request_delete(&req);
     free(index);
@@ -492,7 +500,6 @@ stop:
     amxc_var_set(bool, ret, rv);
     return amxd_status_ok;
 }
-
 
 void cwmp_plugin_transfer_init(void) {
     ftx_init(filetransfer_fdset_cb);

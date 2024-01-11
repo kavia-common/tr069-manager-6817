@@ -102,20 +102,22 @@ stop:
     return rv;
 }
 
-static void DM_ENG_Device_UpdateTransferState(amxb_bus_ctx_t* bus_ctx, const char* path, bool isDownload) {
+static void DM_ENG_Device_UpdateTransferState(amxb_bus_ctx_t* bus_ctx, const char* path, uint32_t faultCode, const char* faultString, const char* completeTime) {
     amxc_var_t set;
     amxc_var_t ret;
-    int faultCode = 0;
     amxc_var_init(&set);
     amxc_var_init(&ret);
 
     when_str_empty(path, stop);
     when_null(bus_ctx, stop);
 
-    faultCode = isDownload ? DM_ENG_DOWNLOAD_FAILURE : DM_ENG_UPLOAD_FAILURE;
-    amxc_var_add_key(cstring_t, &set, "FaultString", "Transfer timed out");
+    amxc_var_set_type(&set, AMXC_VAR_ID_HTABLE);
+    amxc_var_add_key(cstring_t, &set, "FaultString", faultString);
     amxc_var_add_key(uint32_t, &set, "FaultCode", faultCode);
     amxc_var_add_key(cstring_t, &set, "Status", "Finished");
+    if((completeTime != NULL) && (strcmp(completeTime, "") != 0)) {
+        amxc_var_add_key(cstring_t, &set, "CompleteTime", completeTime);
+    }
 
     if(amxb_set(bus_ctx, path, &set, &ret, 1) != 0) {
         SAH_TRACEZ_ERROR("DM_DA", "Failed to update file transfer state");
@@ -263,8 +265,9 @@ void DM_ENG_Device_TransferTimedOut(char* cmdkey) {
 
             //Notify transfer Complete
             if(status && strcmp(status, "Initial")) {
-                bool isDownload = GETP_BOOL(transfer, "IsDownload");
-                DM_ENG_Device_UpdateTransferState(dm_system->bus_ctx, key, isDownload);
+                DM_ENG_Device_UpdateTransferState(dm_system->bus_ctx, key,
+                                                  GETP_BOOL(transfer, "IsDownload") ? DM_ENG_DOWNLOAD_FAILURE : DM_ENG_UPLOAD_FAILURE,
+                                                  "Transfer timed out", NULL);
             }
 
             DM_ENG_Device_TransferCompleteEvent((char*) key);
@@ -648,6 +651,39 @@ stop:
     return error;
 }
 
+static void handle_pending_upgrade(const char* key) {
+
+    SAH_TRACEZ_WARNING("DM_DA", "Handling pending upgrade");
+    const char* status = NULL;
+    const char* bootFailureLog = NULL;
+    uint32_t faultCode = 0;
+    const char* faultString = "";
+    const char* completeTime = NULL;
+    amxc_var_t ret;
+    dm_amx_env_t* dm_system = DM_ENG_Device_GetSystemInfo();
+
+    amxc_var_init(&ret);
+    amxb_get(dm_system->bus_ctx, "DeviceInfo.FirmwareImage.[active].", 0, &ret, 5);
+    status = GETP_CHAR(&ret, "0.0.Status");
+    bootFailureLog = GETP_CHAR(&ret, "0.0.BootFailureLog");
+    if(status == NULL) {
+        SAH_TRACEZ_ERROR("DM_DA", "Failed to get FirmwareImage Status");
+        faultCode = DM_ENG_INTERNAL_ERROR;
+        faultString = "Internal failure";
+    } else if(strcmp(status, "Active") != 0) {
+        SAH_TRACEZ_WARNING("DM_DA", "FirmwareImage Info: Status [%s] - BootFailureLog [%s]", status, bootFailureLog ? bootFailureLog : "Null");
+        faultCode = DM_ENG_DOWNLOAD_FAILURE;
+        faultString = "Failed to apply firmware";
+    }
+    amxc_var_clean(&ret);
+
+    if(faultCode == 0) {
+        completeTime = "0001-01-01T00:00:00Z";
+    }
+
+    DM_ENG_Device_UpdateTransferState(dm_system->bus_ctx, key, faultCode, faultString, completeTime);
+}
+
 //---------------------------------------------------------------------------------------------
 /**
    @brief
@@ -690,7 +726,9 @@ bool DM_ENG_Device_UpDownloadInitialize(dm_amx_env_t* amx) {
             GotoStop("Failed to read the transfer status [%s]", key);
         }
 
-        if(strcmp(status, "Initial")) {
+        SAH_TRACEZ_INFO("DM_DA", "Transfer [%s]: Status [%s]", key, status);
+
+        if(strcmp(status, "Initial") == 0) {
             amxc_ts_t then_ts;
             amxc_ts_t now_ts;
             const char* commandKey = GETP_CHAR(transfer, "CommandKey");
@@ -707,7 +745,13 @@ bool DM_ENG_Device_UpDownloadInitialize(dm_amx_env_t* amx) {
                     DM_ENG_NotificationInterface_timerStart(key, 0, 0, DM_ENG_Device_RestartTransfer);
                 }
             }
-        } else if(strcmp(status, "Finished")) {
+        } else if(strcmp(status, "Finished") == 0) {
+            DM_ENG_NotificationInterface_timerStart(key, 0, 0, DM_ENG_Device_TransferCompleteEvent);
+        } else if(strcmp(status, "Applying") == 0) {
+            const char* fileType = GETP_CHAR(transfer, "FileType");
+            if(strcmp(fileType, "1 Firmware Upgrade Image") == 0) {
+                handle_pending_upgrade(key);
+            }
             DM_ENG_NotificationInterface_timerStart(key, 0, 0, DM_ENG_Device_TransferCompleteEvent);
         }
     }
