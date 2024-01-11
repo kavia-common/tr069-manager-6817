@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.30.8 - 2024-01-11(14:17:44 +0000)
+
+### Other
+
+- ManagementServer.State.LastSession is not updated correctly after upgrade
+
 ## Release v1.30.7 - 2024-01-09(13:36:02 +0000)
 
 ### Fixes
