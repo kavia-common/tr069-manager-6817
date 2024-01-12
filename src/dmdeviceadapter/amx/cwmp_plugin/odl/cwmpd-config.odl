@@ -33,4 +33,10 @@
         DM_COMMON = 200,
         DM_HS = 200
     };
+
+    active-parameters = [
+        "Device.GatewayInfo.ManufacturerOUI",
+        "Device.GatewayInfo.SerialNumber",
+        "Device.GatewayInfo.ProductClass"
+    ];
 }
