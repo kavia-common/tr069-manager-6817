@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.31.0 - 2024-01-12(16:32:55 +0000)
+
+### New
+
+- Annex F add repeater mode
+
 ## Release v1.30.8 - 2024-01-11(14:17:44 +0000)
 
 ### Other
