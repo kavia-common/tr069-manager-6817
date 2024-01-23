@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.31.2 - 2024-01-23(15:27:13 +0000)
+
+### Other
+
+- the hgw sends "7 TRANSFER COMPLETE" before reboot
+
 ## Release v1.31.1 - 2024-01-19(17:14:45 +0000)
 
 ### Other
