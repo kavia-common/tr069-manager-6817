@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.31.3 - 2024-02-07(13:56:54 +0000)
+
+### Other
+
+- Firmware upgrade not working with HTTPS
+
 ## Release v1.31.2 - 2024-01-23(15:27:13 +0000)
 
 ### Other
