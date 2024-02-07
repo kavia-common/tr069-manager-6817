@@ -77,10 +77,15 @@
 #define UL_VENDOR_LOGS_SCRIPT "tr069_2_vendor_logs_prepare"
 #define UL_VENDOR_CONF_SCRIPT "tr069_1_vendor_conf_prepare"
 
+#define UNKNOWN_TIME "0001-01-01T00:00:00Z"
+#define DEVICEINFO_FIRMWAREIMAGE "DeviceInfo.FirmwareImage.active."
+
 typedef struct {
     ftx_request_t* request;
     int32_t delay;
 } filetransfer_context_t;
+
+static int firmwareimage_del_subscription(amxd_object_t* transfer_obj);
 
 static int filetransfer_context_new(ftx_request_t* req,
                                     int delay,
@@ -197,38 +202,7 @@ stop:
     return ret;
 }
 
-static void filetransfer_flash_firmware(const char* image_file) {
-    SAH_TRACEZ_INFO(ME, "Attemp to flash image %s", image_file);
-    amxc_var_t args;
-    amxc_string_t url;
-    amxb_bus_ctx_t* bus_ctx = amxb_be_who_has("DeviceInfo.");
-
-    when_null_trace(image_file, stop, ERROR, "there is no image to flash");
-    when_null_trace(bus_ctx, stop, ERROR, "DeviceInfo ctx not found?");
-
-    amxc_var_init(&args);
-    amxc_string_init(&url, 0);
-    amxc_var_set_type(&args, AMXC_VAR_ID_HTABLE);
-    amxc_string_setf(&url, "file:///tmp/flash.swu");
-
-    amxc_var_add_key(cstring_t, &args, "URL", amxc_string_get(&url, 0));
-    amxc_var_add_key(bool, &args, "AutoActivate", true);
-
-    if(amxb_call(bus_ctx, "DeviceInfo.FirmwareImage.[active].", "Download", &args, NULL, 5)) {
-        SAH_TRACEZ_ERROR(ME, "Failed to Call DeviceInfo.FirmwareImage Download");
-        if(access(image_file, F_OK) == 0) {
-            remove(image_file);
-        }
-    }
-
-stop:
-    amxc_var_clean(&args);
-    amxc_string_clean(&url);
-    return;
-}
-
-static bool filetransfer_download_finished(const char* path) {
-    bool finished = true;
+static void filetransfer_download_finished(const char* path) {
     const char* fileType = NULL;
     const char* targetFileName = NULL;
     const char* script = NULL;
@@ -240,12 +214,7 @@ static bool filetransfer_download_finished(const char* path) {
     when_null_trace(fileType, stop, ERROR, "filetransfer fileType is null?");
     when_null_trace(targetFileName, stop, ERROR, "targetFileName is null?");
 
-    if(strstr(fileType, "1")) {
-        filetransfer_flash_firmware(targetFileName);
-        /* will be finished after the reboot */
-        finished = false;
-        goto stop;
-    } else if(strstr(fileType, "2")) {
+    if(strstr(fileType, "2")) {
         script = DL_WEB_CONTENT_SCRIPT;
     } else if(strstr(fileType, "3")) {
         script = DL_CONF_FILE_SCRIPT;
@@ -258,7 +227,7 @@ static bool filetransfer_download_finished(const char* path) {
         SAH_TRACEZ_ERROR(ME, "Failed to start task [%s %s]", script, targetFileName);
     }
 stop:
-    return finished;
+    return;
 }
 
 static void transfer_update_status(const char* path,
@@ -311,14 +280,11 @@ static bool filetransfer_request_cb(ftx_request_t* req, void* userdata) {
 
     amxc_string_setf(&status_path, TRANSFER_ENTRY_PATH_FMT, *index);
 
-    const char* status = "Finished";
     if((error_code == 0) && (request_type == ftx_request_type_download)) {
-        if(filetransfer_download_finished(amxc_string_get(&status_path, 0)) == false) {
-            status = "Applying";
-        }
+        filetransfer_download_finished(amxc_string_get(&status_path, 0));
     }
 
-    transfer_update_status(amxc_string_get(&status_path, 0), status, ts_start, ts_end, error_code);
+    transfer_update_status(amxc_string_get(&status_path, 0), "Finished", ts_start, ts_end, error_code);
 
     ftx_request_delete(&req);
     free(index);
@@ -437,21 +403,16 @@ stop:
 static void filetransfer_download_set_target_file(ftx_request_t* filetransfer_request, amxc_var_t* args) {
     const char* targetFileName = GETP_CHAR(args, "TargetFileName");
     const char* cmdKey = GETP_CHAR(args, "CommandKey");
-    const char* fileType = GETP_CHAR(args, "FileType");
     amxd_object_t* transfer = amxd_dm_findf(cwmp_plugin_get_dm(), TRANSFER_ENTRY_PATH "[CommandKey == '%s'].", cmdKey);
     amxc_string_t file_name;
     amxc_string_init(&file_name, 0);
 
     when_null_trace(transfer, stop, ERROR, "failed to find transfer with key [%s]", cmdKey);
 
-    if(strstr(fileType, "1")) {
-        amxc_string_setf(&file_name, "/tmp/%s", "flash.swu");
+    if(targetFileName && *targetFileName) {
+        amxc_string_setf(&file_name, "/tmp/%s", targetFileName);
     } else {
-        if(targetFileName && *targetFileName) {
-            amxc_string_setf(&file_name, "/tmp/%s", targetFileName);
-        } else {
-            amxc_string_setf(&file_name, "/tmp/dl_%s", cmdKey);
-        }
+        amxc_string_setf(&file_name, "/tmp/dl_%s", cmdKey);
     }
 
     ftx_request_set_target_file(filetransfer_request, amxc_string_get(&file_name, 0));
@@ -460,13 +421,199 @@ stop:
     amxc_string_clean(&file_name);
 }
 
+static void update_transfer_obj(amxd_object_t* transfer_obj,
+                                const char* status,
+                                amxc_ts_t* start_time,
+                                amxc_ts_t* complete_time,
+                                uint32_t* fault_code) {
+    amxd_trans_t trans;
+    amxd_trans_init(&trans);
+    when_null_trace(transfer_obj, stop, ERROR, "Invalid arg(s)");
+
+    amxd_trans_select_object(&trans, transfer_obj);
+    amxd_trans_set_attr(&trans, amxd_tattr_change_ro, true);
+    if(status != NULL) {
+        amxd_trans_set_value(cstring_t, &trans, "Status", status);
+    }
+    if(start_time != NULL) {
+        amxd_trans_set_value(amxc_ts_t, &trans, "StartTime", start_time);
+    }
+    if(complete_time != NULL) {
+        amxd_trans_set_value(amxc_ts_t, &trans, "CompleteTime", complete_time);
+    }
+    if(fault_code != NULL) {
+        amxd_trans_set_value(uint32_t, &trans, "FaultCode", *fault_code);
+    }
+    amxd_trans_apply(&trans, cwmp_plugin_get_dm());
+
+stop:
+    amxd_trans_clean(&trans);
+}
+
+static amxd_object_t* get_transfer_obj_by_index(uint32_t index) {
+    amxd_object_t* transfer = NULL;
+    amxc_string_t transfer_path;
+    amxc_string_init(&transfer_path, 0);
+    amxc_string_setf(&transfer_path, TRANSFER_ENTRY_PATH_FMT, index);
+    transfer = amxd_dm_findf(cwmp_plugin_get_dm(), "%s", amxc_string_get(&transfer_path, 0));
+
+    amxc_string_clean(&transfer_path);
+    if(transfer == NULL) {
+        SAH_TRACEZ_ERROR(ME, "Failed to get transfer object with index %d", index);
+    }
+    return transfer;
+}
+
+static void firmwareimage_notification(UNUSED const char* const sig_name,
+                                       const amxc_var_t* const data,
+                                       void* const priv) {
+
+
+    amxd_object_t* transfer_obj = NULL;
+    const char* status = NULL;
+    const char* bootFailureLog = NULL;
+    uint32_t fault_code = 0;
+
+    when_null_trace(priv, stop, ERROR, "Invalid arg(s)");
+
+    transfer_obj = (amxd_object_t*) priv;
+
+    status = GETP_CHAR(data, "parameters.Status.to");
+    bootFailureLog = GETP_CHAR(data, "parameters.BootFailureLog.to");
+
+    when_null_trace(status, stop, ERROR, "Failed to get the firmware upgrade status");
+
+    if(bootFailureLog == NULL) {
+        bootFailureLog = "";
+    }
+
+    SAH_TRACEZ_INFO(ME, "Firmware upgrade status: %s, bootFailureLog %s", status, bootFailureLog);
+
+    if((strcmp(status, "DownloadFailed") == 0) ||
+       (strcmp(status, "ValidationFailed") == 0) ||
+       (strcmp(status, "InstallationFailed") == 0) ||
+       (strcmp(status, "ActivationFailed") == 0)) {
+        fault_code = 9010;
+        if(strcmp(bootFailureLog, "Protocol not supported") == 0) {
+            fault_code = 9013;
+        }
+        update_transfer_obj(transfer_obj, "Finished", NULL, UNKNOWN_TIME, &fault_code);
+        firmwareimage_del_subscription(transfer_obj);
+    } else if(strcmp(status, "Downloading") == 0) {
+        update_transfer_obj(transfer_obj, "Transferring", NULL, NULL, NULL);
+    } else if(strcmp(status, "Validating") == 0) {
+        update_transfer_obj(transfer_obj, "Applying", NULL, NULL, NULL);
+        /* expecting a reboot now or an error */
+    }
+stop:
+    return;
+}
+
+static int firmwareimage_add_subscription(amxd_object_t* transfer_obj) {
+    int retval = -1;
+
+    if(transfer_obj != NULL) {
+        retval = amxb_subscribe(amxb_be_who_has("DeviceInfo."), DEVICEINFO_FIRMWAREIMAGE, "(notification == 'dm:object-changed') && \
+                                (contains('parameters.Status'))", firmwareimage_notification, transfer_obj);
+    }
+
+    if(retval != 0) {
+        SAH_TRACEZ_ERROR(ME, "Failed to add subscription to [%s]", DEVICEINFO_FIRMWAREIMAGE);
+    }
+    return retval;
+}
+
+static int firmwareimage_del_subscription(amxd_object_t* transfer_obj) {
+    int retval = -1;
+
+    if(transfer_obj != NULL) {
+        retval = amxb_unsubscribe(amxb_be_who_has("DeviceInfo."), DEVICEINFO_FIRMWAREIMAGE, firmwareimage_notification, transfer_obj);
+    }
+
+    if(retval != 0) {
+        SAH_TRACEZ_ERROR(ME, "Failed to delete subscription from [%s]", DEVICEINFO_FIRMWAREIMAGE);
+    }
+    return retval;
+}
+
+static int firmwareimage_download(amxd_object_t* transfer_obj) {
+    int retval = -1;
+    const char* url = NULL;
+    const char* username = NULL;
+    const char* password = NULL;
+    amxc_var_t args;
+    amxc_var_init(&args);
+
+    when_null(transfer_obj, stop);
+
+    url = amxd_object_get_cstring_t(transfer_obj, "Url", NULL);
+    when_null_trace(url, stop, ERROR, "Failed to get URL");
+    username = amxd_object_get_cstring_t(transfer_obj, "Username", NULL);
+    when_null_trace(username, stop, ERROR, "Failed to get Username");
+    password = amxd_object_get_cstring_t(transfer_obj, "Password", NULL);
+    when_null_trace(password, stop, ERROR, "Failed to get Password");
+
+    amxc_var_set_type(&args, AMXC_VAR_ID_HTABLE);
+    amxc_var_add_key(cstring_t, &args, "URL", url);
+    amxc_var_add_key(bool, &args, "AutoActivate", true);
+    amxc_var_add_key(cstring_t, &args, "Username", username);
+    amxc_var_add_key(cstring_t, &args, "Password", password);
+
+    retval = amxb_call(amxb_be_who_has("DeviceInfo."), DEVICEINFO_FIRMWAREIMAGE, "Download", &args, NULL, 5);
+
+    when_failed_trace(retval, stop, ERROR, "Failed to Call %sDownload()", DEVICEINFO_FIRMWAREIMAGE);
+
+stop:
+    amxc_var_clean(&args);
+    return retval;
+}
+
+static int firmware_upgrade(amxd_object_t* transfer_obj) {
+    int retval = -1;
+    when_null_trace(transfer_obj, stop, ERROR, "Invalid arg(s)");
+    when_failed(firmwareimage_add_subscription(transfer_obj), stop);
+    when_failed(firmwareimage_download(transfer_obj), stop);
+    retval = 0;
+stop:
+    if(retval != 0) {
+        SAH_TRACEZ_ERROR(ME, "Failed to perform firmware upgrade");
+    }
+    return retval;
+}
+
+void download_timer_cb(amxp_timer_t* timer, void* priv) {
+    when_null_trace(priv, stop, ERROR, "Invalid arg(s)")
+    amxd_object_t* transfer_obj = (amxd_object_t*) priv;
+    if(firmware_upgrade(transfer_obj) != 0) {
+        uint32_t fault_code = 9002;
+        update_transfer_obj(transfer_obj, "Finished", NULL, NULL, &fault_code);
+        firmwareimage_del_subscription(transfer_obj);
+    }
+stop:
+    amxp_timer_delete(&timer);
+}
+
 static int filetransfer_request_prepare(amxc_var_t* args) {
     int ret = -1;
-    bool is_download = false;
-    int delay = 0;
     ftx_request_t* filetransfer_request = NULL;
-    is_download = GET_BOOL(args, "IsDownload");
-    delay = GET_INT32(args, "DelaySeconds");
+    bool is_download = GET_BOOL(args, "IsDownload");
+    uint32_t delaySeconds = GET_INT32(args, "DelaySeconds");
+    const char* fileType = GET_CHAR(args, "FileType");
+
+
+    if(is_download && (fileType && (strcmp(fileType, "1 Firmware Upgrade Image") == 0))) {
+        amxp_timer_t* download_timer = NULL;
+        uint32_t transfer_index = GET_UINT32(args, "index");
+        amxd_object_t* transfer_obj = get_transfer_obj_by_index(transfer_index);
+        when_null(transfer_obj, stop);
+        when_failed_trace(amxp_timer_new(&download_timer, download_timer_cb, transfer_obj),
+                          stop, ERROR, "Failed to create timer");
+        when_failed_trace(amxp_timer_start(download_timer, delaySeconds * 1000),
+                          stop, ERROR, "Failed to start timer");
+        SAH_TRACEZ_INFO(ME, "Transfer [%d]: Initiate the Download [%s] within [%d] seconds", transfer_index, fileType, delaySeconds);
+        ret = 0;
+        goto stop;
+    }
 
     ftx_request_new(&filetransfer_request,
                     is_download ? ftx_request_type_download : ftx_request_type_upload,
@@ -477,7 +624,7 @@ static int filetransfer_request_prepare(amxc_var_t* args) {
 
     if(is_download) {
         filetransfer_download_set_target_file(filetransfer_request, args);
-        start_filetransfer_request(filetransfer_request, delay);
+        start_filetransfer_request(filetransfer_request, delaySeconds);
     } else {
         filetransfer_prepare_upload(filetransfer_request, args);
     }
