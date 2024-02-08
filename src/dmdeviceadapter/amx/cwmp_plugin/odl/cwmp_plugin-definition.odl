@@ -288,6 +288,52 @@
       }
 
       /**
+      * Parameters related to CPE behavior in order to issue a Heartbeat event to the ACS using the Inform method call.
+      *
+      * If this object is supported then the CPE MUST support the requirements of [Annex O/TR-069].
+      *
+      * @version 8.2
+      */
+      %persistent object HeartbeatPolicy {
+          /**
+          * When true, Heartbeat events are enabled to be sent to the ACS based on the values of the ReportingInterval and InitiationTime parameters.
+          *
+          * @version 8.2
+          */
+          %persistent bool Enable {
+            default true;
+            userflags %upc;
+          }
+
+          /**
+          * The duration in seconds of the interval for which the CPE MUST attempt to connect with the ACS and call the Inform method if Enable is true.
+          *
+          * @version 8.2
+          */
+          %persistent uint32 ReportingInterval {
+              on action validate call check_minimum 30;
+              default 120;
+          }
+
+          /**
+          * An absolute time reference in UTC to determine when the CPE will initiate the Heartbeat event Inform method calls. Each Inform call MUST occur at this reference time plus or minus an integer
+          * multiple of the ReportingInterval.
+          *
+          * InitiationTime is used only to set the phase of the Heartbeat event Informs. The actual value of InitiationTime can be arbitrarily far into the past or future.
+          *
+          * For example, if ReportingInterval is 60 (one minute) and if InitiationTime is set to UTC midnight on some day (in the past, present, or future) then Heartbeat Informs will occur every minute at the
+          * next UTC midnight. These MUST begin on the very next midnight, even if InitiationTime refers to a day in the future.
+          *
+          * The Unknown Time value defined in [Section 3.2/TR-106] indicates that no particular time reference is specified. The CPE MUST locally choose a random time reference.
+          *
+          * If absolute time is not available to the CPE, its Heartbeat Inform behavior MUST be the same as if the InitiationTime parameter was set to the Unknown Time value.
+          *
+          * @version 8.2
+          */
+          %persistent datetime InitiationTime;
+      }
+
+      /**
         * Object containing informations about connection request
         */
         %persistent %protected object ConnRequest {

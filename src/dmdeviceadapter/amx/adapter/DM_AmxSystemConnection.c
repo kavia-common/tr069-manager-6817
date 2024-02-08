@@ -119,6 +119,11 @@ void DM_ENG_Device_SystemConnectionHandleParameterChanged(const char* path, cons
     if(strcmp(path, MANAGEMENTSERVER_PATH) == 0) {
         htable = amxc_var_constcast(amxc_htable_t, parameters);
 
+        if((objpath != NULL) && (strcmp(objpath, "Device.ManagementServer.HeartbeatPolicy.") == 0)) {
+            SAH_TRACEZ_INFO("DM_DA", "HeartbeatPolicy config has changed");
+            DM_ENG_InformMessageScheduler_Heartbeat_configure();
+        }
+
         amxc_htable_iterate(hit, htable) {
             const char* key = amxc_htable_it_get_key(hit);
             if(key == NULL) {
@@ -289,6 +294,10 @@ static const char* DM_ENG_Device_ConvertToObjectName(DM_ENG_SystemParameter_t pa
     case DM_ENG_BLOCKEDEVENTS:
     case DM_ENG_ALLOWMULTIPLESCHEDULEINFORM:
         return "Device.ManagementServer.InternalSettings.";
+    case DM_ENG_HEARTBEATENABLE:
+    case DM_ENG_HEARTBEATINITIATIONTIME:
+    case DM_ENG_HEARTBEATREPORTINGINTERVAL:
+        return "Device.ManagementServer.HeartbeatPolicy.";
     case DM_ENG_CONNECTIONREQUESTHOST:
     case DM_ENG_CONNECTIONREQUESTPORT:
     case DM_ENG_CONNECTIONREQUESTPATH:
@@ -347,6 +356,9 @@ static const char* DM_ENG_Device_ConvertToParameterName(DM_ENG_SystemParameter_t
     case DM_ENG_CONNECTIONREQUESTUSERNAME:         return "ConnectionRequestUsername";
     case DM_ENG_CONNECTIONREQUESTURL:              return "ConnectionRequestURL";
     case DM_ENG_CONNECTIONREQUESTPASSWORD:         return "ConnectionRequestPassword";
+    case DM_ENG_HEARTBEATENABLE:                   return "Enable";
+    case DM_ENG_HEARTBEATINITIATIONTIME:           return "InitiationTime";
+    case DM_ENG_HEARTBEATREPORTINGINTERVAL:        return "ReportingInterval";
     case DM_ENG_CONNECTIONREQUESTHOST:             return "ConnRequestHost";
     case DM_ENG_CONNECTIONREQUESTPORT:             return "ConnRequestPort";
     case DM_ENG_CONNECTIONREQUESTPATH:             return "ConnRequestPath";
