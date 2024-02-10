@@ -24,7 +24,7 @@ SOURCES = $(wildcard $(SRCDIR)/*.c)
 OBJECTS = $(addprefix $(OBJDIR)/,$(notdir $(SOURCES:.c=.o)))
 
 # compilation and linking flags
-CFLAGS += -Wall -Wextra \
+CFLAGS += -Wall -Wextra -Werror \
           -Wformat=2 -Wshadow -Wwrite-strings -Wredundant-decls \
           -Wmissing-declarations -Wno-attributes -Wno-format-nonliteral \
           -fPIC -g3 $(addprefix -I ,$(INCDIRS)) \

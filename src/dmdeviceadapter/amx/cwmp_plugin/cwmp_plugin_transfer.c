@@ -85,6 +85,7 @@ typedef struct {
     int32_t delay;
 } filetransfer_context_t;
 
+void download_timer_cb(amxp_timer_t* timer, void* priv);
 static int firmwareimage_del_subscription(amxd_object_t* transfer_obj);
 
 static int filetransfer_context_new(ftx_request_t* req,
@@ -493,11 +494,13 @@ static void firmwareimage_notification(UNUSED const char* const sig_name,
        (strcmp(status, "ValidationFailed") == 0) ||
        (strcmp(status, "InstallationFailed") == 0) ||
        (strcmp(status, "ActivationFailed") == 0)) {
+        amxc_ts_t tsp;
         fault_code = 9010;
         if(strcmp(bootFailureLog, "Protocol not supported") == 0) {
             fault_code = 9013;
         }
-        update_transfer_obj(transfer_obj, "Finished", NULL, UNKNOWN_TIME, &fault_code);
+        amxc_ts_parse(&tsp, UNKNOWN_TIME, strlen(UNKNOWN_TIME));
+        update_transfer_obj(transfer_obj, "Finished", NULL, &tsp, &fault_code);
         firmwareimage_del_subscription(transfer_obj);
     } else if(strcmp(status, "Downloading") == 0) {
         update_transfer_obj(transfer_obj, "Transferring", NULL, NULL, NULL);

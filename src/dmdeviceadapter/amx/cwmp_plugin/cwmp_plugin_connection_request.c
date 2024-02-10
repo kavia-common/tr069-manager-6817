@@ -185,7 +185,7 @@ static int generate_random_url_path(char** str, int size) {
 
     memcpy((void*) tmp_str, "\0", 1);
 
-    SAH_TRACEZ_INFO("DM_COM", "Random generated str [%s]", str);
+    SAH_TRACEZ_INFO("DM_COM", "Random generated str [%s]", *str);
     ret = 0;
 exit:
     return ret;
