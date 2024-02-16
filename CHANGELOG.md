@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.31.4 - 2024-02-16(14:05:46 +0000)
+
+### Other
+
+- Cannot SPV the Description parameter under Device.NAT.PortMapping.1.
+
 ## Release v1.31.3 - 2024-02-07(13:56:54 +0000)
 
 ### Other
