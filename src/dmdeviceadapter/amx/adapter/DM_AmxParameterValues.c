@@ -374,6 +374,42 @@ stop:
     return error;
 }
 
+static int tr069_spv_amxd_status_to_spv_fault_code(amxd_status_t status) {
+    int retval = -1;
+    switch(status) {
+    case amxd_status_invalid_value:
+        retval = DM_ENG_INVALID_PARAMETER_VALUE;
+        break;
+    default:
+        SAH_TRACEZ_ERROR("DM_DA", "Undefined status: %d", status);
+        retval = DM_ENG_INTERNAL_ERROR;
+        break;
+    }
+    return retval;
+}
+
+
+static void tr069_spv_build_spv_faults(DM_ENG_SetParameterValuesFault** faultsList, int* nbFaults, const amxc_var_t* data) {
+    SAH_TRACEZ_IN("DM_DA");
+    amxc_var_t* failure = GETI_ARG(data, 0);
+    amxc_var_t* obj = amxc_var_get_first(failure);
+    const char* obj_key = amxc_var_key(obj);
+    SAH_TRACEZ_INFO("DM_DA", "Object key: %s", obj_key);
+    amxc_var_for_each(param, obj) {
+        const char* param_key = amxc_var_key(param);
+        if((param_key != NULL) && (*param_key != 0)) {
+            amxd_status_t status = (amxd_status_t) GET_UINT32(param, "error_code");
+            SAH_TRACEZ_INFO("DM_DA", "Parameter key: %s, status %d", param_key, status);
+            amxc_string_t param_full_path;
+            amxc_string_init(&param_full_path, 0);
+            amxc_string_setf(&param_full_path, "%s%s", obj_key, param_key);
+            DM_ENG_Device_SetParameterValuesFault(faultsList, amxc_string_get(&param_full_path, 0), tr069_spv_amxd_status_to_spv_fault_code(status), nbFaults);
+            amxc_string_clean(&param_full_path);
+        }
+    }
+    SAH_TRACEZ_OUT("DM_DA");
+}
+
 //---------------------------------------------------------------------------------------------
 /**
    @brief
@@ -429,8 +465,8 @@ int DM_ENG_Device_SetParameterValues_SetValues(dm_amx_env_t* amx_env, DM_ENG_Par
     rv = amxb_set(amx_env->bus_ctx, object_path, &set, &ret, 5);
 
     if(rv != AMXB_STATUS_OK) {
-        DM_ENG_Device_SetParameterValuesFault(faultsList, parameterList[*i]->parameterName, DM_ENG_INVALID_PARAMETER_NAME, nbFaults);
-        SetErrorGotoStop(DM_ENG_INTERNAL_ERROR, "Not a valid parameter Name");
+        tr069_spv_build_spv_faults(faultsList, nbFaults, &ret);
+        SetErrorGotoStop(DM_ENG_INVALID_ARGUMENTS, "Invalid arguments");
     }
 stop:
     amxc_var_clean(&set);
