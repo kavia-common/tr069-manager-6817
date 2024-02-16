@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.31.5 - 2024-02-16(14:54:30 +0000)
+
+### Other
+
+- [tr069-manager][tests] Add amxut lib
+
 ## Release v1.31.4 - 2024-02-16(14:05:46 +0000)
 
 ### Other
