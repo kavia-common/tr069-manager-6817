@@ -73,6 +73,7 @@
 #include <amxb/amxb.h>
 #include <amxb/amxb_register.h>
 #include <amxc/amxc_macros.h>
+#include <amxut/amxut_bus.h>
 
 #include "test_cwmp_plugin.h"
 #include "cwmp_plugin.h"
@@ -144,27 +145,26 @@ static void handle_events(void) {
     printf("\n");
 }
 
-int test_cwmp_plugin_setup(UNUSED void** state) {
-    amxd_object_t* root_obj = NULL;
-
-    assert_int_equal(amxd_dm_init(&dm), amxd_status_ok);
-    assert_int_equal(amxo_parser_init(&parser), 0);
-
-    root_obj = amxd_dm_get_root(&dm);
-    assert_non_null(root_obj);
-
-    assert_int_equal(amxo_parser_parse_file(&parser, odl_defs, root_obj), 0);
-
-    handle_events();
-
-    return 0;
-
+static void s_parse_odl(const char* odl_file_name) {
+    amxd_object_t* root_obj = amxd_dm_get_root(amxut_bus_dm());
+    if(0 != amxo_parser_parse_file(amxut_bus_parser(), odl_file_name, root_obj)) {
+        fail_msg("PARSER MESSAGE = %s", amxc_string_get(&amxut_bus_parser()->msg, 0));
+    }
 }
 
-int test_cwmp_plugin_teardown(UNUSED void** state) {
-    amxo_parser_clean(&parser);
-    amxd_dm_clean(&dm);
+int test_cwmp_plugin_setup(void** state) {
+    amxut_bus_setup(state);
+    assert_int_equal(amxo_resolver_ftab_add(amxut_bus_parser(), "updateConnectionRequestURL", AMXO_FUNC(_updateConnectionRequestURL)), 0);
+    assert_int_equal(amxo_resolver_ftab_add(amxut_bus_parser(), "AddTransfer", AMXO_FUNC(_AddTransfer)), 0);
+    s_parse_odl("../../src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-definition.odl");
+    s_parse_odl("../../src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-defaults.odl");
+    assert_int_equal(0, _cwmp_plugin_main(AMXO_START, amxut_bus_dm(), amxut_bus_parser()));
     return 0;
+}
+
+int test_cwmp_plugin_teardown(void** state) {
+    assert_int_equal(0, _cwmp_plugin_main(AMXO_STOP, amxut_bus_dm(), amxut_bus_parser()));
+    return amxut_bus_teardown(state);
 }
 
 void test_cwmp_plugin_start(UNUSED void** state) {

@@ -84,7 +84,8 @@ static void cwmp_plugin_init(amxd_dm_t* dm, amxo_parser_t* parser) {
     app.dm = dm;
     app.parser = parser;
 
-    const char* uri = (const char*) amxc_array_get_data_at(amxb_list_uris(), 0);
+    amxc_array_t* uris = amxb_list_uris();
+    const char* uri = (const char*) amxc_array_get_data_at(uris, 0);
     const amxc_llist_t* backends = NULL;
     backends = amxc_var_constcast(amxc_llist_t, GET_ARG(cwmp_plugin_get_config(), "backends"));
     const char* backend = amxc_var_constcast(cstring_t, amxc_var_from_llist_it(amxc_llist_get_first(backends)));
@@ -97,6 +98,7 @@ static void cwmp_plugin_init(amxd_dm_t* dm, amxo_parser_t* parser) {
     if(!STRING_EMPTY(backend)) {
         setenv("AMXB_BACKEND", backend, 1);
     }
+    amxc_array_delete(&uris, NULL);
 
     load_fw_controller();
     cwmp_plugin_netmodel_init();

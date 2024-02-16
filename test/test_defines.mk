@@ -16,4 +16,4 @@ CFLAGS += -Wall -Wextra -Wno-attributes --std=gnu99 -g3 \
 LDFLAGS += -fkeep-inline-functions -fkeep-static-functions \
 		   $(shell pkg-config --libs cmocka) \
 		   -lamxc -lamxp -lamxd -lamxo -lamxb -lamxm\
-		   -ldl -lpthread -lsahtrace -lnetmodel
+		   -ldl -lpthread -lsahtrace -lnetmodel -lamxut

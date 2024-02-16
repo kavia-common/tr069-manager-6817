@@ -67,18 +67,12 @@
 #include "test_cwmp_plugin.h"
 
 int main(void) {
-
-    int ret = 0;
-
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_cwmp_plugin_start),
-        cmocka_unit_test(test_cwmp_plugin_parameters),
-        cmocka_unit_test(test_cwmp_plugin_write_interface),
-        cmocka_unit_test(test_cwmp_plugin_updateConnectionRequestURL),
-        cmocka_unit_test(test_cwmp_plugin_stop)
+        cmocka_unit_test_setup_teardown(test_cwmp_plugin_start, test_cwmp_plugin_setup, test_cwmp_plugin_teardown),
+        cmocka_unit_test_setup_teardown(test_cwmp_plugin_parameters, test_cwmp_plugin_setup, test_cwmp_plugin_teardown),
+        cmocka_unit_test_setup_teardown(test_cwmp_plugin_write_interface, test_cwmp_plugin_setup, test_cwmp_plugin_teardown),
+        cmocka_unit_test_setup_teardown(test_cwmp_plugin_updateConnectionRequestURL, test_cwmp_plugin_setup, test_cwmp_plugin_teardown),
+        cmocka_unit_test_setup_teardown(test_cwmp_plugin_stop, test_cwmp_plugin_setup, test_cwmp_plugin_teardown),
     };
-
-    ret = cmocka_run_group_tests(tests, test_cwmp_plugin_setup, test_cwmp_plugin_teardown);
-
-    return ret;
+    return cmocka_run_group_tests(tests, NULL, NULL);
 }
