@@ -159,6 +159,7 @@ void DM_ENG_Device_ACSConnectionHandleNotification(const char* path, const amxc_
         set_subscription_new_value(acs_path, value);
 
         if(DM_ENG_ValueWasCachedInParameterAttributesCache(acs_path, value) == 0) {
+            DM_ENG_ParameterValueStruct* nextParam = NULL;
             DM_ENG_GetParameterAttributesCacheEllement(acs_path, &mode, &acclist);
             SAH_TRACEZ_INFO("DM_DA", "notificationmode for element %s = %d", acs_path, mode);
             if(DM_ENG_Device_GetParameterValues_GetValues(acs, acs_path, &pvsList) != 0) {
@@ -167,11 +168,21 @@ void DM_ENG_Device_ACSConnectionHandleNotification(const char* path, const amxc_
             }
             SAH_TRACEZ_INFO("DM_DA", "send notification %s", acs_path);
             /* Update the inform message scheduler */
-            DM_ENG_InformMessageScheduler_parameterValueChanged(pvsList, mode);
+            while(pvsList != NULL) {
+                nextParam = pvsList->next;
+                pvsList->next = NULL;
+                SAH_TRACEZ_INFO("DM_ENGINE", "Adding [%s] with mode [%d] to inform message", pvsList->parameterName, mode);
+                DM_ENG_InformMessageScheduler_parameterValueChanged(pvsList, mode);
+                pvsList = nextParam;
+            }
+            pvsList = NULL;
         }
     }
 
 stop:
+    if(pvsList != NULL) {
+        DM_ENG_deleteAllParameterValueStruct(&pvsList);
+    }
     amxc_var_clean(&filtred);
     free(value);
     free(acs_path);
