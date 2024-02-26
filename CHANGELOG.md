@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.31.7 - 2024-02-26(08:34:42 +0000)
+
+### Other
+
+- Repetitive CWMPD crash
+
 ## Release v1.31.6 - 2024-02-26(08:24:41 +0000)
 
 ### Other
