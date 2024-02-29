@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.31.8 - 2024-02-29(10:18:33 +0000)
+
+### Other
+
+- Add support of Heartbeat Inform
+
 ## Release v1.31.7 - 2024-02-26(08:34:42 +0000)
 
 ### Other
