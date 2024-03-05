@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.31.9 - 2024-03-05(13:21:56 +0000)
+
+### Other
+
+- [Device] Missing notifications when a plugin restarts
+
 ## Release v1.31.8 - 2024-02-29(10:18:33 +0000)
 
 ### Other
