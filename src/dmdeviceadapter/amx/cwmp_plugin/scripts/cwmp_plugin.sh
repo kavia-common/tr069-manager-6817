@@ -18,7 +18,6 @@ case $1 in
         if [ -f /var/run/cwmp_plugin.pid ]; then
             kill `cat /var/run/cwmp_plugin.pid`
         fi
-        ubus call ProxyManager unregister "{'proxy' : '$proxypath','real' : '$realpath'}"
         ;;
     debuginfo)
 	ubus-cli "ManagementServer.?"
