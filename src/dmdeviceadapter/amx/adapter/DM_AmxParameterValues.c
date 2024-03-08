@@ -380,6 +380,9 @@ static int tr069_spv_amxd_status_to_spv_fault_code(amxd_status_t status) {
     case amxd_status_invalid_value:
         retval = DM_ENG_INVALID_PARAMETER_VALUE;
         break;
+    case amxd_status_invalid_type:
+        retval = DM_ENG_INVALID_PARAMETER_TYPE;
+        break;
     default:
         SAH_TRACEZ_ERROR("DM_DA", "Undefined status: %d", status);
         retval = DM_ENG_INTERNAL_ERROR;

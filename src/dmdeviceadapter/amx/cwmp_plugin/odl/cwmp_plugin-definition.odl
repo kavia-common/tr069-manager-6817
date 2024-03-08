@@ -176,6 +176,15 @@
         %persistent uint32 DefaultActiveNotificationThrottle;
 
       /**
+        * When true, the parameters type used in a SetParameterValues call will be validated.
+        * @version 8.3
+        */
+        %persistent %protected bool VerifyParameterType {
+          default true;
+          userflags %upc;
+        }
+
+      /**
         * Indicates whether or not the Alias-Based Addressing Mechanism is supported.
         * A true value indicates that the CPE supports the Alias-Based Addressing Mechanism, as defined in [Section 3.6.1/TR-069] and described in [Appendix II/TR-069].     * @version 6.0
         * @version 1.0

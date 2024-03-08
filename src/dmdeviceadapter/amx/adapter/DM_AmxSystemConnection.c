@@ -264,6 +264,7 @@ static const char* DM_ENG_Device_ConvertToObjectName(DM_ENG_SystemParameter_t pa
     case DM_ENG_MAXDOWNLOADSERRORCODE:
     case DM_ENG_INSTANCEMODE:
     case DM_ENG_AUTOCREATEINSTANCES:
+    case DM_ENG_VERIFYPARAMETERTYPE:
         return "Device.ManagementServer.";
     case DM_ENG_MANUFACTURER:
     case DM_ENG_MANUFACTUREROUI:
@@ -409,6 +410,7 @@ static const char* DM_ENG_Device_ConvertToParameterName(DM_ENG_SystemParameter_t
     case DM_ENG_RETURNEMPTYLISTONPARIALPATH:       return "ReturnEmptyListOnPartialPath";
     case DM_ENG_EMPTYFULLPARAMETERLIST:            return "EmptyFullParameterList";
     case DM_ENG_ALLOWMULTIPLESCHEDULEINFORM:       return "AllowMultipleScheduleInform";
+    case DM_ENG_VERIFYPARAMETERTYPE:               return "VerifyParameterType";
     default: break;
     }
     return NULL;
