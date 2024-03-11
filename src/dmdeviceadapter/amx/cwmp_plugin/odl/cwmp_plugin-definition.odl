@@ -321,7 +321,7 @@
           */
           %persistent uint32 ReportingInterval {
               on action validate call check_minimum 30;
-              default 120;
+              default 900;
           }
 
           /**
