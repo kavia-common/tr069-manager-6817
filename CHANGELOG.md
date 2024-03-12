@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.31.12 - 2024-03-12(08:32:43 +0000)
+
+### Other
+
+- Update HeartbeatPolicy.Enable default value
+
 ## Release v1.31.11 - 2024-03-11(13:52:15 +0000)
 
 ### Other
