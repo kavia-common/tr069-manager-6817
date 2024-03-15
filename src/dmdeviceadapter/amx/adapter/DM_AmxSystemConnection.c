@@ -248,6 +248,7 @@ static const char* DM_ENG_Device_ConvertToObjectName(DM_ENG_SystemParameter_t pa
     case DM_ENG_PERIODICINFORMINTERVAL:
     case DM_ENG_PERIODICINFORMTIME:
     case DM_ENG_PERIODICINFORMENABLE:
+    case DM_ENG_PERIODICINFORMCOUNTER:
     case DM_ENG_PARAMETERKEY:
     case DM_ENG_ENABLECWMP:
     case DM_ENG_DEFAULTACTIVENOTIFICATIONTHROTTLE:
@@ -350,6 +351,7 @@ static const char* DM_ENG_Device_ConvertToParameterName(DM_ENG_SystemParameter_t
     case DM_ENG_PERIODICINFORMINTERVAL:            return "PeriodicInformInterval";
     case DM_ENG_PERIODICINFORMTIME:                return "PeriodicInformTime";
     case DM_ENG_PERIODICINFORMENABLE:              return "PeriodicInformEnable";
+    case DM_ENG_PERIODICINFORMCOUNTER:             return "PeriodicInformCounter";
     case DM_ENG_PARAMETERKEY:                      return "ParameterKey";
     case DM_ENG_ENABLECWMP:                        return "EnableCWMP";
     case DM_ENG_DEFAULTACTIVENOTIFICATIONTHROTTLE: return "DefaultActiveNotificationThrottle";

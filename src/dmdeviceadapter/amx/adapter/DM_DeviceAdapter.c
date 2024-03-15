@@ -68,6 +68,7 @@
 #include <dmengine/DM_ENG_Device.h>
 #include <dmengine/DM_ENG_RPCInterface.h>
 #include <dmengine/DM_ENG_ParameterAttributesCache.h>
+#include <dmengine/DM_ENG_InformMessageScheduler.h>
 #include <dmcommon/DM_GlobalDefs.h>
 
 #include "DM_AmxCommon.h"
@@ -86,6 +87,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+const char* DM_ENG_EVENT_VALUE_CHANGE = "4 VALUE CHANGE";
 
 static dm_deviceadapter_t da;
 static char* externalIPAddress = NULL;
@@ -343,6 +345,164 @@ stop:
     return error;
 }
 
+/*********************************** getinformparametervalues RPC *****************************************/
+
+static bool DM_ENG_Device_MatchingEvent(const csv_string_t dmEvents, DM_ENG_EventStruct* eventList) {
+    bool ret = false;
+    amxc_string_t dmEventsStr;
+    amxc_var_t dmEventsList;
+
+    /* In case no events are seen in the dm */
+    if(!dmEvents || !*dmEvents) {
+        /* If the current event is a single “4 VALUE CHANGE” - we have no match */
+        if((0 == strcmp(eventList->eventCode, DM_ENG_EVENT_VALUE_CHANGE)) && !eventList->next) {
+            goto exit;
+        }
+        /* For all other cases this is a match */
+        ret = true;
+        goto exit;
+    }
+
+    /* convert to amxc_string_t */
+    amxc_string_init(&dmEventsStr, 0);
+    amxc_string_setf(&dmEventsStr, dmEvents);
+
+    /* split into a list of strings */
+    amxc_var_init(&dmEventsList);
+    amxc_string_csv_to_var(&dmEventsStr, &dmEventsList, NULL);
+
+    /* check or there is a datamodel event that is part of the current eventList */
+    amxc_var_for_each(dmEvent, &dmEventsList) {
+        const char* e = amxc_var_constcast(cstring_t, dmEvent);
+        if(DM_ENG_InformMessageScheduler_containsEvent(eventList, e, NULL)) {
+            ret = true;
+            goto exit;
+        }
+    }
+exit:
+    amxc_string_clean(&dmEventsStr);
+    amxc_var_clean(&dmEventsList);
+    return ret;
+}
+
+static bool DM_ENG_Device_MatchingInterval(uint32_t interval) {
+    bool ret = false;
+
+    /* when interval=0 this restriction will be ignored -> always matched */
+    if(interval == 0) {
+        return true;
+    }
+    char* periodicInformInterval = NULL;
+    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_PERIODICINFORMINTERVAL, &periodicInformInterval) != 0) {
+        GotoStop("Cannot fetch the periodic inform interval");
+    }
+    when_str_empty(periodicInformInterval, stop);
+
+    uint32_t pi = (uint32_t) atoi(periodicInformInterval);
+    ret = (pi == interval);
+stop:
+    return ret;
+}
+
+static bool DM_ENG_Device_MatchingCount(uint32_t count) {
+    bool ret = false;
+
+    /* when count=0 this restriction will be ignored -> always matched */
+    if(count == 0) {
+        return true;
+    }
+    char* periodicInformCounter = NULL;
+    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_PERIODICINFORMCOUNTER, &periodicInformCounter) != 0) {
+        GotoStop("Cannot fetch the periodic inform counter");
+    }
+    when_str_empty(periodicInformCounter, stop);
+
+    uint32_t counter = (uint32_t) atoi(periodicInformCounter);
+    counter++; // we need to increase by 1 here, as we need to find a match for the current inform session
+    ret = (counter % count == 0);
+stop:
+    return ret;
+}
+
+/**
+ * @brief Gets the inform parameter value list from system level.
+ *
+ * @param eventsList Array of the events that are available, needed to clear the condition.
+ * @param pvsList The resulting parameter value struct list
+ *
+ * @return Returns 0 (zero) if OK or a fault code (9002, ...) according to the TR-069.
+ */
+int DM_ENG_Device_GetInformParameterValues(DM_ENG_EventStruct* eventList, DM_ENG_ParameterValueStruct** pvsList) {
+    unsigned int error = 0;
+    dm_amx_env_t* amx = &da.system;
+
+    amxc_var_t values;
+    amxc_var_init(&values);
+    amxc_string_t path;
+    amxc_string_init(&path, 0);
+    amxc_var_t refs;
+    amxc_var_init(&refs);
+
+    int retcode = amxb_get(amx->bus_ctx, INFORMPARAMETER_PATH, 0, &values, 5);
+    if((retcode != 0) || amxc_var_is_null(&values)) {
+        SetErrorGotoStop(DM_ENG_INTERNAL_ERROR, "Failed to get '%s'", INFORMPARAMETER_PATH);
+    }
+
+    amxc_var_t* rvalues = GETI_ARG(&values, 0);
+    amxc_var_for_each(value, rvalues) {
+        /* match eventList, Interval and Count */
+        const csv_string_t el = GET_CHAR(value, "EventList");
+        if(!DM_ENG_Device_MatchingEvent(el, eventList)) {
+            continue;
+        }
+        uint32_t interval = GET_UINT32(value, "Interval");
+        if(!DM_ENG_Device_MatchingInterval(interval)) {
+            continue;
+        }
+        uint32_t count = GET_UINT32(value, "Count");
+        if(!DM_ENG_Device_MatchingCount(count)) {
+            continue;
+        }
+
+        /* if everything matches : return the parameterlist */
+        amxc_string_clean(&path);
+        amxc_string_setf(&path, "%sParameter.*.Reference", amxc_var_key(value));
+
+        amxc_var_clean(&refs);
+        amxb_get(amx->bus_ctx, (char*) amxc_string_get(&path, 0), 0, &refs, 5);
+
+        amxc_var_t* rrefs = GETI_ARG(&refs, 0);
+        amxc_var_for_each(ref, rrefs) {
+            const char* val = GET_CHAR(ref, "Reference");
+            if(!val || !*val) {
+                SetErrorGotoStop(DM_ENG_INTERNAL_ERROR, "Reference is empty in '%s'", amxc_var_key(ref));
+            }
+            /* convert to a parameter value struct */
+            DM_ENG_ParameterValueStruct** pResult = NULL;
+            char* paramArray[2];
+            paramArray[0] = (char*) val;
+            paramArray[1] = NULL;
+            DM_ENG_GetParameterValues(DM_ENG_EntityType_SYSTEM,
+                                      paramArray,
+                                      &pResult);
+            if(pResult) {
+                /* append it to the returned list */
+                DM_ENG_addParameterValueStruct(pvsList, pResult[0]);
+                free(pResult);
+                pResult = NULL;
+            }
+        }
+    }
+
+stop:
+    amxc_string_clean(&path);
+    amxc_var_clean(&refs);
+    amxc_var_clean(&values);
+    if(error != 0) {
+        DM_ENG_deleteAllParameterValueStruct(pvsList);
+    }
+    return error;
+}
 
 /*********************************** getparameternames RPC *****************************************/
 
@@ -1035,6 +1195,7 @@ void __attribute__ ((destructor)) fini(void) {
 
 
 /** @} */
+
 
 
 

@@ -76,8 +76,8 @@
 static application_t cwmp_app;// app instance
 static amxb_bus_ctx_t* sys_bus_ctx = NULL;
 static amxb_bus_ctx_t* acs_bus_ctx = NULL;
+static amxd_dm_t dm;
 static amxo_parser_t parser;
-static amxo_parser_t parser_prefix;
 static amxc_var_t* active_parameters = NULL;
 
 bool is_ipaddr(const char* ip) {
@@ -159,20 +159,29 @@ void cwmp_add_subscriptions(void) {
 
 static cwmp_status_t cwmp_app_parse_config(void) {
     cwmp_status_t ret = cwmp_status_ko;
-    amxd_object_t* root = NULL;
-    amxd_object_t* prefix = NULL;
-    const char* prefix_file = NULL;
+    char* prefix_file = NULL;
+    amxd_dm_init(&dm);
     amxo_parser_init(&parser);
-    amxd_object_new(&root, amxd_object_singleton, "root");
-    amxd_object_new(&prefix, amxd_object_singleton, "prefix");
-    int retval = amxo_parser_parse_file(&parser, cwmp_app.odl_config, root);
+    int retval = amxo_parser_parse_file(&parser, cwmp_app.odl_config, amxd_dm_get_root(&dm));
     when_false_trace(retval != -1, exit, ERROR, "CWMPD: ODL parsing failed - message = %s", amxo_parser_get_message(&parser));
     amxc_var_t* config = &parser.config;
     when_null_trace(config, exit, ERROR, "CWMPD: cwmpd configs should not be NULL");
 
     // tr069-service configs
     amxc_var_t* tr069_config = amxc_var_get_key(config, "tr069-service", AMXC_VAR_FLAG_DEFAULT);
-    cwmp_app.da_path = GETP_CHAR(tr069_config, "cwmpd_adapter_path");
+
+    const char* amxrt_prefix = getenv("AMXRT_PREFIX_PATH");
+    SAH_TRACEZ_ERROR("CWMPD", "AMXRT_PREFIX_PATH:%s", amxrt_prefix);
+    if(amxrt_prefix && *amxrt_prefix) {
+        amxc_string_t da_path;
+        amxc_string_init(&da_path, 0);
+        amxc_string_appendf(&da_path, "%s%s", amxrt_prefix, GETP_CHAR(tr069_config, "cwmpd_adapter_path"));
+        cwmp_app.da_path = amxc_string_take_buffer(&da_path);
+        amxc_string_clean(&da_path);
+    } else {
+        cwmp_app.da_path = strdup(GETP_CHAR(tr069_config, "cwmpd_adapter_path"));
+    }
+
     cwmp_app.persistent_rpc_path = GETP_CHAR(tr069_config, "cwmpd_persistent_rpc_path");
     if(access(GETP_CHAR(tr069_config, "cwmpd_certs_file"), F_OK) == 0) {
         cwmp_app.trustedCA = GETP_CHAR(tr069_config, "cwmpd_certs_file");
@@ -185,7 +194,15 @@ static cwmp_status_t cwmp_app_parse_config(void) {
     }
 
     cwmp_app.pidFile = GETP_CHAR(tr069_config, "cwmpd_pid_file");
-    prefix_file = GETP_CHAR(config, "prefix_file");
+    if(amxrt_prefix && *amxrt_prefix) {
+        amxc_string_t temp_file;
+        amxc_string_init(&temp_file, 0);
+        amxc_string_appendf(&temp_file, "%s%s", amxrt_prefix, GETP_CHAR(config, "prefix_file"));
+        prefix_file = amxc_string_take_buffer(&temp_file);
+        amxc_string_clean(&temp_file);
+    } else {
+        prefix_file = strdup(GETP_CHAR(config, "prefix_file"));
+    }
     cwmp_app.aclfile = GETP_CHAR(tr069_config, "cwmpd_acl_file");
 
     // Set tracelevel
@@ -201,15 +218,14 @@ static cwmp_status_t cwmp_app_parse_config(void) {
 
     active_parameters = amxc_var_get_key(config, "active-parameters", AMXC_VAR_FLAG_DEFAULT);
 
-    amxo_parser_init(&parser_prefix);
-    retval = amxo_parser_parse_file(&parser, prefix_file, prefix);
+    retval = amxo_parser_parse_file(&parser, prefix_file, amxd_dm_get_root(&dm));
     when_false_trace(retval != -1, exit, ERROR, "CWMPD: ODL parsing failed - message = %s", amxo_parser_get_message(&parser));
     cwmp_app.prefix = GETP_CHAR(&parser.config, "vendor_prefix");
+
     // ODL parsing config OK
     ret = cwmp_status_ok;
 exit:
-    amxd_object_delete(&root);
-    amxd_object_delete(&prefix);
+    free(prefix_file);
     return ret;
 }
 
@@ -361,14 +377,13 @@ static cwmp_status_t cwmp_app_settings(int argc, char** argv) {
 
     /* Configure APP*/
     cwmp_app_configureDefaults();
+    cwmp_app_configureOptions(argc, argv);
     sahTraceOpen("cwmpd", cwmp_app.traceType);
     sahTraceSetLevel(cwmp_app.traceLevel);
-    cwmp_app_configureOptions(argc, argv);
 
     if(cwmp_status_ko == cwmp_app_parse_config()) {
         SAH_TRACEZ_ERROR("CWMPD", "Failed to parse cwmpd config");
         amxo_parser_clean(&parser);
-        amxo_parser_clean(&parser_prefix);
         return rc;
     }
     /* Daemonize if needed */
@@ -488,6 +503,9 @@ error:
     }
     /* exit the app*/
     rc = (cwmp_app.state == ERROR);
+
+    free(cwmp_app.da_path);
+    cwmp_app.da_path = NULL;
     SAH_TRACE_APP_INFO("CWMPD is exiting with code [%d]", rc);
     return rc;
 }

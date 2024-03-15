@@ -88,6 +88,14 @@
         }
 
       /**
+        * The number of Periodic InformResponses that are received.
+        * @version 1.0
+        */
+        %protected uint32 PeriodicInformCounter {
+            default 0;
+        }
+
+      /**
         * Indicates support of instance wildcards to the ACS
         * @version 1.0
         */
@@ -624,6 +632,73 @@
             */
             bool Override {
                 userflags %upc;
+            }
+        }
+
+      /**
+        * This object provides the ACS with the ability to control the Parameters that are delivered by the Inform RPC.
+        * @version 1.0
+        */
+        %persistent object InformParameter[] {
+            counted with InformParameterNumberOfEntries;
+          /**
+            * Enables or disables this instance of InformParameter
+            * @version 1.0
+            */
+            bool Enable {
+                userflags %upc;
+            }
+          /**
+            * A non-volatile handle used to reference this instance.
+            * Alias provides a mechanism for an ACS to label this instance for future reference.
+            * @version 1.0
+            */
+            %persistent %unique %key string Alias {
+                userflags %upc;
+            }
+          /**
+            * A pattern that describes the Parameter(s) to be included in the Inform’s ParameterList argument.
+            * UNUSED : The Parameter list will be used to reference the parameters.
+            * @version 1.0
+            */
+            string ParameterName;
+          /**
+            * Comma-separated list of strings.
+            * Each entry in this list represents an Event for which this Parameter MUST be included within the ParameterList argument of the Inform RPC.
+            * All Inform Events (see [Section 3.7.1.5/TR-069]), except for “4 VALUE CHANGE”, are allowed as entries in this list.
+            * “4 VALUE CHANGE” is not allowed as that would violate requirements contained in [Section A.3.3.1/TR-069].
+            * An empty string means all events except “4 VALUE CHANGE”.
+            * @version 1.0
+            */
+            %persistent csv_string EventList {
+                userflags %upc;
+            }
+          /**
+            * Periodic Interval in seconds, that is required in order for this InformParameterList to be send.
+            * When set to 0, this parameter will be ignored.
+            * @version 1.0
+            */
+            %protected %persistent uint32 Interval {
+                default 0;
+                userflags %upc;
+            }
+          /**
+            * Number of Inform messages on which this InformParameterList to be send.
+            * When set to 0, this parameter will be ignored.
+            * @version 1.0
+            */
+            %protected %persistent uint32 Count {
+                default 0;
+                userflags %upc;
+            }
+          /**
+            * The InformParameter list of Parameter Reference paths for this instance.
+            * @version 1.0
+            */
+            %protected %persistent object Parameter[] {
+                %protected %persistent string Reference {
+                    userflags %upc;
+                }
             }
         }
 

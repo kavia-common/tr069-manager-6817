@@ -96,10 +96,24 @@ static int build_cwmpd_proc_args(amxc_array_t* cmd, UNUSED amxc_var_t* settings)
     amxc_array_init(cmd, 2);
     amxc_string_t odl_config_opt;
     amxc_string_init(&odl_config_opt, 0);
-    amxc_array_append_data(cmd, strdup("cwmpd"));
-    amxc_string_setf(&odl_config_opt, "-c%s", GETP_CHAR(cwmp_plugin_get_config(), "odl_config"));
-    amxc_array_append_data(cmd, strdup(amxc_string_get(&odl_config_opt, 0)));
-    amxc_array_append_data(cmd, strdup("-D"));
+
+    const char* amxrt_prefix = getenv("AMXRT_PREFIX_PATH");
+    SAH_TRACEZ_ERROR("CWMPD", "AMXRT_PREFIX_PATH:%s", amxrt_prefix);
+    if(amxrt_prefix && *amxrt_prefix) {
+        amxc_string_t cwmpd_path;
+        amxc_string_init(&cwmpd_path, 0);
+        amxc_string_appendf(&cwmpd_path, "%s/usr/bin/cwmpd", amxrt_prefix);
+        amxc_array_append_data(cmd, amxc_string_take_buffer(&cwmpd_path));
+        amxc_string_setf(&odl_config_opt, "-c%s%s", amxrt_prefix, GETP_CHAR(cwmp_plugin_get_config(), "odl_config"));
+        amxc_array_append_data(cmd, amxc_string_take_buffer(&odl_config_opt));
+        amxc_string_clean(&cwmpd_path);
+        amxc_array_append_data(cmd, strdup("-f"));
+    } else {
+        amxc_array_append_data(cmd, strdup("cwmpd"));
+        amxc_string_setf(&odl_config_opt, "-c%s", GETP_CHAR(cwmp_plugin_get_config(), "odl_config"));
+        amxc_array_append_data(cmd, amxc_string_take_buffer(&odl_config_opt));
+        amxc_array_append_data(cmd, strdup("-D"));
+    }
     //clean up
     amxc_string_clean(&odl_config_opt);
     return 0;
@@ -153,6 +167,12 @@ exit:
 }
 
 void start_cwmpd(void) {
+    const char* cwmpd_standalone = getenv("CWMPD_STANDALONE");
+    if(cwmpd_standalone && *cwmpd_standalone) {
+        SAH_TRACEZ_WARNING("CWMPD", "CWMPD_STANDALONE:%s", cwmpd_standalone);
+        open_cwmpd_listening_port();
+        return;
+    }
     cwmp_proc_ctx_t* ctx = NULL;
     when_not_null_trace(cwmpd_proc, exit, NOTICE, "cwmpd already running, firewall service updated");
     amxp_proc_ctrl_new(&cwmpd_proc, build_cwmpd_proc_args);
@@ -165,6 +185,12 @@ exit:
 }
 
 void stop_cwmpd(void) {
+    const char* cwmpd_standalone = getenv("CWMPD_STANDALONE");
+    if(cwmpd_standalone && *cwmpd_standalone) {
+        SAH_TRACEZ_WARNING("CWMPD", "CWMPD_STANDALONE:%s", cwmpd_standalone);
+        close_cwmpd_listening_port();
+        return;
+    }
     if(cwmpd_proc) {
         SAH_TRACEZ_INFO(ME, "stopping cwmpd");
         amxp_proc_ctrl_stop(cwmpd_proc);

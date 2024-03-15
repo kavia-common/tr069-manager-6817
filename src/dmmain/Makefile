@@ -37,7 +37,7 @@ CFLAGS += -Werror -Wall -Wextra \
           -Wformat=2 -Wshadow \
           -Wwrite-strings -Wredundant-decls \
           -Wno-format-nonliteral \
-		  -I$(INCDIRS) -fPIC -g3 -Os \
+		  -I$(INCDIRS) -fPIC -g3 \
 		  -I$(STAGINGDIR)/include -D_GNU_SOURCE \
 		  -DSAHTRACES_ENABLED -DSAHTRACES_LEVEL_DEFAULT=700
 
