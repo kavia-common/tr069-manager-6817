@@ -364,7 +364,6 @@ static void filetransfer_prepare_upload(ftx_request_t* filetransfer_request, amx
     char* device_serial = NULL;
     int error = -1;
     const char* script = NULL;
-    const char* targetFile = NULL;
     int delay = 0;
 
     amxc_string_init(&file_name, 0);
@@ -393,7 +392,7 @@ static void filetransfer_prepare_upload(ftx_request_t* filetransfer_request, amx
 
 stop:
     if(error != 0) {
-        SAH_TRACEZ_ERROR(ME, "file upload failed, file[%s]", targetFile ? targetFile : "NULL");
+        SAH_TRACEZ_ERROR(ME, "file upload failed");
         ftx_request_delete(&filetransfer_request);
         filetransfer_request = NULL;
     }

@@ -130,20 +130,8 @@ void __wrap_netmodel_closeQuery(netmodel_query_t* query) {
     free(query);
 }
 
-
-static const char* odl_defs = "test.odl";
-
 static amxd_dm_t dm;
 static amxo_parser_t parser;
-
-
-static void handle_events(void) {
-    printf("Handling events ");
-    while(amxp_signal_read() == 0) {
-        printf(".");
-    }
-    printf("\n");
-}
 
 static void s_parse_odl(const char* odl_file_name) {
     amxd_object_t* root_obj = amxd_dm_get_root(amxut_bus_dm());

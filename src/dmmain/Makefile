@@ -33,10 +33,11 @@ OBJECTS = $(addprefix $(OBJDIR)/,$(notdir $(SOURCES:.c=.o)))
 # TARGETS
 TARGET_BIN = $(OBJDIR)/$(COMPONENT)
 
-CFLAGS += -Werror -Wall -Wextra \
+CFLAGS += -Werror -Wall -Wextra -Werror\
           -Wformat=2 -Wshadow \
           -Wwrite-strings -Wredundant-decls \
           -Wno-format-nonliteral \
+		  -Wformat-security \
 		  -I$(INCDIRS) -fPIC -g3 \
 		  -I$(STAGINGDIR)/include -D_GNU_SOURCE \
 		  -DSAHTRACES_ENABLED -DSAHTRACES_LEVEL_DEFAULT=700

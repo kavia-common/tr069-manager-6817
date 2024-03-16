@@ -29,6 +29,7 @@ STAGING_LIBDIR = $(if $(STAGINGDIR), -L$(STAGINGDIR)/lib) \
 
 CFLAGS += -D_GNU_SOURCE -DSAHTRACES_ENABLED -DSAHTRACES_LEVEL_DEFAULT=700 \
 		  -trigraphs -fPIC -g -Wall -Wextra -Werror \
+		  -Wformat-security \
 		  -I$(INCDIR_PRIV) -I$(ROOT)/include -I$(STAGINGDIR)/include \
 		  -I$(STAGINGDIR)/usr/include
 

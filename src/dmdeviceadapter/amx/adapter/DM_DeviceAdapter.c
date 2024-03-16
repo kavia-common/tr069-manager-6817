@@ -365,7 +365,7 @@ static bool DM_ENG_Device_MatchingEvent(const csv_string_t dmEvents, DM_ENG_Even
 
     /* convert to amxc_string_t */
     amxc_string_init(&dmEventsStr, 0);
-    amxc_string_setf(&dmEventsStr, dmEvents);
+    amxc_string_setf(&dmEventsStr, "%s", dmEvents);
 
     /* split into a list of strings */
     amxc_var_init(&dmEventsList);
