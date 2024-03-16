@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.31.14 - 2024-03-16(06:19:31 +0000)
+
+### Other
+
+- [TR069] missing parameters in the Inform (PERIODIC)
+
 ## Release v1.31.13 - 2024-03-15(15:57:53 +0000)
 
 ### Other
