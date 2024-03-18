@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.31.15 - 2024-03-18(14:41:05 +0000)
+
+### Other
+
+- Rework TR-181 interface stacks indexing number
+
 ## Release v1.31.14 - 2024-03-16(06:19:31 +0000)
 
 ### Other
