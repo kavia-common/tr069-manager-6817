@@ -435,13 +435,18 @@ stop:
 int DM_ENG_Device_GetInformParameterValues(DM_ENG_EventStruct* eventList, DM_ENG_ParameterValueStruct** pvsList) {
     unsigned int error = 0;
     dm_amx_env_t* amx = &da.system;
+    DM_ENG_ParameterValueStruct** pResult = NULL;
+    char* paramArray[2];
+    char* searchPath = NULL;
 
+    amxd_path_t supPath;
+    amxd_path_init(&supPath, NULL);
     amxc_var_t values;
     amxc_var_init(&values);
     amxc_string_t path;
     amxc_string_init(&path, 0);
-    amxc_var_t refs;
-    amxc_var_init(&refs);
+    amxc_var_t search;
+    amxc_var_init(&search);
 
     int retcode = amxb_get(amx->bus_ctx, INFORMPARAMETER_PATH, 0, &values, 5);
     if((retcode != 0) || amxc_var_is_null(&values)) {
@@ -464,29 +469,42 @@ int DM_ENG_Device_GetInformParameterValues(DM_ENG_EventStruct* eventList, DM_ENG
             continue;
         }
 
-        /* if everything matches : return the parameterlist */
-        amxc_string_clean(&path);
-        amxc_string_setf(&path, "%sParameter.*.Reference", amxc_var_key(value));
-
-        amxc_var_clean(&refs);
-        amxb_get(amx->bus_ctx, (char*) amxc_string_get(&path, 0), 0, &refs, 5);
-
-        amxc_var_t* rrefs = GETI_ARG(&refs, 0);
-        amxc_var_for_each(ref, rrefs) {
-            const char* val = GET_CHAR(ref, "Reference");
-            if(!val || !*val) {
-                SetErrorGotoStop(DM_ENG_INTERNAL_ERROR, "Reference is empty in '%s'", amxc_var_key(ref));
+        const char* parameterName = GET_CHAR(value, "ParameterName");
+        amxd_path_clean(&supPath);
+        amxd_path_init(&supPath, parameterName);
+        if(amxd_path_is_supported_path(&supPath) || (0 == strcmp(amxd_path_get_param(&supPath), "{i}"))) {
+            free(searchPath);
+            searchPath = amxd_path_build_search_path(&supPath);
+            amxc_var_clean(&search);
+            retcode = amxb_get(amx->bus_ctx, searchPath, 0, &search, 5);
+            if((retcode != 0) || amxc_var_is_null(&search)) {
+                SAH_TRACEZ_WARNING("DM_DA", "Failed to get '%s'", searchPath);
+                continue;
             }
-            /* convert to a parameter value struct */
-            DM_ENG_ParameterValueStruct** pResult = NULL;
-            char* paramArray[2];
-            paramArray[0] = (char*) val;
+            amxc_var_t* rsearch = GETI_ARG(&search, 0);
+            amxc_var_for_each(s, rsearch) {
+                amxc_var_for_each(kv, s) {
+                    amxc_string_clean(&path);
+                    amxc_string_setf(&path, "%s%s", amxc_var_key(s), amxc_var_key(kv));
+                    paramArray[0] = (char*) amxc_string_get(&path, 0);
+                    paramArray[1] = NULL;
+                    DM_ENG_GetParameterValues(DM_ENG_EntityType_SYSTEM,
+                                              paramArray,
+                                              &pResult);
+                    if(pResult) {
+                        DM_ENG_addParameterValueStruct(pvsList, pResult[0]);
+                        free(pResult);
+                        pResult = NULL;
+                    }
+                }
+            }
+        } else {
+            paramArray[0] = (char*) parameterName;
             paramArray[1] = NULL;
             DM_ENG_GetParameterValues(DM_ENG_EntityType_SYSTEM,
                                       paramArray,
                                       &pResult);
             if(pResult) {
-                /* append it to the returned list */
                 DM_ENG_addParameterValueStruct(pvsList, pResult[0]);
                 free(pResult);
                 pResult = NULL;
@@ -496,7 +514,9 @@ int DM_ENG_Device_GetInformParameterValues(DM_ENG_EventStruct* eventList, DM_ENG
 
 stop:
     amxc_string_clean(&path);
-    amxc_var_clean(&refs);
+    free(searchPath);
+    amxd_path_clean(&supPath);
+    amxc_var_clean(&search);
     amxc_var_clean(&values);
     if(error != 0) {
         DM_ENG_deleteAllParameterValueStruct(pvsList);
