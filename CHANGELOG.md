@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.31.18 - 2024-03-19(17:52:34 +0000)
+
+### Other
+
+- [TR069] InformParameter wildcard support
+
 ## Release v1.31.17 - 2024-03-19(17:29:13 +0000)
 
 ### Other
