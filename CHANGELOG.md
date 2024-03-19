@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.31.17 - 2024-03-19(17:29:13 +0000)
+
+### Other
+
+- [Reboot Reason][tr-069] Provide the correct Reboot reason
+
 ## Release v1.31.16 - 2024-03-19(09:23:05 +0000)
 
 ### Other
