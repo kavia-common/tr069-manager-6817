@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.31.16 - 2024-03-19(09:23:05 +0000)
+
+### Other
+
+- [Tr181-Device] Move cwmp_plugin from ProxyManager to Tr181-Device extension
+
 ## Release v1.31.15 - 2024-03-18(14:41:05 +0000)
 
 ### Other
