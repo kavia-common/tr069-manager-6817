@@ -38,6 +38,7 @@ install: all
 	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-prefix.odl $(DEST)/etc/amx/cwmp_plugin/cwmp_plugin-prefix.odl
 	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-inform.odl $(DEST)/etc/amx/cwmp_plugin/cwmp_plugin-inform.odl
 	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmpd-config.odl $(DEST)/etc/amx/cwmp_plugin/cwmpd-config.odl
+	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-mapping.odl $(DEST)/etc/amx/tr181-device/extensions/01_cwmp_plugin_mapping.odl
 	$(INSTALL) -D -p -m 0755 src/dmdeviceadapter/amx/cwmp_plugin/scripts/cwmp_plugin.sh $(DEST)$(INITDIR)/cwmp_plugin
 	$(INSTALL) -D -p -m 0755 src/dmdeviceadapter/amx/cwmp_plugin/scripts/tr069_1_fw_upgrade.sh $(DEST)$(BINDIR)/tr069_1_fw_upgrade
 	$(INSTALL) -D -p -m 0755 src/dmdeviceadapter/amx/cwmp_plugin/scripts/tr069_2_vendor_logs_prepare.sh $(DEST)$(BINDIR)/tr069_2_vendor_logs_prepare
@@ -59,6 +60,7 @@ package: all
 	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-prefix.odl $(PKGDIR)/etc/amx/cwmp_plugin/cwmp_plugin-prefix.odl
 	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-inform.odl $(PKGDIR)/etc/amx/cwmp_plugin/cwmp_plugin-inform.odl
 	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmpd-config.odl $(PKGDIR)/etc/amx/cwmp_plugin/cwmpd-config.odl
+	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-mapping.odl $(PKGDIR)/etc/amx/tr181-device/extensions/01_cwmp_plugin_mapping.odl
 	$(INSTALL) -D -p -m 0755 src/dmdeviceadapter/amx/cwmp_plugin/scripts/cwmp_plugin.sh $(PKGDIR)$(INITDIR)/cwmp_plugin
 	$(INSTALL) -D -p -m 0755 src/dmdeviceadapter/amx/cwmp_plugin/scripts/tr069_1_fw_upgrade.sh $(PKGDIR)$(BINDIR)/tr069_1_fw_upgrade
 	$(INSTALL) -D -p -m 0755 src/dmdeviceadapter/amx/cwmp_plugin/scripts/tr069_2_vendor_logs_prepare.sh $(PKGDIR)$(BINDIR)/tr069_2_vendor_logs_prepare
@@ -82,6 +84,7 @@ doc:
 	$(eval ODLFILES += src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-prefix.odl)
 	$(eval ODLFILES += src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-inform.odl)
 	$(eval ODLFILES += src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmpd-config.odl)
+	$(eval ODLFILES += src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-mapping.odl)
 
 	mkdir -p output/xml
 	mkdir -p output/html
