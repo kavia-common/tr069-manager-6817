@@ -424,6 +424,35 @@ stop:
     return ret;
 }
 
+static char* DM_ENG_Device_amxd_path_build_search_path(amxd_path_t* path) {
+    amxc_string_t search_path;
+    char* search = NULL;
+
+    amxc_string_init(&search_path, 0);
+    when_null(path, exit);
+
+    amxc_var_for_each(path_part, (&path->parts)) {
+        const char* path_str = amxc_var_constcast(cstring_t, path_part);
+        if((path_str[0] == '{')) {
+            amxc_string_append(&search_path, "*", 1);
+            continue;
+        }
+        amxc_string_append(&search_path, path_str, strlen(path_str));
+    }
+    if(path->param != NULL) {
+        if((path->param[0] == '{')) {
+            amxc_string_append(&search_path, "*.", 2);
+        } else {
+            amxc_string_append(&search_path, path->param, strlen(path->param));
+        }
+    }
+
+exit:
+    search = amxc_string_take_buffer(&search_path);
+    amxc_string_clean(&search_path);
+    return search;
+}
+
 /**
  * @brief Gets the inform parameter value list from system level.
  *
@@ -474,7 +503,7 @@ int DM_ENG_Device_GetInformParameterValues(DM_ENG_EventStruct* eventList, DM_ENG
         amxd_path_init(&supPath, parameterName);
         if(amxd_path_is_supported_path(&supPath) || (0 == strcmp(amxd_path_get_param(&supPath), "{i}"))) {
             free(searchPath);
-            searchPath = amxd_path_build_search_path(&supPath);
+            searchPath = DM_ENG_Device_amxd_path_build_search_path(&supPath);
             amxc_var_clean(&search);
             retcode = amxb_get(amx->bus_ctx, searchPath, 0, &search, 5);
             if((retcode != 0) || amxc_var_is_null(&search)) {
