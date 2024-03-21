@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.31.20 - 2024-03-21(15:00:32 +0000)
+
+### Other
+
+- TR69 persistence at reboot is broken
+
 ## Release v1.31.19 - 2024-03-20(09:20:55 +0000)
 
 ### Other
