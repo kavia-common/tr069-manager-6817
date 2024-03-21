@@ -36,7 +36,6 @@ install: all
 	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-defaults.odl $(DEST)/etc/amx/cwmp_plugin/cwmp_plugin-defaults.odl
 	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-definition.odl $(DEST)/etc/amx/cwmp_plugin/cwmp_plugin-definition.odl
 	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-prefix.odl $(DEST)/etc/amx/cwmp_plugin/cwmp_plugin-prefix.odl
-	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-inform.odl $(DEST)/etc/amx/cwmp_plugin/cwmp_plugin-inform.odl
 	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmpd-config.odl $(DEST)/etc/amx/cwmp_plugin/cwmpd-config.odl
 	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-mapping.odl $(DEST)/etc/amx/tr181-device/extensions/01_cwmp_plugin_mapping.odl
 	$(INSTALL) -D -p -m 0755 src/dmdeviceadapter/amx/cwmp_plugin/scripts/cwmp_plugin.sh $(DEST)$(INITDIR)/cwmp_plugin
@@ -58,7 +57,6 @@ package: all
 	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-defaults.odl $(PKGDIR)/etc/amx/cwmp_plugin/cwmp_plugin-defaults.odl
 	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-definition.odl $(PKGDIR)/etc/amx/cwmp_plugin/cwmp_plugin-definition.odl
 	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-prefix.odl $(PKGDIR)/etc/amx/cwmp_plugin/cwmp_plugin-prefix.odl
-	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-inform.odl $(PKGDIR)/etc/amx/cwmp_plugin/cwmp_plugin-inform.odl
 	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmpd-config.odl $(PKGDIR)/etc/amx/cwmp_plugin/cwmpd-config.odl
 	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-mapping.odl $(PKGDIR)/etc/amx/tr181-device/extensions/01_cwmp_plugin_mapping.odl
 	$(INSTALL) -D -p -m 0755 src/dmdeviceadapter/amx/cwmp_plugin/scripts/cwmp_plugin.sh $(PKGDIR)$(INITDIR)/cwmp_plugin
@@ -82,7 +80,6 @@ doc:
 	$(eval ODLFILES += src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-defaults.odl)
 	$(eval ODLFILES += src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-definition.odl)
 	$(eval ODLFILES += src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-prefix.odl)
-	$(eval ODLFILES += src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-inform.odl)
 	$(eval ODLFILES += src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmpd-config.odl)
 	$(eval ODLFILES += src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-mapping.odl)
 

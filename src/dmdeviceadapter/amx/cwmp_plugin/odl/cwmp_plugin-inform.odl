@@ -1,4 +1,0 @@
-%populate {
-    object ManagementServer {
-    }
-}

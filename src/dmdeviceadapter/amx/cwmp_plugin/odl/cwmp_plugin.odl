@@ -22,7 +22,6 @@
     defaults_file = "${name}-defaults.odl";
     save_file = "${rw_data_path}/${name}/odl/${name}.odl";
     prefix_file = "${name}-prefix.odl";
-    inform_file = "${name}-inform.odl";
     
     // Use ODL persistent storage
     storage-type = "odl";
@@ -61,8 +60,6 @@ import "${name}.so" as "${name}";
 
 include "${prefix_file}";
 include "${definition_file}";
-include "${defaults_file}";
-include "${inform_file}";
 
 requires "Device.";
 requires "DeviceInfo.";
