@@ -60,6 +60,7 @@ extern "C"
 #endif
 
 #include "DM_AmxCommon.h"
+#include <dmengine/DM_ENG_SubscriptionStruct.h>
 
 bool DM_ENG_Device_ACSConnectionInitialize(dm_amx_env_t* amx);
 void DM_ENG_Device_ACSConnectionCleanup(dm_amx_env_t* amx);
@@ -69,6 +70,9 @@ bool DM_ENG_Device_ACSConnectionAddSubscription(dm_amx_env_t* amx, const char* s
 bool DM_ENG_Device_ACSConnectionRemoveSubscription(dm_amx_env_t* amx, const char* subscriptionPath, int subscriptionID);
 bool DM_ENG_Device_ACSConnectionHandleGetwandevice(dm_amx_env_t* amx, const char* ipaddress, char** addressFound);
 bool DM_ENG_Device_ACSConnectionHandleGetwaninterface(dm_amx_env_t* amx, const char* ipaddress, char** ppWanInterface);
+
+int DM_ENG_Device_ACSConnectionGetSubscriptions(dm_amx_env_t* amx, DM_ENG_SubscriptionStruct** pResult[]);
+
 
 #ifdef __cplusplus
 }

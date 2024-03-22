@@ -602,19 +602,20 @@
         * object representing CWMP subscriptions
         * @version 1.0
         */
-        %protected object Subscription[] {
+        %protected %persistent object Subscription[] {
+           %protected %persistent %unique %key string Alias;
           /**
             * The subscription path
             * @version 1.0
             */
-            string Path {
+            %persistent string Path {
                 userflags %upc;
             }
           /**
             * The type of subscription
             * @version 1.0
             */
-            string Type {
+            %persistent string Type {
                 on action validate call check_enum ["Off","Passive","Active","Forced"];
                 default "Off";
                 userflags %upc;
@@ -623,14 +624,14 @@
             * The value last set by the ACS
             * @version 1.0
             */
-            string Value {
+            %persistent string Value {
                 userflags %upc;
             }
           /**
             * The override flag
             * @version 1.0
             */
-            bool Override {
+            %persistent bool Override {
                 userflags %upc;
             }
         }

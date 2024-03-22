@@ -75,6 +75,7 @@
 #include <dmengine/DM_ENG_ParameterAttributesCache.h>
 #include <dmengine/DM_ENG_InformMessageScheduler.h>
 #include <dmengine/DM_ENG_Error.h>
+#include <dmengine/DM_ENG_SubscriptionStruct.h>
 #include "DM_AmxParameterValues.h"
 #include "DM_DeviceAdapter.h"
 #include "DM_AmxCommon.h"
@@ -428,19 +429,26 @@ bool DM_ENG_Device_ACSConnectionAddSubscription(dm_amx_env_t* amx, const char* s
         return false;
     }
 
-    if(DM_ENG_Device_Common_AddSubscription(&acsSubsList, amx, subscriptionPath,
-                                            EVENT_DM_FILTER_OBJECT_CHANGED,
-                                            &DM_ENG_Device_ACSConnectionHandleNotification,
-                                            subscriptionID) != 0) {
-        SAH_TRACEZ_ERROR("DM_DA", "Could not create notification for %s", subscriptionPath);
-        return false;
+    if((mode == DM_ENG_NotificationMode_FORCED) || (mode == DM_ENG_NotificationMode_ACTIVE)) {
+        if(DM_ENG_Device_Common_AddSubscription(&acsSubsList, amx, subscriptionPath,
+                                                EVENT_DM_FILTER_OBJECT_CHANGED,
+                                                &DM_ENG_Device_ACSConnectionHandleNotification,
+                                                subscriptionID) != 0) {
+            SAH_TRACEZ_ERROR("DM_DA", "Could not create notification for %s", subscriptionPath);
+            return false;
+        }
     }
 
-    amxc_var_t* sub = find_subscription_by_path(subscriptionPath);
-    if(!sub) {
-        add_subscription_to_dm(subscriptionPath, mode);
+    if(mode != DM_ENG_NotificationMode_FORCED) {
+        amxc_var_t* sub = find_subscription_by_path(subscriptionPath);
+        if(!sub) {
+            //remove each instance before creating it, will be fixed later
+            remove_subscription_from_dm(subscriptionPath);
+            add_subscription_to_dm(subscriptionPath, mode);
+        }
+        amxc_var_delete(&sub);
     }
-    amxc_var_delete(&sub);
+
     return true;
 }
 
@@ -464,6 +472,64 @@ bool DM_ENG_Device_ACSConnectionRemoveSubscription(dm_amx_env_t* amx, const char
     SAH_TRACEZ_INFO("DM_DA", "Removing subscription path=%s id=%d", subscriptionPath, subscriptionID);
     remove_subscription_from_dm(subscriptionPath);
     return (DM_ENG_Device_Common_DeleteSubscription(&acsSubsList, amx, subscriptionID) == 0);
+}
+
+//---------------------------------------------------------------------------------------------
+/**
+   @brief
+   This function fetches a list of ManagementServer.Subscription.x instances and returns the
+   result to the calling function.
+
+   @details
+   this function is called to create a DM_ENG_SubscriptionStruct list of
+   items found in ManagementServer.Subscription.x
+
+   The calling function is responsible for cleaning up the resulting pResult.
+
+   @param amx A pointer to the amx system bus environment variable
+   @param pResult Array containing a list and descripption of the current subscriptions that is returned to the calling function
+
+   @return
+    - TR69 error in case of error
+    - 0 in case of success
+ */
+int DM_ENG_Device_ACSConnectionGetSubscriptions(dm_amx_env_t* amx, DM_ENG_SubscriptionStruct** pResult[]) {
+
+    amxc_var_t subscriptions;
+    int error;
+    DM_ENG_SubscriptionStruct* tempList = NULL;
+    int ret;
+    const amxc_htable_t* htable = NULL;
+    amxc_var_init(&subscriptions);
+
+    SAH_TRACEZ_INFO("DM_DA", "Getting All Subscriptions from data-model");
+
+    if((ret = amxb_get(amx->bus_ctx, "ManagementServer.Subscription.*.", 1, &subscriptions, 30)) != 0) {
+        SAH_TRACEZ_ERROR("DM_DA", "Could not get subscriptions %d", ret);
+        error = -1;
+        goto stop;
+    }
+
+    htable = amxc_var_constcast(amxc_htable_t, GETI_ARG(&subscriptions, 0));
+
+    amxc_htable_iterate(hit, htable) {
+        amxc_var_t* subs = amxc_var_from_htable_it(hit);
+        const char* path = GET_CHAR(subs, "Path");
+        const char* type = GET_CHAR(subs, "Type");
+
+        SAH_TRACEZ_INFO("DM_DA", "Adding subscription: path[%s] type[%s]", path, type);
+
+        DM_ENG_SubscriptionStruct* subscription = DM_ENG_newSubscriptionStruct(path, type);
+        if(subscription) {
+            DM_ENG_addSubscriptionStruct(&tempList, subscription);
+        }
+    }
+    *pResult = DM_ENG_toSubscriptionStructArray(tempList);
+    error = 0;
+
+stop:
+    amxc_var_clean(&subscriptions);
+    return error;
 }
 
 // /** @} */

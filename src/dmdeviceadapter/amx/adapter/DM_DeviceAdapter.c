@@ -847,73 +847,6 @@ int DM_ENG_Device_Upload(char* commandkey, char* fileType, char* url, char* user
 #define IGD_WANIP_SPECIAL_ACACHE_NAME "IGDWANIPADDRESS"
 
 /**
- * Load the subscription attributes
- *
- * @param rpcpath The persistent file location
- * @param acacheArray The resulting array
- * @return -1 in case of error, 0 on success
- */
-static int DM_ENG_Device_LoadAttributes(char* rpcpath, DM_ENG_ParameterAttributesStruct** acacheArray[]) {
-    FILE* pFile;
-    char* path = NULL;
-    unsigned int notification = DM_ENG_NotificationMode_OFF;
-    char* accesslist = NULL;
-    char* value = NULL;
-    char* al[2];
-
-    pFile = DM_COMMON_rpc_open_read(rpcpath, "cwmp_acache");
-    if(pFile == NULL) {
-        SAH_TRACEZ_ERROR("DM_DA", "Could not open acache file");
-        return -1;
-    } else {
-        SAH_TRACEZ_INFO("DM_DA", "Loading attribute cache");
-        DM_ENG_ParameterAttributesStruct* LoadList = NULL;
-
-        while(DM_COMMON_rpc_read_subscription(pFile, &path, &value, &notification, &accesslist) != -1) {
-
-            SAH_TRACEZ_INFO("DM_DA", "Loading %s %s %d %s", path, value, notification, accesslist);
-            if(path && ( strcmp(path, IGD_WANIP_SPECIAL_ACACHE_NAME) == 0)) {
-                if(value) {
-                    externalIPAddress = value;
-                }
-                free(path);
-                free(accesslist);
-                path = NULL;
-                value = NULL;
-                accesslist = NULL;
-                continue;
-            }
-            if(!path) {
-                continue;
-            }
-            DM_ENG_ParameterAttributesStruct* anew = NULL;
-
-            if(( accesslist != NULL) && (( strlen(accesslist) == 0) || ( strcmp(accesslist, "NULL") == 0))) {
-                SAH_TRACEZ_INFO("DM_DA", "accesslist is empty");
-                anew = DM_ENG_newParameterAttributesStruct(path, (DM_ENG_NotificationMode) notification, NULL);
-            } else {
-                SAH_TRACEZ_INFO("DM_DA", "accesslist is not empty : %s", accesslist);
-                al[0] = accesslist;
-                al[1] = NULL;
-                anew = DM_ENG_newParameterAttributesStruct(path, (DM_ENG_NotificationMode) notification, al);
-            }
-            DM_ENG_setCacheValueInParameterAttributesStruct(anew, value);
-            DM_ENG_addParameterAttributesStruct(&LoadList, anew);
-            //todo: load all items in accesslist
-            free(path);
-            free(value);
-            free(accesslist);
-            path = NULL;
-            value = NULL;
-            accesslist = NULL;
-        }
-        *acacheArray = DM_ENG_toParameterAttributesStructArray(LoadList);
-        fclose(pFile);
-    }
-    return 0;
-}
-
-/**
  * Load the schedule inform entries attributes
  *
  * @param rpcpath The persistent file location
@@ -954,18 +887,13 @@ static int DM_ENG_Device_LoadScheduleInform(char* rpcpath, DM_ENG_ScheduleInform
  *
  * @ return 0 if save was succesfull, -1 if an error occurred
  */
-int DM_ENG_Device_LoadConfig(DM_ENG_ParameterAttributesStruct** acacheArray[], DM_ENG_ScheduleInformStruct** is) {
+int DM_ENG_Device_LoadConfig(DM_ENG_ScheduleInformStruct** is) {
     char* path = NULL;
     if(persistentRPCPath) {
         path = strdup(persistentRPCPath);
     }
     /* initialize */
-    *acacheArray = NULL;
     *is = NULL;
-
-    if(DM_ENG_Device_LoadAttributes(path, acacheArray) == -1) {
-        SAH_TRACEZ_ERROR("DM_DA", "Could not load attributes file");
-    }
 
     if(DM_ENG_Device_LoadScheduleInform(path, is) == -1) {
         SAH_TRACEZ_ERROR("DM_DA", "Could not load schedule inform file");
@@ -979,108 +907,6 @@ int DM_ENG_Device_LoadConfig(DM_ENG_ParameterAttributesStruct** acacheArray[], D
     }
     return 0;
 }
-
-/**
- * Save the subscription attributes
- *
- * @param rpcpath The persistent file location
- * @param acacheArray The array that has to be saved
- * @return -1 in case of error, 0 on success
- */
-static int DM_ENG_Device_SaveAttributes(DM_ENG_ParameterAttributesStruct* acacheArray[]) {
-    FILE* pFile;
-    SAH_TRACEZ_INFO("DM_DA", "Saving attribute cache in persistentRPCPath = %s", persistentRPCPath);
-    pFile = DM_COMMON_rpc_open_write(persistentRPCPath, "cwmp_acache");
-    if(pFile == NULL) {
-        SAH_TRACEZ_ERROR("DM_DA", "Could not open acache file");
-        return -1;
-    }
-
-    int size = DM_ENG_tablen((void**) acacheArray);
-    const char* wanIP = DM_ENG_CurrentIGDExternalIPAddressPath();
-    SAH_TRACEZ_INFO("DM_DA", "Saving %d items", size);
-    int i = 0;
-    for(i = 0; i < size; i++) {
-        const char* paramName = acacheArray[i]->parameterName;
-        if(wanIP && acacheArray[i]->parameterName && ( strcmp(wanIP, acacheArray[i]->parameterName) == 0)) {
-            //It's the wan ip, save it using a special path as we might switch wan mode between boots
-            paramName = IGD_WANIP_SPECIAL_ACACHE_NAME;
-        }
-        SAH_TRACEZ_INFO("DM_DA", "Saving %s", paramName);
-        if(DM_COMMON_rpc_write_subscription(pFile, paramName, acacheArray[i]->cachedValue, acacheArray[i]->notification, NULL) == -1) {
-            SAH_TRACEZ_ERROR("DM_DA", "Error saving subscription");
-        }
-    }
-    DM_COMMON_rpc_close(pFile, persistentRPCPath, "cwmp_acache");
-    //todo: save all items in accesslist
-    return 0;
-}
-
-
-/**
- * Save the schedule inform entries attributes
- *
- * @param rpcpath The persistent file location
- * @param is The array that has to be saved
- * @return -1 in case of error, 0 on success
- */
-static int DM_ENG_Device_SaveScheduleInform(DM_ENG_ScheduleInformStruct* is) {
-    SAH_TRACEZ_IN("DM_DA");
-    FILE* pFile;
-    char* val = NULL;
-    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_BOOTPERSISTENTSCHEDULEINFORM, &val) == 0) {
-        if(atol(val) == 0) {
-            free(val);
-            return 0;
-        }
-        free(val);
-    }
-
-    if(is) {
-        SAH_TRACEZ_INFO("DM_DA", "Saving schduled informs");
-        pFile = DM_COMMON_rpc_open_write(persistentRPCPath, "cwmp_scheduleinform");
-        if(pFile == NULL) {
-            SAH_TRACEZ_ERROR("DM_DA", "Could not open scheduleinform file");
-            return -1;
-        }
-
-        DM_ENG_ScheduleInformStruct* ptr = is;
-        while(ptr) {
-            DM_COMMON_rpc_write_scheduleinform(pFile, ptr->commandKey, ptr->time);
-            ptr = ptr->next;
-        }
-        DM_COMMON_rpc_close(pFile, persistentRPCPath, "cwmp_scheduleinform");
-    } else {
-        DM_COMMON_rpc_remove(persistentRPCPath, "cwmp_scheduleinform");
-        sync();
-    }
-    SAH_TRACEZ_OUT("DM_DA");
-    return 0;
-}
-
-/**
- * Save the engine configuration: reboot command key, attribute cache.
- *
- * @param acacheArray The array containing all acache entries that need to be saved
- * @param is Linked list containing all scheduleinform entries that were undelivered
- *
- * @ return 0 if save was succesfull, -1 if an error occurred
- */
-int DM_ENG_Device_SaveConfig(DM_ENG_ParameterAttributesStruct* acacheArray[], DM_ENG_ScheduleInformStruct* is) {
-    if(acacheArray) {
-        if(DM_ENG_Device_SaveAttributes(acacheArray) == -1) {
-            SAH_TRACEZ_ERROR("DM_DA", "Could not save attributes file");
-            return -1;
-        }
-    } else {
-        if(DM_ENG_Device_SaveScheduleInform(is) == -1) {
-            SAH_TRACEZ_ERROR("DM_DA", "Could not save schedule inform file");
-            return -1;
-        }
-    }
-    return 0;
-}
-
 
 
 /**
@@ -1110,6 +936,22 @@ int DM_ENG_Device_AddNotification(const char* subscriptionPath, int* subscriptio
 int DM_ENG_Device_RemoveNotification(const char* subscriptionPath, int subscriptionID) {
     SAH_TRACEZ_INFO("DM_DA", "DM_ENG_Device_RemoveNotification path=%s id=%d", subscriptionPath, subscriptionID);
     if(DM_ENG_Device_ACSConnectionRemoveSubscription(&da.acs, subscriptionPath, subscriptionID) == false) {
+        return -1;
+    }
+    return 0;
+}
+
+/**
+ * Subscribe for parameter updates.
+ *
+ * @param subscriptionPath The path of the parameter we want to subscribe to
+ * @param subscriptionID The subscription ID
+ *
+ * @ return 0 if succesfull, -1 if an error occurred
+ */
+int DM_ENG_Device_GetSubscriptions(DM_ENG_SubscriptionStruct** pResult[]) {
+    SAH_TRACEZ_INFO("DM_DA", "Get subscriptions");
+    if(DM_ENG_Device_ACSConnectionGetSubscriptions(&da.system, pResult) == false) {
         return -1;
     }
     return 0;
