@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.31.21 - 2024-03-22(08:27:34 +0000)
+
+### Other
+
+- [TR-069] Ability to configure default subscriptions under...
+
 ## Release v1.31.20 - 2024-03-21(15:00:32 +0000)
 
 ### Other
