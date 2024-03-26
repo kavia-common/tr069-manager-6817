@@ -424,35 +424,6 @@ stop:
     return ret;
 }
 
-static char* DM_ENG_Device_amxd_path_build_search_path(amxd_path_t* path) {
-    amxc_string_t search_path;
-    char* search = NULL;
-
-    amxc_string_init(&search_path, 0);
-    when_null(path, exit);
-
-    amxc_var_for_each(path_part, (&path->parts)) {
-        const char* path_str = amxc_var_constcast(cstring_t, path_part);
-        if((path_str[0] == '{')) {
-            amxc_string_append(&search_path, "*", 1);
-            continue;
-        }
-        amxc_string_append(&search_path, path_str, strlen(path_str));
-    }
-    if(path->param != NULL) {
-        if((path->param[0] == '{')) {
-            amxc_string_append(&search_path, "*.", 2);
-        } else {
-            amxc_string_append(&search_path, path->param, strlen(path->param));
-        }
-    }
-
-exit:
-    search = amxc_string_take_buffer(&search_path);
-    amxc_string_clean(&search_path);
-    return search;
-}
-
 /**
  * @brief Gets the inform parameter value list from system level.
  *
@@ -466,10 +437,9 @@ int DM_ENG_Device_GetInformParameterValues(DM_ENG_EventStruct* eventList, DM_ENG
     dm_amx_env_t* amx = &da.system;
     DM_ENG_ParameterValueStruct** pResult = NULL;
     char* paramArray[2];
-    char* searchPath = NULL;
 
-    amxd_path_t supPath;
-    amxd_path_init(&supPath, NULL);
+    amxd_path_t searchPath;
+    amxd_path_init(&searchPath, NULL);
     amxc_var_t values;
     amxc_var_init(&values);
     amxc_string_t path;
@@ -499,15 +469,16 @@ int DM_ENG_Device_GetInformParameterValues(DM_ENG_EventStruct* eventList, DM_ENG
         }
 
         const char* parameterName = GET_CHAR(value, "ParameterName");
-        amxd_path_clean(&supPath);
-        amxd_path_init(&supPath, parameterName);
-        if(amxd_path_is_supported_path(&supPath) || (0 == strcmp(amxd_path_get_param(&supPath), "{i}"))) {
-            free(searchPath);
-            searchPath = DM_ENG_Device_amxd_path_build_search_path(&supPath);
+        if(parameterName == NULL) {
+            continue;
+        }
+        amxd_path_clean(&searchPath);
+        amxd_path_init(&searchPath, parameterName);
+        if(amxd_path_is_search_path(&searchPath)) {
             amxc_var_clean(&search);
-            retcode = amxb_get(amx->bus_ctx, searchPath, 0, &search, 5);
+            retcode = amxb_get(amx->bus_ctx, parameterName, 0, &search, 5);
             if((retcode != 0) || amxc_var_is_null(&search)) {
-                SAH_TRACEZ_WARNING("DM_DA", "Failed to get '%s'", searchPath);
+                SAH_TRACEZ_WARNING("DM_DA", "Failed to get '%s'", parameterName);
                 continue;
             }
             amxc_var_t* rsearch = GETI_ARG(&search, 0);
@@ -528,6 +499,10 @@ int DM_ENG_Device_GetInformParameterValues(DM_ENG_EventStruct* eventList, DM_ENG
                 }
             }
         } else {
+            if(amxd_path_get_param(&searchPath) == NULL) {
+                SAH_TRACEZ_ERROR("DM_DA", "Failed to get '%s' - invalid path", parameterName);
+                continue;
+            }
             paramArray[0] = (char*) parameterName;
             paramArray[1] = NULL;
             DM_ENG_GetParameterValues(DM_ENG_EntityType_SYSTEM,
@@ -543,8 +518,7 @@ int DM_ENG_Device_GetInformParameterValues(DM_ENG_EventStruct* eventList, DM_ENG
 
 stop:
     amxc_string_clean(&path);
-    free(searchPath);
-    amxd_path_clean(&supPath);
+    amxd_path_clean(&searchPath);
     amxc_var_clean(&search);
     amxc_var_clean(&values);
     if(error != 0) {
