@@ -145,7 +145,7 @@ int test_cwmp_plugin_setup(void** state) {
     assert_int_equal(amxo_resolver_ftab_add(amxut_bus_parser(), "updateConnectionRequestURL", AMXO_FUNC(_updateConnectionRequestURL)), 0);
     assert_int_equal(amxo_resolver_ftab_add(amxut_bus_parser(), "AddTransfer", AMXO_FUNC(_AddTransfer)), 0);
     s_parse_odl("../../src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-definition.odl");
-    s_parse_odl("../../src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-defaults.odl");
+    s_parse_odl("../../src/dmdeviceadapter/amx/cwmp_plugin/odl/defaults.d/cwmp_plugin-defaults.odl");
     assert_int_equal(0, _cwmp_plugin_main(AMXO_START, amxut_bus_dm(), amxut_bus_parser()));
     return 0;
 }
