@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.31.23 - 2024-03-28(16:04:54 +0000)
+
+### Other
+
+- [tr069-manager] Implement defaults.d directory
+
 ## Release v1.31.22 - 2024-03-26(12:09:30 +0000)
 
 ### Other
