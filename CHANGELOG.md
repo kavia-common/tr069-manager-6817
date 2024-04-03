@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.31.24 - 2024-04-03(15:35:18 +0000)
+
+### Fixes
+
+- Issue: HOP 6211 DUT doesn't send '8 Diagnostics Complete' to the ACS
+
 ## Release v1.31.23 - 2024-03-28(16:04:54 +0000)
 
 ### Other
