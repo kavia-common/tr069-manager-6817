@@ -70,6 +70,7 @@
 #include <amxd/amxd_dm.h>
 #include <amxb/amxb.h>
 
+#include <dmengine/DM_ENG_Global.h>
 #include <dmengine/DM_ENG_ParameterValueStruct.h>
 #include <dmengine/DM_ENG_NotificationInterface.h>
 #include <dmengine/DM_ENG_RPCInterface.h>
@@ -78,6 +79,11 @@
 #include <dmengine/DM_ENG_Error.h>
 #include "DM_DeviceAdapter.h"
 #include "DM_AmxCommon.h"
+
+#define DIAGNOSTICS_IPPING_PATH                     "Device.IP.Diagnostics.IPPing."
+#define DIAGNOSTICS_TRACEROUTE_PATH                 "Device.IP.Diagnostics.TraceRoute."
+#define DIAGNOSTICS_DOWNLOADDIAGNOSTICS_PATH        "Device.IP.Diagnostics.DownloadDiagnostics."
+#define DIAGNOSTICS_UPLOADDIAGNOSTICS_PATH          "Device.IP.Diagnostics.UploadDiagnostics."
 
 //---------------------------------------------------------------------------------------------
 /**
@@ -101,6 +107,7 @@ static amxc_llist_t systemSubsList;
    - if EnableCWMP changes, start/stop the http server, trigger an inform message
    - If the event is coming from the ManagementServer.QueuedTransfers.* objects.
    - if a "status" parameter changes to "Finished", trigger a transfer complete message
+   - if a "DiagnosticsState" parameter changes to "Complete", "Error*", trigger a Diagnostics complete message
 
    @param path parameter path
    @param data notification data
@@ -221,6 +228,28 @@ void DM_ENG_Device_SystemConnectionHandleParameterChanged(const char* path, cons
                     }
                     free(periodicInformTime);
                 }
+            }
+        }
+    }
+    // Handle Diagnostics Events
+    else if((strcmp(path, DIAGNOSTICS_PATH) == 0) && (objpath != NULL)) {
+        unsigned int diagnosticRequest = 0;
+
+        if(strcmp(objpath, DIAGNOSTICS_IPPING_PATH) == 0) {
+            diagnosticRequest = IPPING_DIAGNOSTIC_REQUEST;
+        } else if(strcmp(objpath, DIAGNOSTICS_TRACEROUTE_PATH) == 0) {
+            diagnosticRequest = TRACEROUTE_DIAGNOSTIC_REQUEST;
+        } else if(strcmp(objpath, DIAGNOSTICS_DOWNLOADDIAGNOSTICS_PATH) == 0) {
+            diagnosticRequest = DOWNLOAD_DIAGNOSTIC_REQUEST;
+        } else if(strcmp(objpath, DIAGNOSTICS_UPLOADDIAGNOSTICS_PATH) == 0) {
+            diagnosticRequest = UPLOAD_DIAGNOSTIC_REQUEST;
+        }
+
+        if((diagnosticRequest != 0) && DM_ENG_isDiagnosticRequestPending(diagnosticRequest)) {
+            const char* DiagnosticsState = GETP_CHAR(parameters, "DiagnosticsState.to");
+            if((DiagnosticsState != NULL) && ((strcmp(DiagnosticsState, "Complete") == 0) || (strncmp(DiagnosticsState, "Error", 5) == 0))) {
+                DM_ENG_InformMessageScheduler_diagnosticsComplete();
+                DM_ENG_clearPendingDiagnosticRequest(diagnosticRequest);
             }
         }
     }
@@ -651,6 +680,7 @@ static void DM_ENG_Device_SystemConnectionSleepBeforeStarting() {
    - create subscription on DEVICEINFO_PATH
    - create subscription on MANAGEMENTSERVER_TRANSFERS_NODE
    - create subscription on TIME_PATH
+   - create subscription on DIAGNOSTICS_PATH
 
    @param amx A pointer to the amx system bus environment variable
 
@@ -725,6 +755,15 @@ bool DM_ENG_Device_SystemConnectionInitialize(dm_amx_env_t* amx) {
         SAH_TRACEZ_ERROR("DM_DA", "Could not create notification for %s", TIME_PATH);
         goto stop;
     }
+    /* Create the notifications */
+    if(DM_ENG_Device_Common_AddSubscription(&systemSubsList, amx, DIAGNOSTICS_PATH,
+                                            EVENT_DM_FILTER_OBJECT_CHANGED,
+                                            &DM_ENG_Device_SystemConnectionHandleParameterChanged,
+                                            &id) != 0) {
+        SAH_TRACEZ_ERROR("DM_DA", "Could not create notification for %s", DIAGNOSTICS_PATH);
+        goto stop;
+    }
+
     if(DM_ENG_SetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_SESSIONSTATUS, "Idle") != 0) {
         SAH_TRACEZ_ERROR("DM_DA", "Could not set Session Status in the datamodel");
     }

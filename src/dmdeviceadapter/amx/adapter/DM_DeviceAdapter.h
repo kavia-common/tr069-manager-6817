@@ -150,6 +150,7 @@ dm_amx_env_t* DM_ENG_Device_GetSystemInfo();
 #define MGMT_SRV_INTERNALSETTINGS       "Device.ManagementServer.InternalSettings."
 #define DEVICEINFO_PATH                 "Device.DeviceInfo."
 #define TIME_PATH                       "Device.Time."
+#define DIAGNOSTICS_PATH                "Device.IP.Diagnostics."
 #define INFORMPARAMETER_PATH            "Device.ManagementServer.InformParameter.*."
 #define AMXB_BACKEND                    "AMXB_BACKEND"
 #define AMXB_URI                        "AMXB_URI"
