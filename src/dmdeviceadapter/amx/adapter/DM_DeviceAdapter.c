@@ -856,7 +856,6 @@ static int DM_ENG_Device_LoadScheduleInform(char* rpcpath, DM_ENG_ScheduleInform
 /**
  * Load the saved engine parameters: reboot command key,  attribute cache.
  *
- * @param acacheArray The array containing all acache entries that need to be loaded
  * @param is Linked list containing all scheduleinform entries that were undelivered
  *
  * @ return 0 if save was succesfull, -1 if an error occurred
