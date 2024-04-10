@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.31.28 - 2024-04-10(11:54:20 +0000)
+
+### Other
+
+- Add ScheduleDownload RPC
+
 ## Release v1.31.27 - 2024-04-10(11:45:03 +0000)
 
 ### Other
