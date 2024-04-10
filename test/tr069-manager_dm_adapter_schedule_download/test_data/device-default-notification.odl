@@ -1,0 +1,16 @@
+%populate {
+    object 'ManagementServer.Transfers.ScheduleDownload' {
+        instance add(1) {
+            object 'TransferComplete' {
+                parameter 'Status' = "";
+                parameter 'FaultCode' = 0;
+                parameter 'StartTime' = "0001-01-01T00:00:00Z";
+                parameter 'CompleteTime' = "0001-01-01T00:00:00Z";
+                parameter 'CommandKey' = "1234";
+                parameter 'TransferType' = "ScheduleDownload";
+                parameter 'FaultString' = "";
+                parameter 'Initiator' = "ACS";
+            }
+        }
+    }
+}

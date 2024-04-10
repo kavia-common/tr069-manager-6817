@@ -1,0 +1,6 @@
+%populate {
+    object "DeviceInfo.FirmwareImage.active" {
+                parameter Status = "Active";
+                parameter BootFailureLog = "";
+    }
+}

@@ -69,6 +69,8 @@
 #include <dmengine/DM_ENG_RPCInterface.h>
 #include <dmengine/DM_ENG_ParameterAttributesCache.h>
 #include <dmengine/DM_ENG_InformMessageScheduler.h>
+#include <dmengine/DM_ENG_Type.h>
+#include <dmengine/DM_ENG_Fault.h>
 #include <dmcommon/DM_GlobalDefs.h>
 
 #include "DM_AmxCommon.h"
@@ -80,6 +82,7 @@
 #include "DM_AmxAddDelete.h"
 #include "DM_AmxReset.h"
 #include "DM_AmxUpDownload.h"
+#include "DM_AmxScheduleDownload.h"
 #include <debug/sahtrace.h>
 #include <string.h>
 #include <libgen.h>
@@ -200,6 +203,10 @@ bool DM_ENG_Device_Init(void** systemCtx, void** acsCtx, const char* rpcPath, co
 bool DM_ENG_Device_Release() {
     bool result = true;
     SAH_TRACEZ_IN("DM_DA");
+
+    if(DM_AmxScheduleDownload_clean() != 0) {
+        SAH_TRACEZ_ERROR("DM_DA", "Failed to clean AMX ScheduleDownload");
+    }
 
     DM_ENG_Device_ACSConnectionCleanup(&da.acs);
     DM_ENG_Device_SystemConnectionCleanup(&da.system);
@@ -760,6 +767,28 @@ stop:
     SAH_TRACEZ_OUT("DM_DA");
 }
 
+int DM_ENG_Device_ScheduleDownload(const char* CommandKey, const char* FileType,
+                                   const char* URL, const char* Username, const char* Password,
+                                   uint32_t FileSize, const char* TargetFileName,
+                                   TimeWindowStruct* TimeWindowList[TIMEWINDOWLIST_MAX_LENGTH]) {
+    int retval = 0;
+
+    // dm_amx_env_t* amx = DM_ENG_Device_GetSystemInfo();
+
+    // if ((amx == NULL) || (amx->bus_ctx == NULL))
+    // {
+    //     SAH_TRACEZ_ERROR("DM_DA", "Failed to get system info");
+    //     retval = DM_ENG_FAULTCODE_9002;
+    // } else {
+
+    retval = DM_ENG_Device_DoScheduleDownload(CommandKey, FileType,
+                                              URL, Username, Password,
+                                              FileSize, TargetFileName,
+                                              TimeWindowList);
+    // }
+
+    return retval;
+}
 
 
 /*********************************** download RPC *************************************/
@@ -870,6 +899,10 @@ int DM_ENG_Device_LoadConfig(DM_ENG_ScheduleInformStruct** is) {
 
     if(DM_ENG_Device_LoadScheduleInform(path, is) == -1) {
         SAH_TRACEZ_ERROR("DM_DA", "Could not load schedule inform file");
+    }
+
+    if(DM_AmxScheduleDownload_init((&da.system)->bus_ctx) != 0) {
+        SAH_TRACEZ_ERROR("DM_DA", "Failed to intialise AMX ScheduleDownload");
     }
 
     free(path);

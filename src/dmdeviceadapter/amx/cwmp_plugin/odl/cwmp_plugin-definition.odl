@@ -975,5 +975,249 @@
             */
             uint32 SessionsSinceReboot=0;
         }
+
+      /**
+        * All requested ScheduleDownload transfers
+        * @version 1.0
+        */
+      %persistent %protected object Transfers {
+          /**
+            * ScheduleDownload transfer used to download a specified file from the designated location and apply it within
+            * either one or two specified time windows
+            * @version 1.0
+            */
+          %persistent object ScheduleDownload[] {
+              %protected %persistent %unique %key string Alias;
+              on action del-inst call scheduleDownload_del_inst;
+              counted with NumberOfScheduleDownloadEntries;
+
+            /**
+              * The string the CPE uses to refer to a particular download
+              * @version 1.0
+              */
+              %persistent string CommandKey {
+                  userflags %upc;
+              }
+              /**
+                * An integer followed by a space followed by the file type description
+                * @version 1.0
+                */
+              %persistent string FileType {
+                  userflags %upc;
+              }
+              /**
+                * URL specifying the source file location
+                * @version 1.0
+                */
+              %persistent string URL {
+                  userflags %upc;
+              }
+              /**
+                * Username to be used by the CPE to authenticate with the file server.
+                * @version 1.0
+                */
+              %persistent string Username {
+                  userflags %upc;
+              }
+              /**
+                * Password to be used by the CPE to authenticate with the file server.
+                * @version 1.0
+                */
+              %persistent string Password {
+                  userflags %upc;
+              }
+              /**
+                * The size of the file to be downloaded in bytes.
+                * @version 1.0
+                */
+              %persistent uint32 FileSize {
+                  userflags %upc;
+              }
+              /**
+                * The name of the file to be used on the target file system
+                * @version 1.0
+                */
+              %persistent string TargetFileName {
+                  userflags %upc;
+              }
+              /**
+                * defines the time window(s) during which the CPE MUST perform and apply the download.
+                * @version 1.0
+                */
+              %persistent object TimeWindowList[2] {
+                  %protected %persistent %unique %key string Alias;
+                  /**
+                    * Status of the TimeWindow (Idle, Started, Ended)
+                    * @version 1.0
+                    */
+                  %persistent string Status {
+                      default "Idle";
+                      userflags %upc;
+                  }
+                  /**
+                    * Start of this time window in seconds
+                    * @version 1.0
+                    */
+                  %persistent uint32 WindowStart {
+                      userflags %upc;
+                  }
+                  /**
+                    * End of this time window in seconds
+                    * @version 1.0
+                    */
+                  %persistent uint32 WindowEnd {
+                      userflags %upc;
+                  }
+                  /**
+                    * Mode of the time window
+                    * @version 1.0
+                    */
+                  %persistent string WindowMode {
+                      userflags %upc;
+                  }
+                  /**
+                    * A message to the user of the CPE, to inform him about a download request
+                    * @version 1.0
+                    */
+                  %persistent string UserMessage {
+                      userflags %upc;
+                  }
+                  /**
+                    * The maximum number of retries for downloading and/or applying
+                    * the file before regarding the transfer as having failed
+                    * @version 1.0
+                    */
+                  %persistent int32 MaxRetries {
+                      userflags %upc;
+                  }
+              }
+              /**
+                * TransferComplete associated with the ScheduleDownload Transfer.
+                * Gives indication about the transfer status.
+                * @version 1.0
+                */
+              %persistent object TransferComplete {
+                  /**
+                    * Status of the TransferComplete (Idle, In Progress, Failed, Done)
+                    * @version 1.0
+                    */
+                  %persistent string Status {
+                      userflags %upc;
+                  }
+                  /**
+                    * The initiator of the ScheduleDownload transfer
+                    * @version 1.0
+                    */
+                  %persistent string Initiator {
+                      userflags %upc;
+                  }
+                  /**
+                    * The string the CPE uses to refer to a particular download
+                    * @version 1.0
+                    */
+                  %persistent string CommandKey {
+                      userflags %upc;
+                  }
+                  /**
+                    * Indicates the TransferComplete type
+                    * @version 1.0
+                    */
+                  %persistent string TransferType {
+                      userflags %upc;
+                  }
+                  /**
+                    * Numerical fault code, 0 indicates no fault
+                    * @version 1.0
+                    */
+                  %persistent uint32 FaultCode {
+                      userflags %upc;
+                  }
+                  /**
+                    * A human-readable text description of the fault
+                    * @version 1.0
+                    */
+                  %persistent string FaultString {
+                      userflags %upc;
+                  }
+                  /**
+                    * The date and time transfer was started in UTC, or Unknown time
+                    * @version 1.0
+                    */
+                  %persistent datetime StartTime {
+                      userflags %upc;
+                  }
+                  /**
+                    * The date and time the transfer was fully completed and applied in UTC, or Unknown time
+                    * @version 1.0
+                    */
+                  %persistent datetime CompleteTime {
+                      userflags %upc;
+                  }
+              }
+          }
+
+          /**
+            * RPC used to add and perform a ScheduleDownload transfer
+            * @version 1.0
+            *
+            * @param Initiator The initiator of the RPC call
+            *
+            * @param CommandKey The string the CPE uses to refer to a particular download, only "1 Firmware Upgrade Image" file type is supported.
+            *
+            * @param FileType An integer followed by a space followed by the file type description.
+            *
+            * @param URL URL specifying the source file location
+            *
+            * @param Username Username to be used by the CPE to authenticate with the file server.
+            *
+            * @param Password Password to be used by the CPE to authenticate with the file server.
+            *
+            * @param FileSize The size of the file to be downloaded in bytes.
+            *
+            * @param TargetFileName The name of the file to be used on the target file system
+            *
+            * @param TimeWindowList is a list, composed one or two time window(s) during which the CPE MUST perform and apply the download.
+            * each time window is composed of: WindowStart, WindowEnd, WindowMode, UserMessage, MaxRetries.
+            * with:
+            *   WindowStart : is an uint32, representing the start of this time window in seconds
+            *   WindowEnd   : is an uint32, representing the end of this time window in seconds
+            *   WindowMode  : is a string, representing the mode of the time window, only "1 At Any Time" and "2 Immediately" modes are supported
+            *   UserMessage : is a string, is a message to the user of the CPE, to inform him about a download request
+            *   MaxRetries  : is an int32, is the maximum number of retries for downloading and/or applying the file before regarding,
+            *                 the transfer as having failed. a value lower than 0 means, that the CPE will determines the number of retry.
+            *
+            * @return 0 on success or a fault code (9000,9001, ..) as specified in TR-069 on failure
+            *
+            */
+          uint32 addScheduleDownload(%in %mandatory string Initiator,
+                                   %in %mandatory string CommandKey,
+                                   %in %mandatory string FileType,
+                                   %in %mandatory string URL,
+                                   %in string Username = "",
+                                   %in string Password = "",
+                                   %in %mandatory uint32 FileSize,
+                                   %in string TargetFileName = "",
+                                   %in %mandatory list TimeWindowList);
+      }
     }
 }
+
+%populate {
+    on event "dm:object-changed" call schedule_download_transfer_failed
+        filter 'path matches "ManagementServer.Transfers.ScheduleDownload.*.TransferComplete." &&
+                parameters.Status.to == "Failed"';
+
+    on event "dm:object-changed" call timewindow_started
+        filter 'path matches "ManagementServer.Transfers.ScheduleDownload.*.TimeWindowList.*." &&
+                parameters.Status.to == "Started"';
+
+    on event "dm:object-changed" call timewindow_ended
+        filter 'path matches "ManagementServer.Transfers.ScheduleDownload.*.TimeWindowList.*." &&
+                parameters.Status.to == "Ended"';
+
+    on event "dm:instance-added" call scheduleDownload_added
+        filter 'path == "ManagementServer.Transfers.ScheduleDownload."';
+
+    on event "app:stop" call app_stopped;
+}
+

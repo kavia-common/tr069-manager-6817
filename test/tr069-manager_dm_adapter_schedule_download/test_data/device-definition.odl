@@ -1,0 +1,28 @@
+%define {
+    object ManagementServer {
+        object Transfers{
+            object ScheduleDownload[] {
+                    object TransferComplete {
+                    string Status;
+                    string Initiator;
+                    string CommandKey;
+                    string TransferType;
+                    uint32 FaultCode;
+                    string FaultString;
+                    datetime StartTime;
+                    datetime CompleteTime;
+                }
+            }
+
+            uint32 addScheduleDownload(%in %mandatory string Initiator,
+                                       %in %mandatory string CommandKey,
+                                       %in %mandatory string FileType,
+                                       %in %mandatory string URL,
+                                       %in string Username = "",
+                                       %in string Password = "",
+                                       %in %mandatory uint32 FileSize,
+                                       %in string TargetFileName = "",
+                                       %in %mandatory list TimeWindowList);
+        }
+    }
+}

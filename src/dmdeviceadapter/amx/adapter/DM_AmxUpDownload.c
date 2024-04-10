@@ -179,8 +179,8 @@ static DM_ENG_TransferCompleteStruct* DM_ENG_Device_BuildTransferCompleteRespons
     DM_ENG_dateStringToTime((char*) completeTime, &completeTimeUF);
 
     tcs = DM_ENG_newTransferCompleteStruct(autonomousTransfer, "announceURL", transferURL, fileType,
-                                           fileSize, targetFileName, isDownload, commandKey,
-                                           faultCode, faultString, startTimeUF, completeTimeUF, (char*) path);
+                                           fileSize, targetFileName, isDownload, false, commandKey,
+                                           faultCode, faultString, startTimeUF, completeTimeUF, path);
 
     amxc_string_clean(&pname);
     return tcs;

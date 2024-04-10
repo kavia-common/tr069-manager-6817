@@ -1,0 +1,45 @@
+%populate {
+	object 'ManagementServer' {
+		object 'Transfers' {
+			object 'ScheduleDownload' {
+				instance add(1) {
+					parameter 'Username' = "";
+					parameter 'URL' = "http://ybt.com/image.swu";
+					parameter 'Password' = "";
+					parameter 'FileType' = "1 Firmware Upgrade Image";
+					parameter 'CommandKey' = "1234";
+					parameter 'FileSize' = 0;
+					parameter 'TargetFileName' = "";
+					object 'TimeWindowList' {
+						instance add(1, 'TimeWindow1', 'Alias' = "TimeWindow1") {
+							parameter 'UserMessage' = "";
+							parameter 'WindowStart' = 0;
+							parameter 'MaxRetries' = 0;
+							parameter 'WindowMode' = "2 Immediately";
+							parameter 'Status' = "Started";
+							parameter 'WindowEnd' = 100;
+						}
+						instance add(2, 'TimeWindow2', 'Alias' = "TimeWindow2") {
+							parameter 'UserMessage' = "";
+							parameter 'WindowStart' = 200;
+							parameter 'MaxRetries' = 0;
+							parameter 'WindowMode' = "2 Immediately";
+							parameter 'Status' = "Idle";
+							parameter 'WindowEnd' = 300;
+						}
+					}
+					object 'TransferComplete' {
+						parameter 'Status' = "In Progress";
+						parameter 'FaultCode' = 0;
+						parameter 'StartTime' = "0001-01-01T00:00:00Z";
+						parameter 'CompleteTime' = "0001-01-01T00:00:00Z";
+						parameter 'CommandKey' = "1234";
+						parameter 'TransferType' = "ScheduleDownload";
+						parameter 'FaultString' = "";
+						parameter 'Initiator' = "ACS";
+					}
+				}
+			}
+		}
+	}
+}

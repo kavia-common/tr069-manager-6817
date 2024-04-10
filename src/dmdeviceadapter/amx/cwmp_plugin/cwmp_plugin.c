@@ -59,6 +59,7 @@
 #include <amxc/amxc_macros.h>
 #include <amxm/amxm.h>
 #include "cwmp_plugin.h"
+#include "transfers.h"
 
 #include <debug/sahtrace.h>
 
@@ -156,9 +157,11 @@ int _cwmp_plugin_main(int reason, amxd_dm_t* dm, amxo_parser_t* parser) {
     //SAH_TRACEZ_INFO(ME, "cwmp_plugin_main, reason: %i", reason);
     switch(reason) {
     case AMXO_START: // START
+        transfers_init();
         cwmp_plugin_init(dm, parser);
         break;
     case AMXO_STOP: // STOP
+        transfers_clean();
         cwmp_plugin_exit(dm, parser);
         break;
     default:
