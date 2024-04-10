@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.31.27 - 2024-04-10(11:45:03 +0000)
+
+### Other
+
+- Upload RPC to upload log not working as expected
+
 ## Release v1.31.26 - 2024-04-10(10:10:42 +0000)
 
 ### Changes
