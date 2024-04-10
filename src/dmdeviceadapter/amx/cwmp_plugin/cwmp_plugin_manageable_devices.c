@@ -71,52 +71,6 @@
 #define FILTER_INSTANCE_ADDED  "notification in ['dm:instance-added']"
 #define FILTER_OBJECT_CHANGED  "notification in ['dm:object-changed']"
 
-
-static amxb_bus_ctx_t* get_bus_ctx(const char* inpath) {
-    amxb_bus_ctx_t* bus_ctx = NULL;
-    amxd_path_t path;
-    char* fixed_part = NULL;
-    when_null(inpath, stop);
-    amxd_path_init(&path, inpath);
-    fixed_part = amxd_path_get_fixed_part(&path, false);
-    when_null(fixed_part, stop);
-    bus_ctx = amxb_be_who_has(fixed_part);
-
-stop:
-    free(fixed_part);
-    amxd_path_clean(&path);
-    return bus_ctx;
-}
-
-static int cwmp_plugin_add_subscription(const char* path, const char* filter, amxp_slot_fn_t cb) {
-    int ret = -1;
-    amxb_bus_ctx_t* bus_ctx = NULL;
-
-    bus_ctx = get_bus_ctx(path);
-    when_null_trace(bus_ctx, stop, ERROR, "Could not find the context of [%s]", path);
-
-    ret = amxb_subscribe(bus_ctx, path, filter, cb, NULL);
-    when_failed_trace(ret, stop, ERROR, "Failed to subscribe on [%s]", path);
-    ret = 0;
-stop:
-    return ret;
-}
-
-static int cwmp_plugin_del_subscription(const char* path, amxp_slot_fn_t cb) {
-    int ret = -1;
-    amxb_bus_ctx_t* bus_ctx = NULL;
-
-    bus_ctx = get_bus_ctx(path);
-    when_null_trace(bus_ctx, stop, ERROR, "Could not find the context of [%s]", path);
-
-    ret = amxb_unsubscribe(bus_ctx, path, cb, NULL);
-    when_failed_trace(ret, stop, ERROR, "Failed to unsubscribe on [%s]", path);
-
-    ret = 0;
-stop:
-    return ret;
-}
-
 static int cwmp_plugin_search_for_manageable_device(const char* host_path, char** manageable_device_path) {
     amxc_var_t get;
     amxc_var_init(&get);

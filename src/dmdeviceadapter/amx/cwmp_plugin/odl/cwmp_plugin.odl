@@ -14,7 +14,7 @@
 
     // SAHTRACE
     sahtrace = {
-        type = "syslog",
+        type = "auto",
         level = "${default_log_level}"
     };
 

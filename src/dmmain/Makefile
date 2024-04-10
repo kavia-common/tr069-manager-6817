@@ -48,8 +48,7 @@ else
 	CFLAGS += -std=gnu11
 endif
 
-LDFLAGS += -ldl $(STAGING_LIBDIR) -lwebsockets \
-		  $(shell pkg-config --libs libevent) \
+LDFLAGS += -ldl $(STAGING_LIBDIR) -lwebsockets -levent_core \
 		  -lamxc -lamxd -lamxo -lamxb -lamxp -lamxa -lsahtrace \
 		  -ldmcom -ldmcommon -ldmengine -ldmxml_ixml -lcares
 # helper functions - used in multiple targets

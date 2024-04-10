@@ -114,6 +114,7 @@ static void cwmp_plugin_exit(UNUSED amxd_dm_t* dm,
     stop_cwmpd();
     cwmp_plugin_netmodel_cleanup();
     cwmp_plugin_manageableDevice_clean();
+    cwmp_plugin_transfer_clean();
     unsetenv("AMXB_URI");
     unsetenv("AMXB_BACKEND");
     SAH_TRACEZ_INFO(ME, "cwmp_plugin stopped");

@@ -78,6 +78,7 @@ extern "C"
 #include <netmodel/client.h>
 
 #define STRING_EMPTY(TEXT) ((TEXT == NULL) || (*TEXT == 0))
+#define FAULTCODE_INTERNAL_ERROR 9002
 
 #define ME "CWMP_PLUGIN"
 
@@ -169,6 +170,8 @@ void cwmp_plugin_update_conreq_port(uint16_t port);
 
 void cwmp_plugin_transfer_init(void);
 
+void cwmp_plugin_transfer_clean(void);
+
 void cwmp_plugin_manageableDevice_init(void);
 
 void cwmp_plugin_manageableDevice_clean(void);
@@ -178,6 +181,12 @@ int cwmp_proc_ctx_new(cwmp_proc_ctx_t** ctx,
                       proc_ctrl_cb_t cb,
                       proc_ctrl_clean_cb_t clean_cb,
                       void* priv);
+
+amxb_bus_ctx_t* get_bus_ctx(const char* inpath);
+
+int cwmp_plugin_add_subscription(const char* path, const char* filter, amxp_slot_fn_t cb);
+
+int cwmp_plugin_del_subscription(const char* path, amxp_slot_fn_t cb);
 
 #ifdef __cplusplus
 }

@@ -70,6 +70,9 @@
 #define TRANSFER_ENTRY_PATH "ManagementServer.ACSTransfers.ACSTransfer."
 #define TRANSFER_ENTRY_PATH_FMT TRANSFER_ENTRY_PATH "%d."
 
+#define DEVICE_LOCALAGENT_PATH "Device.LocalAgent."
+#define DM_FILTER_TRANSFER_COMPLETE  "notification in ['TransferComplete!']"
+
 #define DL_FW_UPGRADE_SCRIPT "tr069_1_fw_upgrade"
 #define DL_WEB_CONTENT_SCRIPT "tr069_2_webcontent"
 #define DL_CONF_FILE_SCRIPT "tr069_3_conf_apply"
@@ -80,23 +83,41 @@
 #define UNKNOWN_TIME "0001-01-01T00:00:00Z"
 #define DEVICEINFO_FIRMWAREIMAGE "DeviceInfo.FirmwareImage.active."
 
+static amxc_llist_t selftest_requests;
+static amxc_llist_t upload_requests;
+
 typedef struct {
-    ftx_request_t* request;
-    int32_t delay;
-} filetransfer_context_t;
+    amxc_llist_it_t it;
+    amxc_var_t* args;
+    int index;
+    amxc_ts_t time;
+} upload_context_t;
 
 void download_timer_cb(amxp_timer_t* timer, void* priv);
 static int firmwareimage_del_subscription(amxd_object_t* transfer_obj);
 
-static int filetransfer_context_new(ftx_request_t* req,
-                                    int delay,
-                                    filetransfer_context_t** ctx) {
+static void selftest_context_free(amxc_llist_it_t* it) {
+    amxb_request_t* req = amxc_container_of(it, amxb_request_t, it);
+    amxc_var_t* args = (amxc_var_t* ) req->priv;
+    amxc_var_delete(&args);
+    amxb_close_request(&req);
+}
+
+static void upload_context_free(amxc_llist_it_t* it) {
+    upload_context_t* upload = amxc_container_of(it, upload_context_t, it);
+    amxc_var_delete(&upload->args);
+    free(upload);
+}
+
+static int upload_context_new(upload_context_t** upload, int index, amxc_var_t* args) {
     int ret = -1;
-    when_null(ctx, stop);
-    *ctx = (filetransfer_context_t*) calloc(1, sizeof(filetransfer_context_t));
-    when_null(*ctx, stop);
-    (*ctx)->request = req;
-    (*ctx)->delay = delay;
+    when_null(upload, stop);
+    *upload = (upload_context_t*) calloc(1, sizeof(upload_context_t));
+    when_null(*upload, stop);
+    (*upload)->index = index;
+    amxc_var_new(&(*upload)->args);
+    amxc_var_copy((*upload)->args, args);
+    amxc_ts_now(&(*upload)->time);
     ret = 0;
 stop:
     return ret;
@@ -153,27 +174,18 @@ stop:
 }
 
 static void task_finished_cb(void* priv) {
-    filetransfer_context_t* ft_ctx = NULL;
     when_null(priv, stop);
-    ft_ctx = (filetransfer_context_t*) priv;
-
 stop:
-    if(ft_ctx && ft_ctx->request) {
-        SAH_TRACEZ_INFO(ME, "Starting file upload");
-        ftx_request_t* request = ft_ctx->request;
-        ft_ctx->request = NULL;
-        start_filetransfer_request(request, ft_ctx->delay);
-    }
+    return;
 }
 
 static void task_clean_cb(void* priv) {
-    if(priv) {
-        free(priv);
-        priv = NULL;
-    }
+    when_null(priv, stop);
+stop:
+    return;
 }
 
-static int filetransfer_run_task(const char* fileName, const char* script, filetransfer_context_t* priv) {
+static int filetransfer_run_task(const char* fileName, const char* script) {
     amxp_proc_ctrl_t* proc = NULL;
     cwmp_proc_ctx_t* ctx = NULL;
     amxc_var_t settings;
@@ -182,7 +194,7 @@ static int filetransfer_run_task(const char* fileName, const char* script, filet
     amxc_var_init(&settings);
     amxp_proc_ctrl_new(&proc, proc_build_cb);
     when_null(proc, stop);
-    cwmp_proc_ctx_new(&ctx, proc, task_finished_cb, task_clean_cb, (void*) priv);
+    cwmp_proc_ctx_new(&ctx, proc, task_finished_cb, task_clean_cb, NULL);
     when_null(ctx, stop);
 
     amxc_var_set_type(&settings, AMXC_VAR_ID_HTABLE);
@@ -224,7 +236,7 @@ static void filetransfer_download_finished(const char* path) {
         goto stop;
     }
 
-    if(filetransfer_run_task(targetFileName, script, NULL) != 0) {
+    if(filetransfer_run_task(targetFileName, script) != 0) {
         SAH_TRACEZ_ERROR(ME, "Failed to start task [%s %s]", script, targetFileName);
     }
 stop:
@@ -235,18 +247,29 @@ static void transfer_update_status(const char* path,
                                    const char* status,
                                    amxc_ts_t* start_time,
                                    amxc_ts_t* complete_time,
-                                   uint32_t error_code) {
+                                   uint32_t error_code,
+                                   const char* error_string) {
+    char time_start_str[64] = {0};
+    char time_end_str[64] = {0};
+    amxc_ts_t error_complete_time = {0, 0, 0};
+
     amxd_trans_t trans;
     amxd_trans_init(&trans);
     amxd_object_t* transfer = amxd_dm_findf(cwmp_plugin_get_dm(), "%s", path);
     when_null_trace(transfer, stop, ERROR, "transfer not found [%s]", path);
 
+    amxc_ts_format(start_time, time_start_str, sizeof(time_start_str));
+    amxc_ts_format(complete_time, time_end_str, sizeof(time_end_str));
+    SAH_TRACEZ_INFO(ME, "Transfer [%s] status: %s, fault_code: %d, fault_string: %s, start time: %s, complete time: %s",
+                    path, status, error_code, error_string, time_start_str, time_end_str);
+
     amxd_trans_select_object(&trans, transfer);
     amxd_trans_set_attr(&trans, amxd_tattr_change_ro, true);
     amxd_trans_set_value(cstring_t, &trans, "Status", status);
     amxd_trans_set_value(amxc_ts_t, &trans, "StartTime", start_time);
-    amxd_trans_set_value(amxc_ts_t, &trans, "CompleteTime", complete_time);
+    amxd_trans_set_value(amxc_ts_t, &trans, "CompleteTime", error_code? &error_complete_time:complete_time);
     amxd_trans_set_value(uint32_t, &trans, "FaultCode", error_code);
+    amxd_trans_set_value(cstring_t, &trans, "FaultString", error_string);
     amxd_trans_apply(&trans, cwmp_plugin_get_dm());
 
 stop:
@@ -275,17 +298,13 @@ static bool filetransfer_request_cb(ftx_request_t* req, void* userdata) {
     amxc_ts_format(ts_start, time_start_str, sizeof(time_start_str));
     amxc_ts_format(ts_end, time_end_str, sizeof(time_end_str));
 
-    SAH_TRACEZ_INFO(ME, "Transfer [%d] status: %s, return code: %u, reason: %s, start time: %s, complete time: %s",
-                    *index, (error_code == ftx_error_code_no_error) ? "Success" : "Failure",
-                    error_code, ftx_request_get_error_reason(req), time_start_str, time_end_str);
-
     amxc_string_setf(&status_path, TRANSFER_ENTRY_PATH_FMT, *index);
 
     if((error_code == 0) && (request_type == ftx_request_type_download)) {
         filetransfer_download_finished(amxc_string_get(&status_path, 0));
     }
 
-    transfer_update_status(amxc_string_get(&status_path, 0), "Finished", ts_start, ts_end, error_code);
+    transfer_update_status(amxc_string_get(&status_path, 0), "Finished", ts_start, ts_end, error_code, (const char*) ftx_request_get_error_reason(req));
 
     ftx_request_delete(&req);
     free(index);
@@ -310,94 +329,162 @@ stop:
     return ret;
 }
 
-static void find_device_serial(char** device_serial) {
-    const char* serial = NULL;
-    amxc_var_t get;
-    amxb_bus_ctx_t* bus_ctx = NULL;
-    amxc_var_init(&get);
-    when_null(device_serial, stop);
+static int vendorlogfile_get_index(const char* fileType) {
+    int index = 0;
 
-    bus_ctx = amxb_be_who_has("DeviceInfo.");
-    when_null(bus_ctx, stop);
-    amxb_get(bus_ctx, "DeviceInfo.SerialNumber", 0, &get, 1);
+    amxc_llist_t string_list;
+    amxc_llist_init(&string_list);
+    amxc_string_t vendorString;
+    amxc_string_init(&vendorString, 0);
 
-    if(!amxc_var_is_null(&get)) {
-        serial = GETP_CHAR(&get, "0.'DeviceInfo.'.SerialNumber");
-    }
-    if(serial) {
-        *device_serial = strdup(serial);
-    } else {
-        *device_serial = strdup("");
+    when_str_empty(fileType, stop);
+
+    if(strstr(fileType, "2 Vendor Log File") || strstr(fileType, "4 Vendor Log File 1")) {
+        index = 1;
+    } else if(strstr(fileType, "4 Vendor Log File")) {
+        amxc_string_appendf(&vendorString, "%s", fileType);
+        amxc_string_split_word(&vendorString, &string_list, NULL);
+        amxc_string_t* vendorIndex = amxc_string_get_from_llist(&string_list, 4);
+        if(!amxc_string_is_numeric(vendorIndex)) {
+            SAH_TRACEZ_ERROR(ME, "Failed to retrieve index from fileType [%s]", fileType);
+            goto stop;
+        }
+        index = atoi(amxc_string_get(vendorIndex, 0));
     }
 stop:
-    amxc_var_clean(&get);
+    amxc_llist_clean(&string_list, amxc_string_list_it_free);
+    amxc_string_clean(&vendorString);
+    return index;
 }
 
-static int filetransfer_upload_prepare_file(ftx_request_t* filetransfer_request,
-                                            const char* file_name,
-                                            const char* script,
-                                            int32_t delay) {
-    int ret = -1;
-    filetransfer_context_t* context = NULL;
-    when_null(file_name, stop);
-    when_null(script, stop);
+static upload_context_t* filetransfer_upload_find(const char* transferurl) {
+    upload_context_t* upload = NULL;
+    amxc_llist_for_each(it, &upload_requests) {
+        upload = amxc_container_of(it, upload_context_t, it);
+        const char* url = GET_CHAR(upload->args, "URL");
+        if(url && (0 == strcmp(url, transferurl))) {
+            return upload;
+        }
+    }
+    return NULL;
+}
 
-    filetransfer_context_new(filetransfer_request, delay, &context);
-    when_null(context, stop);
+static void filetransfer_upload_complete_notification(UNUSED const char* const sig_name,
+                                                      const amxc_var_t* const data,
+                                                      UNUSED void* const priv) {
+    const amxc_var_t* adata = NULL;
+    const char* transferurl = NULL;
+    upload_context_t* upload = NULL;
+    const char* fault_string = NULL;
+    uint32_t error_code = 0;
+    amxc_string_t status_path;
+    amxc_ts_t end_time;
 
-    SAH_TRACEZ_INFO(ME, "Preparing file for upload [%s]", file_name);
+    when_null(data, stop);
+    amxc_string_init(&status_path, 0);
+    when_true(amxc_llist_is_empty(&upload_requests), stop);
 
-    ftx_request_set_target_file(filetransfer_request, file_name);
-    ret = filetransfer_run_task(file_name, script, context);
+    adata = GET_ARG(data, "data");
+    when_null(adata, stop);
+    transferurl = GET_CHAR(adata, "TransferURL");
+    when_str_empty(transferurl, stop);
+
+    upload = filetransfer_upload_find(transferurl);
+    when_null(upload, stop);
+
+    amxc_ts_now(&end_time);
+    error_code = GET_UINT32(adata, "FaultCode");
+    fault_string = GET_CHAR(adata, "FaultString");
+
+    amxc_string_setf(&status_path, TRANSFER_ENTRY_PATH_FMT, upload->index);
+    transfer_update_status(amxc_string_get(&status_path, 0), "Finished", &upload->time, &end_time, error_code, fault_string);
+
+    amxc_llist_it_take(&upload->it);
+    upload_context_free(&upload->it);
+stop:
+    amxc_string_clean(&status_path);
+    return;
+}
+
+static void filetransfer_upload_selftest_call_done(const amxb_bus_ctx_t* bus_ctx,
+                                                   amxb_request_t* req,
+                                                   int status,
+                                                   void* priv) {
+    amxc_var_t* args = (amxc_var_t*) priv;
+    uint32_t transfer_index = GET_UINT32(args, "index");
+    when_true_trace(transfer_index == 0, exit, ERROR, "Transfer index missing");
+
+    int retval = -1;
+    int vendorlogfile_index = 0;
+    upload_context_t* upload = NULL;
+    amxc_ts_t time = {0, 0, 0};
+    amxc_var_t upload_args;
+    amxc_string_t vendorlogfile_path;
+    amxc_string_t status_path;
+
+    amxc_var_init(&upload_args);
+    amxc_string_init(&vendorlogfile_path, 0);
+    amxc_string_init(&status_path, 0);
+
+    when_true_trace(status != 0, stop, ERROR, "SelfTestDiagnostic failed");
+    const char* filetype = GET_CHAR(args, "FileType");
+    when_str_empty_trace(filetype, stop, ERROR, "Mandatory [FileType] is missing");
+    vendorlogfile_index = vendorlogfile_get_index(filetype);
+    when_true_trace(vendorlogfile_index == 0, stop, ERROR, "Failed to get index from [%s]", filetype);
+    const char* url = GET_CHAR(args, "Url");
+    when_str_empty_trace(url, stop, ERROR, "Mandatory [Url] is missing");
+    const char* username = GET_CHAR(args, "Username");
+    when_str_empty_trace(username, stop, ERROR, "Mandatory [Username] is missing");
+    const char* password = GET_CHAR(args, "Password");
+    when_str_empty_trace(password, stop, ERROR, "Mandatory [Password] is missing");
+
+    amxc_var_set_type(&upload_args, AMXC_VAR_ID_HTABLE);
+    amxc_var_add_key(cstring_t, &upload_args, "URL", url);
+    amxc_var_add_key(cstring_t, &upload_args, "Username", username);
+    amxc_var_add_key(cstring_t, &upload_args, "Password", password);
+
+    amxc_string_appendf(&vendorlogfile_path, "Device.DeviceInfo.VendorLogFile.%d", vendorlogfile_index);
+    retval = amxb_call((amxb_bus_ctx_t* const) bus_ctx, amxc_string_get(&vendorlogfile_path, 0), "Upload", &upload_args, NULL, 5);
+    when_failed_trace(retval, stop, ERROR, "Failed to Call %s.Upload()", amxc_string_get(&vendorlogfile_path, 0));
+
+    upload_context_new(&upload, transfer_index, &upload_args);
+    amxc_llist_append(&upload_requests, &upload->it);
 
 stop:
-    if((ret != 0) && context) {
-        SAH_TRACEZ_ERROR(ME, "Failed to start task [%s %s]", script, file_name);
-        free(context);
+    if(retval != 0) {
+        amxc_ts_now(&time);
+        amxc_string_setf(&status_path, TRANSFER_ENTRY_PATH_FMT, transfer_index);
+        transfer_update_status(amxc_string_get(&status_path, 0), "Finished", &time, &time, FAULTCODE_INTERNAL_ERROR, "Internal error");
     }
-    return ret;
+    amxc_llist_it_take(&req->it);
+    amxc_var_delete(&args);
+    amxb_close_request(&req);
+    amxc_string_clean(&status_path);
+    amxc_string_clean(&vendorlogfile_path);
+    amxc_var_clean(&upload_args);
+exit:
+    return;
 }
 
-static void filetransfer_prepare_upload(ftx_request_t* filetransfer_request, amxc_var_t* args) {
-    const char* fileType = GETP_CHAR(args, "FileType");
-    amxc_string_t file_name;
-    char* device_serial = NULL;
-    int error = -1;
-    const char* script = NULL;
-    int delay = 0;
+static void filetransfer_upload_prepare(amxc_var_t* args) {
+    amxb_bus_ctx_t* const bus_ctx = get_bus_ctx("Device.");
+    when_null_trace(bus_ctx, stop, ERROR, "Could not find the context of [Device]");
+    const char* filetype = GET_CHAR(args, "FileType");
+    when_str_empty(filetype, stop);
 
-    amxc_string_init(&file_name, 0);
-    delay = GET_INT32(args, "DelaySeconds");
-    when_null(filetransfer_request, stop);
-    when_null(fileType, stop);
-
-    find_device_serial(&device_serial);
-    when_null_trace(device_serial, stop, ERROR, "Failed to read device serial");
-
-    if(strstr(fileType, "2")) {
-        amxc_string_setf(&file_name, "/tmp/%s_vendor_logs.log", device_serial);
-        script = UL_VENDOR_LOGS_SCRIPT;
-    } else if(strstr(fileType, "1")) {
-        amxc_string_setf(&file_name, "/tmp/%s_vendor_conf.odl", device_serial);
-        script = UL_VENDOR_CONF_SCRIPT;
+    if(strstr(filetype, "2 Vendor Log File") || strstr(filetype, "4 Vendor Log File 1")) {
+        amxb_request_t* req = amxb_async_call(bus_ctx, "Device.", "SelfTestDiagnostics", NULL, filetransfer_upload_selftest_call_done, args);
+        when_null_trace(req, stop, ERROR, "file upload failed : Failed to call Device.SelfTestDiagnostics()");
+        amxc_llist_append(&selftest_requests, &req->it);
+    } else if(strstr(filetype, "4 Vendor Log File")) {
+        filetransfer_upload_selftest_call_done(bus_ctx, NULL, 0, args);
     } else {
-        SAH_TRACEZ_ERROR(ME, "Not supported file type [%s]", fileType);
+        SAH_TRACEZ_ERROR(ME, "Not supported file type [%s]", filetype);
+        amxc_var_delete(&args);
         goto stop;
     }
-
-    error = filetransfer_upload_prepare_file(filetransfer_request,
-                                             amxc_string_get(&file_name, 0),
-                                             script,
-                                             delay);
-
 stop:
-    if(error != 0) {
-        SAH_TRACEZ_ERROR(ME, "file upload failed");
-        ftx_request_delete(&filetransfer_request);
-        filetransfer_request = NULL;
-    }
-    free(device_serial);
-    amxc_string_clean(&file_name);
+    return;
 }
 
 static void filetransfer_download_set_target_file(ftx_request_t* filetransfer_request, amxc_var_t* args) {
@@ -595,40 +682,62 @@ stop:
     amxp_timer_delete(&timer);
 }
 
+static void filetransfer_upload_cb(amxp_timer_t* timer, void* priv) {
+    amxc_var_t* args = (amxc_var_t* ) priv;
+    filetransfer_upload_prepare(args);
+    amxp_timer_delete(&timer);
+}
+
+static void filetransfer_upload_start(amxc_var_t* args) {
+    bool error = true;
+    amxp_timer_t* upload_delay_timer = NULL;
+    amxc_var_t* data = NULL;
+    uint32_t delaySeconds = 0;
+    when_null(args, stop);
+
+    delaySeconds = GET_INT32(args, "DelaySeconds");
+    amxc_var_new(&data);
+    amxc_var_copy(data, args);
+    amxp_timer_new(&upload_delay_timer, filetransfer_upload_cb, (void*) data);
+    when_null(upload_delay_timer, stop);
+    amxp_timer_start(upload_delay_timer, delaySeconds * 1000);
+    error = false;
+stop:
+    if(error) {
+        amxc_var_delete(&data);
+    }
+}
+
 static int filetransfer_request_prepare(amxc_var_t* args) {
     int ret = -1;
-    ftx_request_t* filetransfer_request = NULL;
     bool is_download = GET_BOOL(args, "IsDownload");
     uint32_t delaySeconds = GET_INT32(args, "DelaySeconds");
     const char* fileType = GET_CHAR(args, "FileType");
 
-
-    if(is_download && (fileType && (strcmp(fileType, "1 Firmware Upgrade Image") == 0))) {
-        amxp_timer_t* download_timer = NULL;
-        uint32_t transfer_index = GET_UINT32(args, "index");
-        amxd_object_t* transfer_obj = get_transfer_obj_by_index(transfer_index);
-        when_null(transfer_obj, stop);
-        when_failed_trace(amxp_timer_new(&download_timer, download_timer_cb, transfer_obj),
-                          stop, ERROR, "Failed to create timer");
-        when_failed_trace(amxp_timer_start(download_timer, delaySeconds * 1000),
-                          stop, ERROR, "Failed to start timer");
-        SAH_TRACEZ_INFO(ME, "Transfer [%d]: Initiate the Download [%s] within [%d] seconds", transfer_index, fileType, delaySeconds);
-        ret = 0;
-        goto stop;
-    }
-
-    ftx_request_new(&filetransfer_request,
-                    is_download ? ftx_request_type_download : ftx_request_type_upload,
-                    filetransfer_request_cb);
-
-    when_null_trace(filetransfer_request, stop, ERROR, "NULL filetransfer request, abort!");
-    when_failed(filetransfer_set_common_data(filetransfer_request, args), stop);
-
     if(is_download) {
+        if(fileType && (strcmp(fileType, "1 Firmware Upgrade Image") == 0)) {
+            amxp_timer_t* download_timer = NULL;
+            uint32_t transfer_index = GET_UINT32(args, "index");
+            amxd_object_t* transfer_obj = get_transfer_obj_by_index(transfer_index);
+            when_null(transfer_obj, stop);
+            when_failed_trace(amxp_timer_new(&download_timer, download_timer_cb, transfer_obj),
+                              stop, ERROR, "Failed to create timer");
+            when_failed_trace(amxp_timer_start(download_timer, delaySeconds * 1000),
+                              stop, ERROR, "Failed to start timer");
+            SAH_TRACEZ_INFO(ME, "Transfer [%d]: Initiate the Download [%s] within [%d] seconds", transfer_index, fileType, delaySeconds);
+            ret = 0;
+            goto stop;
+        }
+        ftx_request_t* filetransfer_request = NULL;
+        ftx_request_new(&filetransfer_request, ftx_request_type_download, filetransfer_request_cb);
+
+        when_null_trace(filetransfer_request, stop, ERROR, "NULL filetransfer request, abort!");
+        when_failed(filetransfer_set_common_data(filetransfer_request, args), stop);
+
         filetransfer_download_set_target_file(filetransfer_request, args);
         start_filetransfer_request(filetransfer_request, delaySeconds);
     } else {
-        filetransfer_prepare_upload(filetransfer_request, args);
+        filetransfer_upload_start(args);
     }
     ret = 0;
 stop:
@@ -652,4 +761,14 @@ stop:
 
 void cwmp_plugin_transfer_init(void) {
     ftx_init(filetransfer_fdset_cb);
+    int retval = cwmp_plugin_add_subscription(DEVICE_LOCALAGENT_PATH, DM_FILTER_TRANSFER_COMPLETE, filetransfer_upload_complete_notification);
+    when_failed_trace(retval, stop, ERROR, "Could not create LocalAgent subscription");
+stop:
+    return;
+}
+
+void cwmp_plugin_transfer_clean(void) {
+    amxc_llist_clean(&selftest_requests, selftest_context_free);
+    amxc_llist_clean(&upload_requests, upload_context_free);
+    cwmp_plugin_del_subscription(DEVICE_LOCALAGENT_PATH, filetransfer_upload_complete_notification);
 }
