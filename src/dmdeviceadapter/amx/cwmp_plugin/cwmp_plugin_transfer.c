@@ -267,7 +267,7 @@ static void transfer_update_status(const char* path,
     amxd_trans_set_attr(&trans, amxd_tattr_change_ro, true);
     amxd_trans_set_value(cstring_t, &trans, "Status", status);
     amxd_trans_set_value(amxc_ts_t, &trans, "StartTime", start_time);
-    amxd_trans_set_value(amxc_ts_t, &trans, "CompleteTime", error_code? &error_complete_time:complete_time);
+    amxd_trans_set_value(amxc_ts_t, &trans, "CompleteTime", error_code ? &error_complete_time : complete_time);
     amxd_trans_set_value(uint32_t, &trans, "FaultCode", error_code);
     amxd_trans_set_value(cstring_t, &trans, "FaultString", error_string);
     amxd_trans_apply(&trans, cwmp_plugin_get_dm());

@@ -14,7 +14,7 @@ LDFLAGS += -Wl,--wrap=start_cwmpd \
 		   -Wl,--wrap=netmodel_closeQuery \
 		   -Wl,--wrap=ipv4address_changed_cb \
 		   -Wl,--wrap=cwmp_plugin_transfer_init \
-		   -lsahtrace -luriparser -lfiletransfer -ldhcpoptions
+		   -lsahtrace -luriparser -lfiletransfer -lgmap-client
 
 
 include ../test_targets.mk

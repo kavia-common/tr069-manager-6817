@@ -233,7 +233,7 @@ void transfers_handle_transfer(amxd_object_t* obj) {
     when_true_trace((info->lastTimeWindow == 0), stop, INFO, "Transfer will be handled later");
 
     SAH_TRACEZ_INFO(ME, "Handling %s Transfer", inst_path);
-    SAH_TRACEZ_INFO(ME, "Within TimeWindow [%s]", info->withinTimeWindow ? "true": "false");
+    SAH_TRACEZ_INFO(ME, "Within TimeWindow [%s]", info->withinTimeWindow ? "true" : "false");
     SAH_TRACEZ_INFO(ME, "Last TimeWindow [%d]", info->lastTimeWindow);
 
     timewindow_obj = amxd_object_findf(obj, ".TimeWindowList.%d.", info->lastTimeWindow);
