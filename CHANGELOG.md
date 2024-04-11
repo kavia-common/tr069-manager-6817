@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.31.30 - 2024-04-11(15:17:11 +0000)
+
+### Other
+
+- A Manageable device can't be added after reboot
+
 ## Release v1.31.29 - 2024-04-10(15:54:56 +0000)
 
 ### Other
