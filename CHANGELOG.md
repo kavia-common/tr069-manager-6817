@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.31.31 - 2024-04-18(15:09:17 +0000)
+
+### Fixes
+
+- [tr069-manager] Make it compatible with openwrt23.05 toolchain
+
 ## Release v1.31.30 - 2024-04-11(15:17:11 +0000)
 
 ### Other
