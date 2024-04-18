@@ -139,10 +139,10 @@ static void cwmp_client_parse_cookie(char* cookies) {
         char* end = p;
         int len = 0;
         if(p) { //skip white spaces
-            while(start && (start + 1) && (*start) == ' ') {
+            while(start && (*start) == ' ') {
                 start++;
             }
-            while(end && (end - 1) && (*end) == ' ') {
+            while(end && (*end) == ' ') {
                 end--;
             }
             len = end - start;
