@@ -434,9 +434,9 @@ static void filetransfer_upload_selftest_call_done(const amxb_bus_ctx_t* bus_ctx
     const char* url = GET_CHAR(args, "Url");
     when_str_empty_trace(url, stop, ERROR, "Mandatory [Url] is missing");
     const char* username = GET_CHAR(args, "Username");
-    when_str_empty_trace(username, stop, ERROR, "Mandatory [Username] is missing");
+    when_null_trace(username, stop, ERROR, "Mandatory [Username] is missing");
     const char* password = GET_CHAR(args, "Password");
-    when_str_empty_trace(password, stop, ERROR, "Mandatory [Password] is missing");
+    when_null_trace(password, stop, ERROR, "Mandatory [Password] is missing");
 
     amxc_var_set_type(&upload_args, AMXC_VAR_ID_HTABLE);
     amxc_var_add_key(cstring_t, &upload_args, "URL", url);
