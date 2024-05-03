@@ -62,11 +62,39 @@
 #include "transfers.h"
 
 #include <debug/sahtrace.h>
+#include <debug/sahtrace_macros.h>
 
 #include <netmodel/client.h>
 
 static cwmp_plugin_app_t app;
 static amxm_shared_object_t* fw_module = NULL;
+
+amxd_status_t _sendInformMessage(amxd_object_t* object,
+                                 UNUSED amxd_function_t* func,
+                                 amxc_var_t* args,
+                                 UNUSED amxc_var_t* ret) {
+
+    amxc_var_t data;
+    amxd_status_t status = amxd_status_invalid_arg;
+
+    SAH_TRACEZ_IN(ME);
+
+    when_true_trace(amxc_var_is_null(args), stop, ERROR, "Invalid arg(s)");
+
+    amxc_var_log(args);
+
+    amxc_var_init(&data);
+    amxc_var_set_type(&data, AMXC_VAR_ID_HTABLE);
+    amxc_var_set_key(&data, "data", args, AMXC_VAR_FLAG_COPY);
+
+    amxd_object_send_signal(object, "SendInformMessage!", &data, true);
+
+    status = amxd_status_ok;
+stop:
+    amxc_var_clean(&data);
+    SAH_TRACEZ_OUT(ME);
+    return status;
+}
 
 static void load_fw_controller(void) {
     const char* controller = GETP_CHAR(cwmp_plugin_get_config(), "firewall.controller");

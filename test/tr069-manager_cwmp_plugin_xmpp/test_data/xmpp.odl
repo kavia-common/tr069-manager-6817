@@ -1,0 +1,10 @@
+%define {
+    object Device {
+        object XMPP {
+            object Connection[]{
+                bool Enable;
+                string JabberID;
+            }
+        }
+    }
+}

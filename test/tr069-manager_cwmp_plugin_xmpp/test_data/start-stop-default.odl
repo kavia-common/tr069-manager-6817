@@ -1,0 +1,6 @@
+%populate {
+    object ManagementServer {
+        parameter SupportedConnReqMethods = "HTTP,XMPP";
+        parameter ConnReqXMPPConnection = "Device.XMPP.Connection.1.";
+    }
+}

@@ -1,0 +1,10 @@
+%populate {
+    object "Device.XMPP" {
+        object Connection {
+            instance add (0){
+                parameter Enable = true;
+                parameter JabberID = "ThisIsNotAValidJabberID";
+            }
+        }
+    }
+}

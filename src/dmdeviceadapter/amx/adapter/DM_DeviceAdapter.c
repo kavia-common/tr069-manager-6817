@@ -83,6 +83,7 @@
 #include "DM_AmxReset.h"
 #include "DM_AmxUpDownload.h"
 #include "DM_AmxScheduleDownload.h"
+#include "DM_AmxRPCInterface.h"
 #include <debug/sahtrace.h>
 #include <string.h>
 #include <libgen.h>
@@ -206,6 +207,10 @@ bool DM_ENG_Device_Release() {
 
     if(DM_AmxScheduleDownload_clean() != 0) {
         SAH_TRACEZ_ERROR("DM_DA", "Failed to clean AMX ScheduleDownload");
+    }
+
+    if(DM_AmxRPCInterface_clean() != 0) {
+        SAH_TRACEZ_ERROR("DM_DA", "Failed to clean AMX RPCInterface");
     }
 
     DM_ENG_Device_ACSConnectionCleanup(&da.acs);
@@ -903,6 +908,10 @@ int DM_ENG_Device_LoadConfig(DM_ENG_ScheduleInformStruct** is) {
 
     if(DM_AmxScheduleDownload_init((&da.system)->bus_ctx) != 0) {
         SAH_TRACEZ_ERROR("DM_DA", "Failed to intialise AMX ScheduleDownload");
+    }
+
+    if(DM_AmxRPCInterface_init((&da.system)->bus_ctx) != 0) {
+        SAH_TRACEZ_ERROR("DM_DA", "Failed to intialise AMX RPCInterface");
     }
 
     free(path);

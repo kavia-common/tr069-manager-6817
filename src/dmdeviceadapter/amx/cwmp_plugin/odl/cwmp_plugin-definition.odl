@@ -1199,6 +1199,55 @@
                                    %in string TargetFileName = "",
                                    %in %mandatory list TimeWindowList);
       }
+
+      /**
+      *  The connection request methods supported.
+      *
+      * @version 8.4
+      */
+      %persistent %read-only csv_string SupportedConnReqMethods {
+        default "HTTP";
+      }
+
+      /**
+      *  The Path Name of the XMPP.Connection instance that is used for connection requests to this ManagementServer.
+      *
+      * @version 8.4
+      */
+      %persistent string ConnReqXMPPConnection {
+        default "";
+      }
+
+      /**
+      *  List of Jabber IDs, or addresses, that are allowed to initiate an XMPP Connection Request.
+      *
+      * @version 8.4
+      */
+      %persistent csv_string ConnReqAllowedJabberIDs {
+        default "";
+      }
+
+      /**
+      *  The XMPP.Connection.{i}.JabberID contained in the XMPP.Connection instance referenced by the ConnReqXMPPConnection parameter.
+      *
+      * @version 8.4
+      */
+      %persistent %read-only string ConnReqJabberID {
+        default "";
+      }
+
+      /**
+      * Send an Inform with a list of events.
+      * @param events: List of events to be sent within the Inform.
+      * @param immediately: When true, if the CPE is not currently in a session with the ACS, the Inform will be sent immediately,
+               otherwise, the Inform will be sent once the current session terminates.
+               When false, the events will be queued, and will be delivered on a subsequent Inform (e.g., PERIODIC, VALUE CHANGE).
+      * @param source: The initiator of the @ref sendInformMessage (e.g., XMPP).
+      * @return void
+      *
+      * @version 8.4
+      */
+      void sendInformMessage(%in %mandatory csv_string events, %in %mandatory bool immediately, %in %mandatory string source);
     }
 }
 
