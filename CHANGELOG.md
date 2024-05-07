@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.31.33 - 2024-05-07(09:52:39 +0000)
+
+### Other
+
+- FileType not correctly parsed to found the index
+
 ## Release v1.31.32 - 2024-05-03(14:50:21 +0000)
 
 ### Other
