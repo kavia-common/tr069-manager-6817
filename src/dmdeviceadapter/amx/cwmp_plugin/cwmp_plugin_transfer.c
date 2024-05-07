@@ -344,7 +344,7 @@ static int vendorlogfile_get_index(const char* fileType) {
     } else if(strstr(fileType, "4 Vendor Log File")) {
         amxc_string_appendf(&vendorString, "%s", fileType);
         amxc_string_split_word(&vendorString, &string_list, NULL);
-        amxc_string_t* vendorIndex = amxc_string_get_from_llist(&string_list, 4);
+        amxc_string_t* vendorIndex = amxc_string_get_from_llist(&string_list, 8);
         if(!amxc_string_is_numeric(vendorIndex)) {
             SAH_TRACEZ_ERROR(ME, "Failed to retrieve index from fileType [%s]", fileType);
             goto stop;
