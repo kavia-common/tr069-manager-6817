@@ -326,7 +326,7 @@ void DM_ENG_Device_ACSConnectionCleanup(dm_amx_env_t* amx) {
 
 static amxc_var_t* find_subscription_by_path(const char* path) {
     amxc_var_t* var = NULL;
-    dm_amx_env_t* amx = DM_ENG_Device_GetACSInfo();
+    dm_amx_env_t* amx = DM_ENG_Device_GetSystemInfo();
     amxc_string_t path_expr;
 
     amxc_var_new(&var);
@@ -401,6 +401,30 @@ static void remove_subscription_from_dm(const char* subscriptionPath) {
     amxc_var_clean(&ret);
 }
 
+static bool update_subscription_in_dm(const char* subscriptionPath, const char* notification_mode, DM_ENG_NotificationMode mode) {
+    int amx_ret = false;
+    if(strcmp(notification_mode, DM_ENG_NotificationModeString(mode)) != 0) {
+        SAH_TRACEZ_INFO("DM_DA", "update type for %s", subscriptionPath);
+        amxc_string_t expr_path;
+        amxc_var_t values, ret;
+
+
+        amxc_var_init(&values);
+        amxc_var_init(&ret);
+        amxc_string_init(&expr_path, 0);
+        amxc_string_setf(&expr_path, "Device.ManagementServer.Subscription.[ Path == '%s']", subscriptionPath);
+        amxc_var_set_type(&values, AMXC_VAR_ID_HTABLE);
+        amxc_var_add_key(cstring_t, &values, "Type", DM_ENG_NotificationModeString(mode));
+        if((amx_ret = amxb_set(DM_ENG_Device_GetSystemInfo()->bus_ctx, amxc_string_get(&expr_path, 0), &values, &ret, 0)) != AMXB_STATUS_OK) {
+            SAH_TRACEZ_WARNING("DM_DA", "Couldn't set subscription new Type (%d)", amx_ret);
+        }
+        amxc_var_clean(&values);
+        amxc_var_clean(&ret);
+        amxc_string_clean(&expr_path);
+    }
+    return amx_ret;
+}
+
 //---------------------------------------------------------------------------------------------
 /**
    @brief
@@ -420,13 +444,16 @@ static void remove_subscription_from_dm(const char* subscriptionPath) {
 bool DM_ENG_Device_ACSConnectionAddSubscription(dm_amx_env_t* amx, const char* subscriptionPath, int* subscriptionID, DM_ENG_NotificationMode mode) {
     SAH_TRACEZ_INFO("DM_DA", "Event subscription [%s]", subscriptionPath);
 
+    bool ret = false;
+    amxc_var_t* sub = NULL;
+
     if(!DM_ENG_Device_Common_IsValidPath(subscriptionPath)) {
-        return false;
+        return ret;
     }
 
     if(!amxa_is_subs_allowed(amx->acl_rules, subscriptionPath, AMXA_PERMIT_SUBS_VAL_CHANGE)) {
         SAH_TRACEZ_ERROR("DM_DA", "notification not allowed for %s", subscriptionPath);
-        return false;
+        return ret;
     }
 
     if((mode == DM_ENG_NotificationMode_FORCED) || (mode == DM_ENG_NotificationMode_ACTIVE)) {
@@ -435,21 +462,26 @@ bool DM_ENG_Device_ACSConnectionAddSubscription(dm_amx_env_t* amx, const char* s
                                                 &DM_ENG_Device_ACSConnectionHandleNotification,
                                                 subscriptionID) != 0) {
             SAH_TRACEZ_ERROR("DM_DA", "Could not create notification for %s", subscriptionPath);
-            return false;
+            return ret;
         }
     }
 
     if(mode != DM_ENG_NotificationMode_FORCED) {
-        amxc_var_t* sub = find_subscription_by_path(subscriptionPath);
-        if(!sub) {
-            //remove each instance before creating it, will be fixed later
-            remove_subscription_from_dm(subscriptionPath);
+        sub = find_subscription_by_path(subscriptionPath);
+        if(sub == NULL) {
             add_subscription_to_dm(subscriptionPath, mode);
+            ret = true;
+        } else {
+            const char* notification_mode = GETP_CHAR(sub, "0.0.Type");
+            when_null(notification_mode, stop);
+            ret = update_subscription_in_dm(subscriptionPath, notification_mode, mode);
         }
-        amxc_var_delete(&sub);
+
     }
 
-    return true;
+stop:
+    amxc_var_delete(&sub);
+    return ret;
 }
 
 //---------------------------------------------------------------------------------------------
