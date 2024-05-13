@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.31.34 - 2024-05-13(09:21:11 +0000)
+
+### Other
+
+- [TR-069] duplication of subscriptions after restarting cwmp
+
 ## Release v1.31.33 - 2024-05-07(09:52:39 +0000)
 
 ### Other
