@@ -90,22 +90,20 @@ amxd_status_t _sendInformMessage(amxd_object_t* object,
                                  UNUSED amxd_function_t* func,
                                  amxc_var_t* args,
                                  UNUSED amxc_var_t* ret) {
-
+    const char* events = NULL;
+    const char* source = NULL;
     amxc_var_t data;
-    amxd_status_t status = amxd_status_invalid_arg;
-
-    SAH_TRACEZ_IN(ME);
-
-    when_true_trace(amxc_var_is_null(args), stop, ERROR, "Invalid arg(s)");
-
-    amxc_var_log(args);
-
     amxc_var_init(&data);
+    amxd_status_t status = amxd_status_invalid_arg;
+    SAH_TRACEZ_IN(ME);
+    when_true_trace(amxc_var_is_null(args), stop, ERROR, "Invalid arg(s)");
+    events = GET_CHAR(args, "events");
+    when_str_empty_trace(events, stop, ERROR, "Invalid events");
+    source = GET_CHAR(args, "source");
+    when_str_empty_trace(source, stop, ERROR, "Invalid source");
     amxc_var_set_type(&data, AMXC_VAR_ID_HTABLE);
     amxc_var_set_key(&data, "data", args, AMXC_VAR_FLAG_COPY);
-
     amxd_object_send_signal(object, "SendInformMessage!", &data, true);
-
     status = amxd_status_ok;
 stop:
     amxc_var_clean(&data);
@@ -204,6 +202,7 @@ int _cwmp_plugin_main(int reason, amxd_dm_t* dm, amxo_parser_t* parser) {
         transfers_init();
         smm_init();
         cwmp_plugin_init(dm, parser);
+        cwmp_plugin_xmpp_init();
         cwmp_plugin_deferred_init();
         break;
     case AMXO_STOP: // STOP

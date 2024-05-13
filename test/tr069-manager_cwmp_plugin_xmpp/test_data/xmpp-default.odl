@@ -3,7 +3,11 @@
         object Connection {
             instance add (0){
                 parameter Enable = true;
-                parameter JabberID = "ThisIsNotAValidJabberID";
+                parameter JabberID = "MyJabberID1";
+            }
+            instance add (0){
+                parameter Enable = true;
+                parameter JabberID = "MyJabberID2";
             }
         }
     }

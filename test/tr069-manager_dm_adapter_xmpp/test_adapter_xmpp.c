@@ -68,6 +68,7 @@
 #include <amxd/amxd_dm.h>
 #include <amxd/amxd_object.h>
 #include <amxd/amxd_transaction.h>
+#include <amxd/amxd_object_event.h>
 
 #include <amxo/amxo.h>
 

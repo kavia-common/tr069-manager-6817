@@ -1232,7 +1232,7 @@
       *
       * @version 8.4
       */
-      %persistent %read-only string ConnReqJabberID {
+      %read-only string ConnReqJabberID {
         default "";
       }
 
@@ -1343,6 +1343,9 @@
 }
 
 %populate {
+    on event "dm:object-changed" call connreq_xmpp_connection_changed
+        filter 'path matches "ManagementServer." && contains("parameters.ConnReqXMPPConnection")';
+
     on event "dm:object-changed" call schedule_download_transfer_failed
         filter 'path matches "ManagementServer.Transfers.ScheduleDownload.*.TransferComplete." &&
                 parameters.Status.to == "Failed"';

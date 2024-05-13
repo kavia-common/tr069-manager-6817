@@ -65,5 +65,11 @@ int test_xmpp_teardown(void** state);
 
 void test_xmpp_start_stop_default(void** state);
 void test_xmpp_ok_rpc_call(void** state);
+void test_xmpp_nok_rpc_call(void** state);
+void test_xmpp_connection_deleted(void** state);
+void test_xmpp_connection_disabled(void** state);
+void test_xmpp_connection_empty(void** state);
+void test_xmpp_connection_jabber_id_changed(void** state);
+void test_xmpp_change_connection(void** state);
 
 #endif // __TEST_XMPP_H__

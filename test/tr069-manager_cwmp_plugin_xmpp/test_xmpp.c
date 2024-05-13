@@ -92,11 +92,12 @@ int test_xmpp_setup(UNUSED void** state) {
 
     /* Increase level only for debugging */
     sahTraceSetLevel(0);
-    sahTraceAddZone(500, "TEST");
-    sahTraceAddZone(0, ME);
+    sahTraceAddZone(200, "TEST");
+    sahTraceAddZone(200, ME);
 
     amxut_resolve_function("cwmp_plugin_main", _cwmp_plugin_main);
     amxut_resolve_function("ManagementServer.sendInformMessage", _sendInformMessage);
+    amxut_resolve_function("connreq_xmpp_connection_changed", _connreq_xmpp_connection_changed);
 
     amxut_dm_load_odl(odl_defs);
     amxut_dm_load_odl(xmpp_odl);
@@ -104,15 +105,15 @@ int test_xmpp_setup(UNUSED void** state) {
     prestate_t* prestate = (prestate_t*) *state;
 
     if(prestate == NULL) {
-        SAH_TRACEZ_INFO(ME, "prestate is NULL");
+        SAH_TRACEZ_INFO("TEST", "prestate is NULL");
     } else {
         if((prestate->default_odl != NULL) && (*prestate->default_odl != 0)) {
-            SAH_TRACEZ_INFO(ME, "Loading odl: %s", prestate->default_odl);
+            SAH_TRACEZ_INFO("TEST", "Loading odl: %s", prestate->default_odl);
             amxut_dm_load_odl(prestate->default_odl);
         }
 
         if((prestate->xmpp_default_odl != NULL) && (*prestate->xmpp_default_odl != 0)) {
-            SAH_TRACEZ_INFO(ME, "Loading odl: %s", prestate->xmpp_default_odl);
+            SAH_TRACEZ_INFO("TEST", "Loading odl: %s", prestate->xmpp_default_odl);
             amxut_dm_load_odl(prestate->xmpp_default_odl);
         }
     }
@@ -123,7 +124,7 @@ int test_xmpp_setup(UNUSED void** state) {
     assert_non_null(amxb_be_who_has("Device.XMPP."));
 
     amxp_sigmngr_add_signal(&(amxut_bus_dm()->sigmngr), "SendInformMessage!");
-    amxut_bus_handle_events();
+    amxut_timer_go_to_future_ms(1);
     return 0;
 }
 
@@ -139,7 +140,7 @@ void test_xmpp_start_stop_default(UNUSED void** state) {
     amxut_dm_param_equals(csv_string_t, "ManagementServer.", "SupportedConnReqMethods", "HTTP,XMPP");
     amxut_dm_param_equals(cstring_t, "ManagementServer.", "ConnReqXMPPConnection", "Device.XMPP.Connection.1.");
     amxut_dm_param_equals(csv_string_t, "ManagementServer.", "ConnReqAllowedJabberIDs", "");
-    amxut_dm_param_equals(cstring_t, "ManagementServer.", "ConnReqJabberID", "");
+    amxut_dm_param_equals(cstring_t, "ManagementServer.", "ConnReqJabberID", "MyJabberID1");
 }
 
 static void send_inform_message_cb(const char* const sig_name,
@@ -155,38 +156,78 @@ static void send_inform_message_cb(const char* const sig_name,
     assert_string_equal(source, "XMPP");
 }
 
-void test_xmpp_ok_rpc_call(UNUSED void** state) {
+static amxd_status_t send_inform_message(const char* events, bool immediately, const char* source) {
     amxd_object_t* management_server_obj = NULL;
     amxc_var_t args;
     amxc_var_t ret;
-
-    const char* events = "6 CONNECTION REQUEST";
-    bool immediately = true;
-    const char* source = "XMPP";
-
     amxd_status_t status = amxd_status_ok;
-
-    management_server_obj = amxd_dm_findf(amxut_bus_dm(), "ManagementServer.");
-
-    assert_non_null(management_server_obj);
-
-    assert_int_equal(amxp_slot_connect(&(amxut_bus_dm()->sigmngr), "SendInformMessage!", NULL, send_inform_message_cb, NULL), 0);
-
     amxc_var_init(&args);
     amxc_var_init(&ret);
-
+    management_server_obj = amxd_dm_findf(amxut_bus_dm(), "ManagementServer.");
+    assert_non_null(management_server_obj);
     amxc_var_set_type(&args, AMXC_VAR_ID_HTABLE);
-    amxc_var_add_key(cstring_t, &args, "events", events);
+    if(events) {
+        amxc_var_add_key(cstring_t, &args, "events", events);
+    }
     amxc_var_add_key(bool, &args, "immediately", immediately);
-    amxc_var_add_key(cstring_t, &args, "source", source);
-
-
+    if(source) {
+        amxc_var_add_key(cstring_t, &args, "source", source);
+    }
     status = amxd_object_invoke_function(management_server_obj, "sendInformMessage", &args, &ret);
-
     amxc_var_clean(&args);
     amxc_var_clean(&ret);
+    return status;
+}
 
-    assert_int_equal(status, amxd_status_ok);
-
+void test_xmpp_ok_rpc_call(UNUSED void** state) {
+    assert_int_equal(amxp_slot_connect(&(amxut_bus_dm()->sigmngr), "SendInformMessage!", NULL, send_inform_message_cb, NULL), 0);
+    assert_int_equal(send_inform_message("6 CONNECTION REQUEST", true, "XMPP"), amxd_status_ok);
     amxut_bus_handle_events();
+}
+
+void test_xmpp_nok_rpc_call(UNUSED void** state) {
+    assert_int_equal(send_inform_message(NULL, true, "XMPP"), amxd_status_invalid_function_argument);
+    assert_int_equal(send_inform_message("", true, "XMPP"), amxd_status_invalid_arg);
+    assert_int_equal(send_inform_message("6 CONNECTION REQUEST", true, NULL), amxd_status_invalid_function_argument);
+    assert_int_equal(send_inform_message("6 CONNECTION REQUEST", true, ""), amxd_status_invalid_arg);
+}
+
+void test_xmpp_connection_deleted(UNUSED void** state) {
+    amxut_dm_param_equals(cstring_t, "ManagementServer.", "ConnReqXMPPConnection", "Device.XMPP.Connection.1.");
+    assert_int_equal(amxb_del(amxb_be_who_has("Device."), "Device.XMPP.Connection.", 1, NULL, NULL, 5), 0);
+    amxut_bus_handle_events();
+    amxut_dm_param_equals(cstring_t, "ManagementServer.", "ConnReqXMPPConnection", "");
+}
+
+void test_xmpp_connection_disabled(UNUSED void** state) {
+    amxut_dm_param_equals(cstring_t, "ManagementServer.", "ConnReqXMPPConnection", "Device.XMPP.Connection.1.");
+    amxut_dm_param_equals(cstring_t, "ManagementServer.", "ConnReqJabberID", "MyJabberID1");
+    amxut_dm_param_set_bool("Device.XMPP.Connection.1.", "Enable", false);
+    amxut_bus_handle_events();
+    amxut_dm_param_equals(cstring_t, "ManagementServer", "ConnReqJabberID", "");
+}
+
+void test_xmpp_connection_empty(UNUSED void** state) {
+    amxut_dm_param_equals(cstring_t, "ManagementServer.", "ConnReqXMPPConnection", "Device.XMPP.Connection.1.");
+    amxut_dm_param_equals(cstring_t, "ManagementServer.", "ConnReqJabberID", "MyJabberID1");
+    amxut_dm_param_set_cstring_t("ManagementServer.", "ConnReqXMPPConnection", "");
+    amxut_bus_handle_events();
+    amxut_dm_param_equals(cstring_t, "ManagementServer", "ConnReqJabberID", "");
+}
+
+
+void test_xmpp_connection_jabber_id_changed(UNUSED void** state) {
+    amxut_dm_param_equals(cstring_t, "ManagementServer.", "ConnReqXMPPConnection", "Device.XMPP.Connection.1.");
+    amxut_dm_param_equals(cstring_t, "ManagementServer.", "ConnReqJabberID", "MyJabberID1");
+    amxut_dm_param_set_cstring_t("Device.XMPP.Connection.1.", "JabberID", "MyNewJabberID1");
+    amxut_bus_handle_events();
+    amxut_dm_param_equals(cstring_t, "ManagementServer", "ConnReqJabberID", "MyNewJabberID1");
+}
+
+void test_xmpp_change_connection(UNUSED void** state) {
+    amxut_dm_param_equals(cstring_t, "ManagementServer.", "ConnReqXMPPConnection", "Device.XMPP.Connection.1.");
+    amxut_dm_param_set_cstring_t("ManagementServer.", "ConnReqXMPPConnection", "Device.XMPP.Connection.2.");
+    amxut_bus_handle_events();
+    amxut_dm_param_equals(cstring_t, "ManagementServer.", "ConnReqXMPPConnection", "Device.XMPP.Connection.2.");
+    amxut_dm_param_equals(cstring_t, "ManagementServer.", "ConnReqJabberID", "MyJabberID2");
 }

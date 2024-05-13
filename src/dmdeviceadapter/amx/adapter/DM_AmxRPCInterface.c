@@ -70,10 +70,8 @@ static void handle_sendInformMessage(const amxc_var_t* const data) {
     const char* events = GETP_CHAR(data, "data.events");
     bool immediately = GETP_BOOL(data, "data.immediately");
     const char* source = GETP_CHAR(data, "data.source");
-
     SAH_TRACEZ_INFO(ME, "events [%s]", events);
     SAH_TRACEZ_INFO(ME, "immediately [%s], source [%s]", immediately ? "true":"false", source);
-
     DM_ENG_InformMessageScheduler_SendEvents(events, immediately, source);
 }
 
@@ -81,15 +79,12 @@ void rpc_req_cb(const char* const sig_name,
                 const amxc_var_t* const data,
                 UNUSED void* const priv) {
     SAH_TRACEZ_IN(ME);
-
     when_str_empty_trace(sig_name, stop, ERROR, "Invalid arg(s)");
-
     if(strcmp(sig_name, "SendInformMessage!")) {
         handle_sendInformMessage(data);
     } else {
         SAH_TRACEZ_INFO(ME, "Unkown RPC request [%s]", sig_name);
     }
-
 stop:
     SAH_TRACEZ_OUT(ME);
     return;
@@ -98,17 +93,12 @@ stop:
 int DM_AmxRPCInterface_init(amxb_bus_ctx_t* ctx) {
     int retval = -1;
     SAH_TRACEZ_IN(ME);
-
     amxc_var_t ret;
     amxc_var_init(&ret);
-
     when_null_trace(ctx, stop, ERROR, "Invalid bus ctx");
-
     bus_ctx = ctx;
-
     retval = amxb_subscribe(bus_ctx, MANAGEMENTSERVER_PATH, RPC_REQ,
                             rpc_req_cb, NULL);
-
 stop:
     amxc_var_clean(&ret);
     SAH_TRACEZ_OUT(ME);
@@ -118,9 +108,7 @@ stop:
 int DM_AmxRPCInterface_clean(void) {
     int retval = -1;
     SAH_TRACEZ_IN(ME);
-
     retval = amxb_unsubscribe(bus_ctx, MANAGEMENTSERVER_PATH, rpc_req_cb, NULL);
-
     SAH_TRACEZ_OUT(ME);
     return retval;
 }

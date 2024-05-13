@@ -62,12 +62,18 @@
 int main(void) {
     prestate_t prestate1 = {
         .default_odl = "./test_data/start-stop-default.odl",
-        .xmpp_default_odl = NULL
+        .xmpp_default_odl = "./test_data/xmpp-default.odl"
     };
 
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_prestate_setup_teardown(test_xmpp_start_stop_default, test_xmpp_setup, test_xmpp_teardown, (void*) &prestate1),
         cmocka_unit_test_setup_teardown(test_xmpp_ok_rpc_call, test_xmpp_setup, test_xmpp_teardown),
+        cmocka_unit_test_setup_teardown(test_xmpp_nok_rpc_call, test_xmpp_setup, test_xmpp_teardown),
+        cmocka_unit_test_prestate_setup_teardown(test_xmpp_connection_deleted, test_xmpp_setup, test_xmpp_teardown, (void*) &prestate1),
+        cmocka_unit_test_prestate_setup_teardown(test_xmpp_connection_disabled, test_xmpp_setup, test_xmpp_teardown, (void*) &prestate1),
+        cmocka_unit_test_prestate_setup_teardown(test_xmpp_connection_empty, test_xmpp_setup, test_xmpp_teardown, (void*) &prestate1),
+        cmocka_unit_test_prestate_setup_teardown(test_xmpp_connection_jabber_id_changed, test_xmpp_setup, test_xmpp_teardown, (void*) &prestate1),
+        cmocka_unit_test_prestate_setup_teardown(test_xmpp_change_connection, test_xmpp_setup, test_xmpp_teardown, (void*) &prestate1),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

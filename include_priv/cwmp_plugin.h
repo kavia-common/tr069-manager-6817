@@ -194,6 +194,11 @@ amxd_status_t _sendInformMessage(amxd_object_t* object,
                                  amxc_var_t* args,
                                  amxc_var_t* ret);
 
+int cwmp_plugin_xmpp_init(void);
+void _connreq_xmpp_connection_changed(const char* const sig_name,
+                                      const amxc_var_t* const data,
+                                      void* const priv);
+
 #ifdef __cplusplus
 }
 #endif
