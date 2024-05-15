@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.31.35 - 2024-05-15(08:35:28 +0000)
+
+### Other
+
+- Allow empty username and password for log upload
+
 ## Release v1.31.34 - 2024-05-13(09:21:11 +0000)
 
 ### Other
