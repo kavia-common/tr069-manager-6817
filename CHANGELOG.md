@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.31.36 - 2024-05-29(13:14:36 +0000)
+
+### Other
+
+- open netmodel queries after initialization
+
 ## Release v1.31.35 - 2024-05-15(08:35:28 +0000)
 
 ### Other
