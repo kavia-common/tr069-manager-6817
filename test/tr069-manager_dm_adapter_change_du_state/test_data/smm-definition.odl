@@ -1,0 +1,26 @@
+%define {
+    object ManagementServer {
+        object SMM {
+            uint32 changeDUState(%in %mandatory string Initiator, %in %mandatory string CommandKey, %in %mandatory list Operations);
+            object DUStateChangeComplete[] {
+                string Status;
+                string Initiator;
+                string CommandKey;
+                object Operations[] {
+                    object Results [] {
+                          string UUID;
+                          string DeploymentUnitRef;
+                          string Version;
+                          string CurrentState;
+                          bool Resolved;
+                          string ExecutionUnitRefList;
+                          datetime StartTime;
+                          datetime CompleteTime;
+                          uint32 FaultCode;
+                          string FaultString;
+                    }
+                }
+            }
+        }
+    }
+}

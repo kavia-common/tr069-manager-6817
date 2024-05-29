@@ -1,0 +1,40 @@
+%populate {
+	object 'ManagementServer' {
+		object 'SMM' {
+			object 'DUStateChangeComplete' {
+				instance add(0) {
+					parameter 'Status' = "Done";
+					parameter 'CommandKey' = "2403";
+					parameter 'Initiator' = "ACS";
+					object 'Operations' {
+						instance add(0) {
+							parameter 'Username' = "my_username";
+							parameter 'Password' = "my_password";
+							parameter 'URL' = "my_url.com";
+							parameter 'Status' = "Done";
+							parameter 'ID' = 5;
+							parameter 'UUID' = "1234";
+							parameter 'ExecutionEnvRef' = "MyEnv";
+							parameter 'Version' = "";
+							parameter 'Type' = "Install";
+							object 'Results' {
+								instance add(0) {
+									parameter 'Resolved' = true;
+									parameter 'ExecutionUnitRefList' = "";
+									parameter 'FaultCode' = 9002;
+									parameter 'CurrentState' = "";
+									parameter 'StartTime' = "0001-01-01T00:00:00Z";
+									parameter 'UUID' = "";
+									parameter 'CompleteTime' = "0001-01-01T00:00:00Z";
+									parameter 'Version' = "";
+									parameter 'DeploymentUnitRef' = "";
+									parameter 'FaultString' = "Internal error";
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

@@ -155,6 +155,11 @@ int engineEvent(const char* eventType) {
     return 0;
 }
 
+int duStateChangeComplete(dscc_t* dscc) {
+    (void) dscc;
+    return 0;
+}
+
 int DM_SendHttpMessage(const char* msgToSendStr) {
     (void) msgToSendStr;
     return 0;
@@ -274,7 +279,7 @@ void test_dmadapter_connection(UNUSED void** state) {
     int rv = DM_ENG_DataModelConnect(acache_file, acl_file, &systemctx, &acsctx);
     // connect to bus
     rv += DM_ENG_ActivateNotification(DM_ENG_EntityType_SYSTEM, inform, transferComplete, requestDownload,
-                                      getRPCMethods, timerStart, timerStop, timerTimeRemaining, engineEvent);
+                                      getRPCMethods, timerStart, timerStop, timerTimeRemaining, engineEvent, duStateChangeComplete);
     assert_int_equal(rv, 0);
     system_bus_ctx = (amxb_bus_ctx_t*) systemctx;
     acs_bus_ctx = (amxb_bus_ctx_t*) acsctx;

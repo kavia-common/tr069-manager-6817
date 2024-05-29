@@ -83,6 +83,7 @@
 #include "DM_AmxReset.h"
 #include "DM_AmxUpDownload.h"
 #include "DM_AmxScheduleDownload.h"
+#include "DM_AmxChangeDUState.h"
 #include "DM_AmxRPCInterface.h"
 #include <debug/sahtrace.h>
 #include <string.h>
@@ -207,6 +208,10 @@ bool DM_ENG_Device_Release() {
 
     if(DM_AmxScheduleDownload_clean() != 0) {
         SAH_TRACEZ_ERROR("DM_DA", "Failed to clean AMX ScheduleDownload");
+    }
+
+    if(DM_AmxChangeDUState_clean() != 0) {
+        SAH_TRACEZ_ERROR("DM_DA", "Failed to clean AMX ChangeDUState");
     }
 
     if(DM_AmxRPCInterface_clean() != 0) {
@@ -795,6 +800,11 @@ int DM_ENG_Device_ScheduleDownload(const char* CommandKey, const char* FileType,
     return retval;
 }
 
+int DM_ENG_Device_ChangeDUState(OperationStruct* operations, const char* commandKey) {
+    int retval = 0;
+    retval = DM_ENG_Device_DoChangeDUState(operations, commandKey);
+    return retval;
+}
 
 /*********************************** download RPC *************************************/
 
@@ -908,6 +918,10 @@ int DM_ENG_Device_LoadConfig(DM_ENG_ScheduleInformStruct** is) {
 
     if(DM_AmxScheduleDownload_init((&da.system)->bus_ctx) != 0) {
         SAH_TRACEZ_ERROR("DM_DA", "Failed to intialise AMX ScheduleDownload");
+    }
+
+    if(DM_AmxChangeDUState_init((&da.system)->bus_ctx) != 0) {
+        SAH_TRACEZ_ERROR("DM_DA", "Failed to intialise AMX AmxChangeDUState");
     }
 
     if(DM_AmxRPCInterface_init((&da.system)->bus_ctx) != 0) {
@@ -1089,6 +1103,23 @@ int DM_ENG_Device_TransferDoneAcknowledged(char* uniqueID) {
     rv = amxb_del(amx->bus_ctx, uniqueID, 0, NULL, &ret, 2);
     if((rv != 0) || amxc_var_is_null(&ret)) {
         SetErrorGotoStop(-1, "Delete Instance failed [%s]", uniqueID);
+    }
+stop:
+    amxc_var_clean(&ret);
+    return error;
+}
+
+int DM_ENG_Device_DUStateChangeCompleteAcknowledged(const char* path) {
+    SAH_TRACEZ_INFO("DM_DA", "ACK DONE delete object : %s", path);
+    int error = 0;
+    int rv = 0;
+    amxc_var_t ret;
+    amxc_var_init(&ret);
+    dm_amx_env_t* amx = &da.system;
+
+    rv = amxb_del(amx->bus_ctx, path, 0, NULL, &ret, 2);
+    if((rv != 0) || amxc_var_is_null(&ret)) {
+        SetErrorGotoStop(-1, "Delete Instance failed [%s]", path);
     }
 stop:
     amxc_var_clean(&ret);

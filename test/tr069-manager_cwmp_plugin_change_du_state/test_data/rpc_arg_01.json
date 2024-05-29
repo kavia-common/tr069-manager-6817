@@ -1,0 +1,28 @@
+{
+    "Initiator": "ACS",
+    "CommandKey": "240391",
+    "Operations": [
+        {
+            "Type": "Install",
+            "URL": "my_url.com",
+            "UUID": "1234",
+            "Username": "my_username",
+            "Password": "my_password",
+            "ExecutionEnvRef": "MyEnv"
+        },
+        {
+            "Type": "Update",
+            "UUID": "1234",
+            "Version": "v1.2",
+            "URL": "my_url.com",
+            "Username": "",
+            "Password": ""
+        },
+        {
+            "Type": "Uninstall",
+            "UUID": "1234",
+            "Version": "v1.2",
+            "ExecutionEnvRef": "MyEnv"
+        }
+    ]
+}

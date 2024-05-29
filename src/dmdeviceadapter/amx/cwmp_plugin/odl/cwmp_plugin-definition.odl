@@ -1248,6 +1248,97 @@
       * @version 8.4
       */
       void sendInformMessage(%in %mandatory csv_string events, %in %mandatory bool immediately, %in %mandatory string source);
+
+      /**
+      *  SMM: Software Module Management
+      *
+      * @version 1.0
+      */
+      %persistent %protected object SMM {
+        uint32 changeDUState(%in %mandatory string Initiator, %in %mandatory string CommandKey, %in %mandatory list Operations);
+        %persistent object DUStateChangeComplete[] {
+          %protected %persistent %unique %key string Alias;
+          counted with NumberOfDUStateChangeCompleteEntries;
+          /**
+          * Status of the changeDUState (Idle, In Progress, Failed, Done)
+          * @version 1.0
+          */
+          %persistent string Status {
+            userflags %upc;
+          }
+          %persistent string Initiator {
+            userflags %upc;
+          }
+          %persistent string CommandKey {
+            userflags %upc;
+          }
+          %persistent object Operations[] {
+            %protected %persistent %unique %key string Alias;
+            counted with NumberOfOperations;
+            %persistent string Type {
+              userflags %upc;
+            }
+            %persistent string Status {
+              userflags %upc;
+            }
+            %persistent uint32 ID {
+              userflags %upc;
+            }
+            %persistent string URL {
+              userflags %upc;
+            }
+            %persistent string UUID {
+              userflags %upc;
+            }
+            %persistent string Username {
+              userflags %upc;
+            }
+            %persistent string Password {
+              userflags %upc;
+            }
+            %persistent string ExecutionEnvRef {
+              userflags %upc;
+            }
+            %persistent string Version {
+              userflags %upc;
+            }
+
+            %persistent object Results [] {
+              %protected %persistent %unique %key string Alias;
+              %persistent string UUID {
+                userflags %upc;
+              }
+              %persistent string DeploymentUnitRef {
+                userflags %upc;
+              }
+              %persistent string Version {
+                userflags %upc;
+              }
+              %persistent string CurrentState {
+                userflags %upc;
+              }
+              %persistent bool Resolved {
+                userflags %upc;
+              }
+              %persistent string ExecutionUnitRefList {
+                userflags %upc;
+              }
+              %persistent datetime StartTime {
+                userflags %upc;
+              }
+              %persistent datetime CompleteTime {
+                userflags %upc;
+              }
+              %persistent uint32 FaultCode {
+                userflags %upc;
+              }
+              %persistent string FaultString {
+                userflags %upc;
+              }
+            }
+          }
+        }
+      }
     }
 }
 
@@ -1266,6 +1357,16 @@
 
     on event "dm:instance-added" call scheduleDownload_added
         filter 'path == "ManagementServer.Transfers.ScheduleDownload."';
+
+    on event "dm:instance-added" call dscc_added
+        filter 'path == "ManagementServer.SMM.DUStateChangeComplete."';
+
+    on event "dm:instance-added" call dscc_op_added
+        filter 'path matches "ManagementServer.SMM.DUStateChangeComplete.*.Operations.$"';
+
+    on event "dm:object-changed" call dscc_op_done
+        filter 'path matches "ManagementServer.SMM.DUStateChangeComplete.*.Operations.*." &&
+                parameters.Status.to == "Done"';
 
     on event "app:stop" call app_stopped;
 }

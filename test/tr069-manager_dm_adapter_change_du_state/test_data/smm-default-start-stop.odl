@@ -1,0 +1,32 @@
+%populate {
+    object 'ManagementServer.SMM.DUStateChangeComplete.' {
+        instance add(0) {
+            parameter 'Status' = "";
+            parameter 'CommandKey' = "2403";
+            parameter 'Initiator' = "ACS";
+            object 'Operations' {
+                instance add(0) {
+                    object 'Results' {
+                        instance add(0) {
+                        }
+                    }
+                }
+            }
+        }
+        instance add(0) {
+            parameter 'Status' = "Done";
+            parameter 'CommandKey' = "3103";
+            parameter 'Initiator' = "ACS";
+            object 'Operations' {
+                instance add(0) {
+                    object 'Results' {
+                        instance add(0) {
+                        }
+                        instance add(0) {
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

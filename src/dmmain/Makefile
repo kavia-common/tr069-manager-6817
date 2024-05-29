@@ -66,6 +66,9 @@ CFLAGS_PRIO = $(if $(STAGINGDIR), -I$(STAGINGDIR)/opt/prplos/include) \
 			  $(if $(STAGINGDIR), -I$(STAGINGDIR)/opt/prplos/usr/include) \
 			  $(if $(STAGINGDIR), -I$(STAGINGDIR)/opt/prplos/usr/local/include)
 
+CFLAGS:=$(filter-out -Os -g3 -g,$(CFLAGS))
+CFLAGS += -ggdb3
+
 all: bannerCompile $(TARGET_BIN)
 
 bannerCompile:

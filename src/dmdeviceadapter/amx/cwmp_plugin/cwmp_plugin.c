@@ -60,6 +60,7 @@
 #include <amxm/amxm.h>
 #include "cwmp_plugin.h"
 #include "transfers.h"
+#include <smm.h>
 
 #include <debug/sahtrace.h>
 #include <debug/sahtrace_macros.h>
@@ -73,6 +74,7 @@ static amxp_timer_t* deferred_init_timer = NULL;
 static void deferred_init_timer_cb(UNUSED amxp_timer_t* timer, UNUSED void* priv) {
     SAH_TRACEZ_IN(ME);
     cwmp_plugin_netmodel_find_ip();
+    smm_differed_init();
     amxp_timer_delete(&deferred_init_timer);
     SAH_TRACEZ_OUT(ME);
 }
@@ -200,11 +202,13 @@ int _cwmp_plugin_main(int reason, amxd_dm_t* dm, amxo_parser_t* parser) {
     switch(reason) {
     case AMXO_START: // START
         transfers_init();
+        smm_init();
         cwmp_plugin_init(dm, parser);
         cwmp_plugin_deferred_init();
         break;
     case AMXO_STOP: // STOP
         transfers_clean();
+        smm_clean();
         cwmp_plugin_exit(dm, parser);
         break;
     default:
