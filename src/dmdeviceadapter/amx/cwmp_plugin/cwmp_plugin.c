@@ -68,6 +68,21 @@
 
 static cwmp_plugin_app_t app;
 static amxm_shared_object_t* fw_module = NULL;
+static amxp_timer_t* deferred_init_timer = NULL;
+
+static void deferred_init_timer_cb(UNUSED amxp_timer_t* timer, UNUSED void* priv) {
+    SAH_TRACEZ_IN(ME);
+    cwmp_plugin_netmodel_find_ip();
+    amxp_timer_delete(&deferred_init_timer);
+    SAH_TRACEZ_OUT(ME);
+}
+
+static void cwmp_plugin_deferred_init(void) {
+    when_failed_trace(amxp_timer_new(&deferred_init_timer, deferred_init_timer_cb, NULL), stop, ERROR, "Failed to create timer");
+    when_failed_trace(amxp_timer_start(deferred_init_timer, 0), stop, ERROR, "Failed to start timer");
+stop:
+    return;
+}
 
 amxd_status_t _sendInformMessage(amxd_object_t* object,
                                  UNUSED amxd_function_t* func,
@@ -154,7 +169,6 @@ static void cwmp_plugin_exit(UNUSED amxd_dm_t* dm,
 
 void cwmp_plugin_netmodel_init(void) {
     netmodel_initialize();
-    cwmp_plugin_netmodel_find_ip();
 }
 
 void cwmp_plugin_netmodel_cleanup(void) {
@@ -187,6 +201,7 @@ int _cwmp_plugin_main(int reason, amxd_dm_t* dm, amxo_parser_t* parser) {
     case AMXO_START: // START
         transfers_init();
         cwmp_plugin_init(dm, parser);
+        cwmp_plugin_deferred_init();
         break;
     case AMXO_STOP: // STOP
         transfers_clean();

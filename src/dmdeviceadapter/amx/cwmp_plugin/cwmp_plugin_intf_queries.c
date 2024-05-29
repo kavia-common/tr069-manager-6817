@@ -266,7 +266,7 @@ void cwmp_plugin_netmodel_find_ip(void) {
     when_null_trace(interface, exit, ERROR, "Interface parameter is empty");
     when_true_trace(STRING_EMPTY(interface), exit, ERROR, "Interface parameter is empty");
 
-    SAH_TRACEZ_NOTICE(ME, "Opening queries to get wan interface info");
+    SAH_TRACEZ_NOTICE(ME, "Opening queries to get wan interface info [%s]", interface);
     cwmp_plugin_netmodel_open_queries(interface);
 exit:
     SAH_TRACEZ_OUT(ME);
