@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.32.0 - 2024-05-31(11:36:34 +0000)
+
+### Other
+
+- Implement ChangeDUState
+
 ## Release v1.31.36 - 2024-05-29(13:14:36 +0000)
 
 ### Other
