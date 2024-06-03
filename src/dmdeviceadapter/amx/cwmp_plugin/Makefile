@@ -41,9 +41,6 @@ endif
 LDFLAGS += $(STAGING_LIBDIR) -shared -fPIC
 LDFLAGS += -lamxc -lamxd -lamxo -lamxb -lamxp -lamxm -lamxa -lsahtrace -lnetmodel -lfiletransfer -lgmap-client
 
-CFLAGS:=$(filter-out -Os -g3 -g,$(CFLAGS))
-CFLAGS += -ggdb3
-
 # targets
 all: banner $(TARGET_SO) $(TARGET_A)
 

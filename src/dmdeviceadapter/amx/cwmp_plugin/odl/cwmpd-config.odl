@@ -26,10 +26,10 @@
     backends = ["/usr/bin/mods/amxb/mod-amxb-ubus.so"];
 
     trace-zones = {
-        CWMPD = 500,
-        DM_DA = 500,
-        DM_ENGINE = 500,
-        DM_COM = 500,
+        CWMPD = 200,
+        DM_DA = 200,
+        DM_ENGINE = 200,
+        DM_COM = 200,
         DM_COMMON = 200,
         DM_HS = 200
     };

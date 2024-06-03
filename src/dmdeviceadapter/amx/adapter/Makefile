@@ -48,9 +48,6 @@ ifeq ($(COVERAGE), y)
 	LDFLAGS += -fprofile-arcs -ftest-coverage
 endif
 
-CFLAGS:=$(filter-out -Os -g3 -g,$(CFLAGS))
-CFLAGS += -ggdb3
-
 test: all
 
 all: banner $(TARGET_SO)
