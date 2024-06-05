@@ -329,7 +329,7 @@ stop:
     return ret;
 }
 
-static int vendorlogfile_get_index(const char* fileType) {
+static int vendorfile_get_index(const char* fileType) {
     int index = 0;
 
     amxc_llist_t string_list;
@@ -339,9 +339,9 @@ static int vendorlogfile_get_index(const char* fileType) {
 
     when_str_empty(fileType, stop);
 
-    if(strstr(fileType, "2 Vendor Log File") || strstr(fileType, "4 Vendor Log File 1")) {
+    if(strstr(fileType, "2 Vendor Log File") || strstr(fileType, "4 Vendor Log File 1") || strstr(fileType, "1 Vendor Configuration File") || strstr(fileType, "3 Vendor Configuration File 1")) {
         index = 1;
-    } else if(strstr(fileType, "4 Vendor Log File")) {
+    } else if(strstr(fileType, "3 Vendor Configuration File") || strstr(fileType, "4 Vendor Log File")) {
         amxc_string_appendf(&vendorString, "%s", fileType);
         amxc_string_split_word(&vendorString, &string_list, NULL);
         amxc_string_t* vendorIndex = amxc_string_get_from_llist(&string_list, 8);
@@ -429,7 +429,7 @@ static void filetransfer_upload_selftest_call_done(const amxb_bus_ctx_t* bus_ctx
     when_true_trace(status != 0, stop, ERROR, "SelfTestDiagnostic failed");
     const char* filetype = GET_CHAR(args, "FileType");
     when_str_empty_trace(filetype, stop, ERROR, "Mandatory [FileType] is missing");
-    vendorlogfile_index = vendorlogfile_get_index(filetype);
+    vendorlogfile_index = vendorfile_get_index(filetype);
     when_true_trace(vendorlogfile_index == 0, stop, ERROR, "Failed to get index from [%s]", filetype);
     const char* url = GET_CHAR(args, "Url");
     when_str_empty_trace(url, stop, ERROR, "Mandatory [Url] is missing");
@@ -466,6 +466,60 @@ exit:
     return;
 }
 
+static void upload_vendor_config_file(const amxb_bus_ctx_t* bus_ctx, void* priv) {
+    amxc_var_t* args = (amxc_var_t*) priv;
+    uint32_t transfer_index = GET_UINT32(args, "index");
+    when_true_trace(transfer_index == 0, exit, ERROR, "Transfer index missing");
+
+    int retval = -1;
+    int vendorfile_index = 0;
+    upload_context_t* upload = NULL;
+    amxc_ts_t time = {0, 0, 0};
+    amxc_var_t upload_args;
+    amxc_string_t vendorfile_path;
+    amxc_string_t status_path;
+
+    amxc_var_init(&upload_args);
+    amxc_string_init(&vendorfile_path, 0);
+    amxc_string_init(&status_path, 0);
+
+    const char* filetype = GET_CHAR(args, "FileType");
+    when_str_empty_trace(filetype, stop, ERROR, "Mandatory [FileType] is missing");
+    vendorfile_index = vendorfile_get_index(filetype);
+    when_true_trace(vendorfile_index == 0, stop, ERROR, "Failed to get index from [%s]", filetype);
+    const char* url = GET_CHAR(args, "Url");
+    when_str_empty_trace(url, stop, ERROR, "Mandatory [Url] is missing");
+    const char* username = GET_CHAR(args, "Username");
+    when_null_trace(username, stop, ERROR, "Mandatory [Username] is missing");
+    const char* password = GET_CHAR(args, "Password");
+    when_null_trace(password, stop, ERROR, "Mandatory [Password] is missing");
+
+    amxc_var_set_type(&upload_args, AMXC_VAR_ID_HTABLE);
+    amxc_var_add_key(cstring_t, &upload_args, "URL", url);
+    amxc_var_add_key(cstring_t, &upload_args, "Username", username);
+    amxc_var_add_key(cstring_t, &upload_args, "Password", password);
+
+    amxc_string_appendf(&vendorfile_path, "Device.DeviceInfo.VendorConfigFile.%d", vendorfile_index);
+    retval = amxb_call((amxb_bus_ctx_t* const) bus_ctx, amxc_string_get(&vendorfile_path, 0), "Backup", &upload_args, NULL, 5);
+    when_failed_trace(retval, stop, ERROR, "Failed to Call %s.Backup()", amxc_string_get(&vendorfile_path, 0));
+
+    upload_context_new(&upload, transfer_index, &upload_args);
+    amxc_llist_append(&upload_requests, &upload->it);
+
+stop:
+    if(retval != 0) {
+        amxc_ts_parse(&time, UNKNOWN_TIME, strlen(UNKNOWN_TIME));
+        amxc_string_setf(&status_path, TRANSFER_ENTRY_PATH_FMT, transfer_index);
+        transfer_update_status(amxc_string_get(&status_path, 0), "Finished", &time, &time, FAULTCODE_INTERNAL_ERROR, "Internal error");
+    }
+    amxc_var_delete(&args);
+    amxc_string_clean(&status_path);
+    amxc_string_clean(&vendorfile_path);
+    amxc_var_clean(&upload_args);
+exit:
+    return;
+}
+
 static void filetransfer_upload_prepare(amxc_var_t* args) {
     amxb_bus_ctx_t* const bus_ctx = get_bus_ctx("Device.");
     when_null_trace(bus_ctx, stop, ERROR, "Could not find the context of [Device]");
@@ -478,6 +532,8 @@ static void filetransfer_upload_prepare(amxc_var_t* args) {
         amxc_llist_append(&selftest_requests, &req->it);
     } else if(strstr(filetype, "4 Vendor Log File")) {
         filetransfer_upload_selftest_call_done(bus_ctx, NULL, 0, args);
+    } else if(strstr(filetype, "1 Vendor Configuration File") || strstr(filetype, "3 Vendor Configuration File")) {
+        upload_vendor_config_file(bus_ctx, args);
     } else {
         SAH_TRACEZ_ERROR(ME, "Not supported file type [%s]", filetype);
         amxc_var_delete(&args);
