@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.32.3 - 2024-06-11(13:59:14 +0000)
+
+### Other
+
+- [TR-069] Add distinction between hard and soft reboot for max startup delay
+
 ## Release v1.32.2 - 2024-06-05(15:58:09 +0000)
 
 ### Other
