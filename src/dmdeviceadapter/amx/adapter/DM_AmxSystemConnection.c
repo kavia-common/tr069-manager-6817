@@ -84,6 +84,7 @@
 #define DIAGNOSTICS_TRACEROUTE_PATH                 "Device.IP.Diagnostics.TraceRoute."
 #define DIAGNOSTICS_DOWNLOADDIAGNOSTICS_PATH        "Device.IP.Diagnostics.DownloadDiagnostics."
 #define DIAGNOSTICS_UPLOADDIAGNOSTICS_PATH          "Device.IP.Diagnostics.UploadDiagnostics."
+#define REBOOT_TYPE                                 "Reboot.CurrentBootCycle"
 
 //---------------------------------------------------------------------------------------------
 /**
@@ -595,6 +596,73 @@ error:
 
 //---------------------------------------------------------------------------------------------
 /**
+    @brief
+    Check the reboot reason, by reading reboot-reason file
+
+    @return
+    true is reboot reason is a soft reboot
+    false in case of other reboot reason
+ */
+static bool DM_ENG_Device_IsSoftwareReboot(dm_amx_env_t* amx) {
+    bool ret = false;
+    amxc_string_t path;
+    amxc_var_t value;
+    amxc_var_init(&value);
+    amxc_string_init(&path, 0);
+    const char* reboot_reason;
+
+    amxc_string_setf(&path, "%s", REBOOT_TYPE);
+    int retcode = amxb_get(amx->bus_ctx, amxc_string_get(&path, 0), 0, &value, 1);
+    if((retcode < 0) || amxc_var_is_null(&value)) {
+        goto error;
+    }
+
+    reboot_reason = GETP_CHAR(&value, "0.0.CurrentBootCycle");
+    if(reboot_reason && (0 == strcmp(reboot_reason, "Warm"))) {
+        ret = true;
+    }
+
+error:
+    amxc_var_clean(&value);
+    amxc_string_clean(&path);
+    return ret;
+}
+
+//---------------------------------------------------------------------------------------------
+/**
+    @brief
+    get MaxStartupDelay value.
+
+    @details
+    To avoid booting all boxes at the same time and overloading the ACS on a power outage,
+    cwmp waits for a random number of seconds only in case of hard reboot. for a soft reboot case,
+    the MaxStartuDelay will be 0.
+
+    @return
+    MaxStartupDelay value.
+ */
+static int DM_ENG_Device_GetMaxStartupDelay(dm_amx_env_t* amx) {
+    int max = 0;
+    char* tmp = NULL;
+
+    if(DM_ENG_Device_IsSoftwareReboot(amx)) {
+        SAH_TRACEZ_WARNING("DM_DA", "Soft Reboot case, set MaxStartupDelay to : %d", max);
+        return 0;
+    }
+
+    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_MAXSTARTUPDELAY, &tmp) == 0) {
+        if(tmp) {
+            max = atoi(tmp);
+            SAH_TRACEZ_WARNING("DM_DA", "not Soft Reboot case, set MaxStartupDelay to : %d", max);
+        }
+        free(tmp);
+    }
+
+    return max;
+}
+
+//---------------------------------------------------------------------------------------------
+/**
    @brief
    Sleep a random(ManagementServer.MAXStartupDelay) seconds before proceeding.
 
@@ -604,7 +672,7 @@ error:
    Sleep for the calculated number of seconds.
 
  */
-static void DM_ENG_Device_SystemConnectionSleepBeforeStarting() {
+static void DM_ENG_Device_SystemConnectionSleepBeforeStarting(dm_amx_env_t* amx) {
     char* tmp = NULL;
     int max = 0;
     int upgradesAvailable = 0;
@@ -613,12 +681,7 @@ static void DM_ENG_Device_SystemConnectionSleepBeforeStarting() {
     unsigned int r = 0;
     unsigned int randomValue = 0;
 
-    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_MAXSTARTUPDELAY, &tmp) == 0) {
-        if(tmp) {
-            max = atoi(tmp);
-        }
-        free(tmp);
-    }
+    max = DM_ENG_Device_GetMaxStartupDelay(amx);
 
     // TODO : get upgradesAvailable from Device.UserInterface.UpgradeAvailable
 
@@ -711,7 +774,7 @@ bool DM_ENG_Device_SystemConnectionInitialize(dm_amx_env_t* amx) {
     }
     amxb_set_access(amx->bus_ctx, AMXB_PROTECTED);
 
-    DM_ENG_Device_SystemConnectionSleepBeforeStarting();
+    DM_ENG_Device_SystemConnectionSleepBeforeStarting(amx);
 
     amxc_string_setf(&path, "%s%s", DEVICEINFO_PATH, "DeviceStatus");
     amxc_string_setf(&valpath, "0.'%s'.%s", DEVICEINFO_PATH, "DeviceStatus");
