@@ -102,8 +102,8 @@ bool cwmp_server_maxConnectionsReached(void) {
     amxc_string_init(&maxconnectionrequestPath, 0);
     amxc_string_init(&freqconnectionrequestPath, 0);
 
-    amxc_string_setf(&maxconnectionrequestPath, "ManagementServer.%sMaxConnectionRequest", prefix);
-    amxc_string_setf(&freqconnectionrequestPath, "ManagementServer.%sFreqConnectionRequest", prefix);
+    amxc_string_setf(&maxconnectionrequestPath, "Device.ManagementServer.%sMaxConnectionRequest", prefix);
+    amxc_string_setf(&freqconnectionrequestPath, "Device.ManagementServer.%sFreqConnectionRequest", prefix);
 
     paramsArray[0] = strdup(amxc_string_get(&maxconnectionrequestPath, 0));
     paramsArray[1] = strdup(amxc_string_get(&freqconnectionrequestPath, 0));
