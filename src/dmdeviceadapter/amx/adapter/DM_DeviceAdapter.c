@@ -91,6 +91,11 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <amxc/amxc_llist.h>
+#include <amxc/amxc_string.h>
+#include <amxc/amxc_variant.h>
+#include <libxml/parser.h>
+#include <libxml/tree.h>
 
 const char* DM_ENG_EVENT_VALUE_CHANGE = "4 VALUE CHANGE";
 
@@ -282,6 +287,137 @@ void DM_ENG_Device_CloseSession() {
     //does nothing!!
 }
 
+static const char* amx_type_to_xml_type (uint32_t type) {
+    switch(type) {
+    case AMXC_VAR_ID_INT8:
+    case AMXC_VAR_ID_INT16:
+    case AMXC_VAR_ID_INT32:
+    case AMXC_VAR_ID_INT64:
+        return "xsd:int";
+    case AMXC_VAR_ID_UINT8:
+    case AMXC_VAR_ID_UINT16:
+    case AMXC_VAR_ID_UINT32:
+    case AMXC_VAR_ID_UINT64:
+        return "xsd:unsignedInt";
+    case AMXC_VAR_ID_CSTRING:
+    case AMXC_VAR_ID_CSV_STRING:
+    case AMXC_VAR_ID_SSV_STRING:
+        return "xsd:string";
+    case AMXC_VAR_ID_TIMESTAMP:
+        return "xsd:dateTime";
+    case AMXC_VAR_ID_BOOL:
+        return "xsd:boolean";
+    default:
+        return "xsd:any";
+    }
+}
+
+static xmlNodePtr xml_add_parameter_value_struct(xmlNodePtr node, const char* name, const char* value, const char* type) {
+    xmlNodePtr pvs_node = NULL;
+    xmlNodePtr value_node = NULL;
+    pvs_node = xmlNewChild(node, NULL, BAD_CAST "ParameterValueStruct", NULL);
+    xmlNewChild(pvs_node, NULL, BAD_CAST "Name", BAD_CAST name);
+    value_node = xmlNewChild(pvs_node, NULL, BAD_CAST "Value", BAD_CAST(value ? value:""));
+    xmlNewProp(value_node, BAD_CAST "xsi:type", BAD_CAST type);
+    return pvs_node;
+}
+
+static int build_gpv_all_body(dm_amx_env_t* acs_info, UNUSED xmlNodePtr node_body, amxc_var_t* get_result) {
+    SAH_TRACEZ_IN("DM_DA");
+    int error = 0;
+    const char* path = "Device.";
+    const amxc_htable_t* htable = NULL;
+    const char* key = NULL;
+    amxc_var_t desc_result;
+    amxc_var_init(&desc_result);
+    xmlNodePtr rsp_node = NULL;
+    xmlNodePtr plist_node = NULL;
+    amxc_string_t pvs_node_attr_value;
+    uint32_t param_count = 0;
+    amxc_string_init(&pvs_node_attr_value, 0);
+
+    rsp_node = xmlNewChild(node_body, NULL, BAD_CAST "cwmp:GetParameterValuesResponse", NULL);
+    plist_node = xmlNewChild(rsp_node, NULL, BAD_CAST "ParameterList", NULL);
+    amxc_var_for_each(entry, GETI_ARG(get_result, 0)) {
+        htable = amxc_var_constcast(amxc_htable_t, entry);
+        if(amxc_htable_is_empty(htable)) {
+            continue;
+        }
+        key = amxc_var_key(entry);
+        SAH_TRACEZ_INFO("DM_DA", "Key [%s]", key);
+        if(amxb_describe(acs_info->bus_ctx, key, AMXB_FLAG_PARAMETERS, &desc_result, 1)) {
+            SAH_TRACEZ_WARNING("DM_DA", "describe failed [%s]", key);
+            continue;
+        }
+        amxc_htable_iterate(hit, htable) {
+            char* alias_path = NULL;
+            char* param_value = NULL;
+            uint32_t param_type = 0;
+            const char* param_key = amxc_htable_it_get_key(hit);
+            amxc_var_t* param_var = amxc_var_from_htable_it(hit);
+            amxc_string_t param_name;
+            amxc_string_init(&param_name, 0);
+            amxc_string_setf(&param_name, "0.parameters.%s", param_key);
+            param_type = GET_INT32(GETP_ARG(&desc_result, amxc_string_get(&param_name, 0)), "type_id");
+            param_value = amxc_var_dyncast(cstring_t, param_var);
+            amxc_string_clean(&param_name);
+            amxc_string_init(&param_name, 0);
+            amxc_string_setf(&param_name, "%s%s", key, param_key);
+            if(acs_info->instanceAlias) {
+                DM_ENG_Device_Common_IndexToAlias(acs_info, path, amxc_string_get(&param_name, 0), &alias_path);
+            }
+            SAH_TRACEZ_INFO("DM_DA", "Name [%s] - Value [%s] - Type [%d]", alias_path != NULL ? alias_path : amxc_string_get(&param_name, 0), param_value, param_type);
+            xml_add_parameter_value_struct(plist_node, alias_path != NULL ? alias_path : amxc_string_get(&param_name, 0), param_value, amx_type_to_xml_type(param_type));
+            param_count++;
+
+            error = 0;
+            amxc_string_clean(&param_name);
+            free(param_value);
+            free(alias_path);
+        }
+        amxc_var_clean(&desc_result);
+    }
+
+    amxc_string_appendf(&pvs_node_attr_value, "cwmp:ParameterValueStruct[%d]", param_count);
+    xmlNewProp(plist_node, BAD_CAST "soap-enc:arrayType", BAD_CAST amxc_string_get(&pvs_node_attr_value, 0));
+    amxc_string_clean(&pvs_node_attr_value);
+
+    SAH_TRACEZ_OUT("DM_DA");
+    return error;
+}
+
+int DM_ENG_Device_GetParameterValuesAll(xmlNodePtr node_body) {
+    SAH_TRACEZ_IN("DM_DA");
+    int error = 0;
+    int ret = 0;
+    amxc_llist_t filters;
+    amxc_llist_init(&filters);
+    const char* path = "Device.";
+    amxc_var_t get_result;
+    amxc_var_init(&get_result);
+    dm_amx_env_t* acs_info = DM_ENG_Device_GetACSInfo();
+
+    amxa_resolve_search_paths(acs_info->bus_ctx, acs_info->acl_rules, path);
+    amxa_get_filters(acs_info->acl_rules, AMXA_PERMIT_GET, &filters, path);
+    if(!amxa_is_get_allowed(&filters, path)) {
+        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "cwmp has no access rights to [%s] ", path);
+    }
+    ret = amxb_get(acs_info->bus_ctx, path, -1, &get_result, 10);
+    if((ret != AMXB_STATUS_OK) || amxc_var_is_null(&get_result)) {
+        if((ret == AMXB_ERROR_NOT_SUPPORTED_SCHEME)) {
+            SetErrorGotoStop(0, "Skip non tr181-component, path [%s] %d", path, ret);
+        } else {
+            SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Failed to get object path [%s] error [%d] ", path, ret);
+        }
+    }
+    amxa_filter_get_resp(&get_result, &filters);
+    build_gpv_all_body(acs_info, node_body, &get_result);
+stop:
+    SAH_TRACEZ_OUT("DM_DA");
+    amxc_llist_clean(&filters, amxc_string_list_it_free);
+    amxc_var_clean(&get_result);
+    return error;
+}
 
 /*********************************** getparametvalues RPC *****************************************/
 

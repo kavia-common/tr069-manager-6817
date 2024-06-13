@@ -1,0 +1,105 @@
+<?xml version="1.0"?>
+<root>
+  <body>
+    <cwmp:GetParameterValuesResponse>
+      <ParameterList soap-enc:arrayType="cwmp:ParameterValueStruct[24]">
+        <ParameterValueStruct>
+          <name>Device.A.X.1.Y.1.P1</name>
+          <value xsi:type="xsd:unsignedInt">0</value>
+        </ParameterValueStruct>
+        <ParameterValueStruct>
+          <name>Device.A.X.1.P2</name>
+          <value xsi:type="xsd:string"/>
+        </ParameterValueStruct>
+        <ParameterValueStruct>
+          <name>Device.A.X.1.Alias</name>
+          <value xsi:type="xsd:string">cpe-X-1</value>
+        </ParameterValueStruct>
+        <ParameterValueStruct>
+          <name>Device.A.X.1.P1</name>
+          <value xsi:type="xsd:string"/>
+        </ParameterValueStruct>
+        <ParameterValueStruct>
+          <name>Device.A.X.1.Y.1.B.P2</name>
+          <value xsi:type="xsd:dateTime">0001-01-01T00:00:00Z</value>
+        </ParameterValueStruct>
+        <ParameterValueStruct>
+          <name>Device.A.X.1.Y.1.B.P1</name>
+          <value xsi:type="xsd:boolean">false</value>
+        </ParameterValueStruct>
+        <ParameterValueStruct>
+          <name>Device.A.X.1.Y.1.Z.1.P2</name>
+          <value xsi:type="xsd:dateTime">0001-01-01T00:00:00Z</value>
+        </ParameterValueStruct>
+        <ParameterValueStruct>
+          <name>Device.A.X.1.Y.1.Z.1.P3</name>
+          <value xsi:type="xsd:unsignedInt">0</value>
+        </ParameterValueStruct>
+        <ParameterValueStruct>
+          <name>Device.A.X.1.Y.1.Z.1.P4</name>
+          <value xsi:type="xsd:string"/>
+        </ParameterValueStruct>
+        <ParameterValueStruct>
+          <name>Device.A.X.1.Y.1.Z.1.Alias</name>
+          <value xsi:type="xsd:string">cpe-Z-1</value>
+        </ParameterValueStruct>
+        <ParameterValueStruct>
+          <name>Device.A.X.1.Y.1.Z.1.P1</name>
+          <value xsi:type="xsd:boolean">false</value>
+        </ParameterValueStruct>
+        <ParameterValueStruct>
+          <name>Device.C.P_s</name>
+          <value xsi:type="xsd:string"/>
+        </ParameterValueStruct>
+        <ParameterValueStruct>
+          <name>Device.C.P_ui16</name>
+          <value xsi:type="xsd:unsignedInt">0</value>
+        </ParameterValueStruct>
+        <ParameterValueStruct>
+          <name>Device.C.P_i32</name>
+          <value xsi:type="xsd:int">0</value>
+        </ParameterValueStruct>
+        <ParameterValueStruct>
+          <name>Device.C.P_b</name>
+          <value xsi:type="xsd:boolean">false</value>
+        </ParameterValueStruct>
+        <ParameterValueStruct>
+          <name>Device.C.P_i16</name>
+          <value xsi:type="xsd:int">0</value>
+        </ParameterValueStruct>
+        <ParameterValueStruct>
+          <name>Device.C.P_d</name>
+          <value xsi:type="xsd:dateTime">0001-01-01T00:00:00Z</value>
+        </ParameterValueStruct>
+        <ParameterValueStruct>
+          <name>Device.C.P_i8</name>
+          <value xsi:type="xsd:int">0</value>
+        </ParameterValueStruct>
+        <ParameterValueStruct>
+          <name>Device.C.P_s_ssv</name>
+          <value xsi:type="xsd:string"/>
+        </ParameterValueStruct>
+        <ParameterValueStruct>
+          <name>Device.C.P_ui64</name>
+          <value xsi:type="xsd:unsignedInt">0</value>
+        </ParameterValueStruct>
+        <ParameterValueStruct>
+          <name>Device.C.P_ui8</name>
+          <value xsi:type="xsd:unsignedInt">0</value>
+        </ParameterValueStruct>
+        <ParameterValueStruct>
+          <name>Device.C.P_s_csv</name>
+          <value xsi:type="xsd:string"/>
+        </ParameterValueStruct>
+        <ParameterValueStruct>
+          <name>Device.C.P_i64</name>
+          <value xsi:type="xsd:int">0</value>
+        </ParameterValueStruct>
+        <ParameterValueStruct>
+          <name>Device.C.P_ui32</name>
+          <value xsi:type="xsd:unsignedInt">0</value>
+        </ParameterValueStruct>
+      </ParameterList>
+    </cwmp:GetParameterValuesResponse>
+  </body>
+</root>

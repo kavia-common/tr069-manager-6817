@@ -1,0 +1,15 @@
+%populate {
+    object 'Device.A.X.' {
+        instance add(0) {
+            object 'Y' {
+                instance add(0) {
+                    object 'Z' {
+                        instance add(0) {
+                            parameter P3 = 2403;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

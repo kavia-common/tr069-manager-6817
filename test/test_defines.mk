@@ -12,9 +12,10 @@ CFLAGS += -Wall -Wextra -Wno-attributes --std=gnu99 -g3 \
 		  -fkeep-inline-functions -fkeep-static-functions \
 		  -Wno-format-nonliteral \
 		  -DSAHTRACES_ENABLED -DSAHTRACES_LEVEL=500 \
+		  $(shell pkg-config --cflags libxml-2.0) \
 		  $(shell pkg-config --cflags cmocka) -pthread -DUNIT_TEST
 
 LDFLAGS += -fkeep-inline-functions -fkeep-static-functions \
 		   $(shell pkg-config --libs cmocka) \
 		   -lamxc -lamxp -lamxd -lamxo -lamxb -lamxm\
-		   -ldl -lpthread -lsahtrace -lnetmodel -lamxut
+		   -ldl -lpthread -lsahtrace -lnetmodel -lamxut -lxml2

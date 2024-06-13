@@ -40,6 +40,7 @@ CFLAGS += -Werror -Wall -Wextra -Werror\
 		  -Wformat-security \
 		  -I$(INCDIRS) -fPIC -g3 \
 		  -I$(STAGINGDIR)/include -D_GNU_SOURCE \
+		  $(shell pkg-config --cflags libxml-2.0) \
 		  -DSAHTRACES_ENABLED -DSAHTRACES_LEVEL_DEFAULT=700
 
 ifeq ($(CC_NAME),g++)
@@ -51,7 +52,7 @@ endif
 LDFLAGS += -ldl $(STAGING_LIBDIR) -lwebsockets \
 		  $(shell pkg-config --libs libevent) \
 		  -lamxc -lamxd -lamxo -lamxb -lamxp -lamxa -lsahtrace \
-		  -ldmcom -ldmcommon -ldmengine -ldmxml_ixml -lcares
+		  -ldmcom -ldmcommon -ldmengine -ldmxml_ixml -lcares -lxml2
 # helper functions - used in multiple targets
 define install_to
 	$(INSTALL) -d $(1)/usr/bin/

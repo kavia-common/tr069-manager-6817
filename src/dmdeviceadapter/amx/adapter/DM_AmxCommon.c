@@ -376,6 +376,7 @@ stop:
     amxd_path_clean(&amxpath);
     amxc_llist_clean(&string_list, amxc_string_list_it_free);
     amxc_llist_clean(&path_list, amxc_string_list_it_free);
+    free(fixed_part);
     return ret;
 }
 

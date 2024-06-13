@@ -31,6 +31,7 @@ CFLAGS += -D_GNU_SOURCE -DSAHTRACES_ENABLED -DSAHTRACES_LEVEL_DEFAULT=700 \
 		  -trigraphs -fPIC -g -Wall -Wextra -Werror \
 		  -Wformat-security \
 		  -I$(INCDIR_PRIV) -I$(ROOT)/include -I$(STAGINGDIR)/include \
+		  $(shell pkg-config --cflags libxml-2.0) \
 		  -I$(STAGINGDIR)/usr/include
 
 ifeq ($(CC_NAME),g++)
@@ -41,7 +42,7 @@ endif
 
 LDFLAGS += $(STAGING_LIBDIR) -ldl -lsahtrace \
 		  -lamxc -lamxd -lamxo -lamxb -lamxp -lamxa \
-		  -ldmengine -ldmcommon -ldmcom -ldmxml_ixml
+		  -ldmengine -ldmcommon -ldmcom -ldmxml_ixml -lxml2
 
 ifeq ($(COVERAGE), y)
 	CFLAGS +=-fprofile-arcs -ftest-coverage
