@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.32.4 - 2024-06-13(09:34:57 +0000)
+
+### Other
+
+- [TR111] After reboot, manageable device table is not empty
+
 ## Release v1.32.3 - 2024-06-11(13:59:14 +0000)
 
 ### Other
