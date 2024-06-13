@@ -71,7 +71,7 @@
 #define HOST_HOSTS_PATH                 HOSTS_PATH "Host."
 
 #define GMAP_QUERY_NAME                 "tr069-manager"
-#define GMAP_QUERY_TAG                  "manageable"
+#define GMAP_QUERY_TAG                  "manageable && .Active != 0"
 
 static gmap_query_t* manageable_gmap_query = NULL;
 static amxp_timer_t* retry_timer = NULL;
