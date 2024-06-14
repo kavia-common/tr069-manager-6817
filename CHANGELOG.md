@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.32.5 - 2024-06-14(16:06:52 +0000)
+
+### Other
+
+- Incorrect Event Code sent when the HGW receives a new IP address
+
 ## Release v1.32.4 - 2024-06-13(09:34:57 +0000)
 
 ### Other
