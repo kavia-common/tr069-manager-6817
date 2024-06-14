@@ -149,6 +149,7 @@ void proc_finished_cb(const char* const event_name,
                       void* const priv);
 
 //amxp_proc_ctrl_t* get_cwmpd_proc(void);
+amxp_subproc_t* get_cwmpd_subproc(void);
 
 void cwmp_plugin_netmodel_open_queries(const char* intf_path);
 

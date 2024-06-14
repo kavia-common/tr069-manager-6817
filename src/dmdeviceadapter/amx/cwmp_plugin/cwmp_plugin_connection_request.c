@@ -427,9 +427,13 @@ void _updateConnectionRequestURL(UNUSED const char* const sig_name,
             cwmp_plugin_create_conreq_path(host);
             conn_req_path_created = true;
         }
-        start_cwmpd();
+        if((get_cwmpd_subproc() == NULL) || !(get_cwmpd_subproc()->is_running)) {
+            start_cwmpd();
+        } else {
+            open_cwmpd_listening_port();
+        }
     } else {
-        stop_cwmpd();
+        close_cwmpd_listening_port();
     }
 
 clean:

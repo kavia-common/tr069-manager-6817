@@ -166,6 +166,15 @@ exit:
     amxc_var_clean(&args);
 }
 
+amxp_subproc_t* get_cwmpd_subproc(void) {
+
+    if(cwmpd_proc) {
+        return cwmpd_proc->proc;
+    } else {
+        return NULL;
+    }
+}
+
 void start_cwmpd(void) {
     const char* cwmpd_standalone = getenv("CWMPD_STANDALONE");
     if(cwmpd_standalone && *cwmpd_standalone) {

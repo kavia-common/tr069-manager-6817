@@ -347,12 +347,6 @@ cwmp_status_t cwmp_server_init() {
         goto error;
     }
 
-    // Check if wan is up
-    if(server_host && (!(*server_host) || (strcmp(server_host, "0.0.0.0") == 0))) {
-        SAH_TRACEZ_ERROR("CWMPD", "WAN is not connected, not starting server");
-        goto error;
-    }
-
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_CONNECTIONREQUESTPORT, &server_port) != 0) {
         SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the local connection request port #");
         goto error;
