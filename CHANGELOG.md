@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.32.7 - 2024-06-21(10:12:42 +0000)
+
+### Other
+
+- XMPP support - 2nd implementation
+
 ## Release v1.32.6 - 2024-06-21(09:30:29 +0000)
 
 ### Other
