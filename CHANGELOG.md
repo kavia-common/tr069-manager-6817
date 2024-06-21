@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.32.6 - 2024-06-21(09:30:29 +0000)
+
+### Other
+
+- [tr69][prpl][cdrouter] no-wan-tr069-inform
+
 ## Release v1.32.5 - 2024-06-14(16:06:52 +0000)
 
 ### Other
