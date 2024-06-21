@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.32.8 - 2024-06-21(13:19:40 +0000)
+
+### Other
+
+- TR69 client fails to read MaxConnectionRequest and FreqConnectionRequest
+
 ## Release v1.32.7 - 2024-06-21(10:12:42 +0000)
 
 ### Other
