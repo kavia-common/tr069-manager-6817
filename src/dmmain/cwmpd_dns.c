@@ -349,10 +349,15 @@ static void cwmp_dns_resolve_cb(void* data, int status, UNUSED int timeouts, str
         cwmp_dns_read_ai(ai);
         cwmp_dns_update_dm();
         cwmp_dns_schedule();
+
+        // DNS is resolved - retry to send pending inform messages immediatly
+        if(resolver->send_boot_strap == false) {
+            DM_ENG_NotificationInterface_timerStart("Retry-timer", 0, 0, DM_ENG_InformMessageScheduler_sendMessage);
+        }
     } else {
-        //DNS resolution failed, retry in 60 sec
-        SAH_TRACEZ_ERROR("CWMPD", "DNS lookup Failed next in 30sec,ares_error [%s]", ares_strerror(status));
-        amxp_timer_start(dns_ttl_timer, 30 * 1000);
+        //DNS resolution failed, retry in 5 sec
+        SAH_TRACEZ_ERROR("CWMPD", "DNS lookup Failed next in 5 sec,ares_error [%s]", ares_strerror(status));
+        amxp_timer_start(dns_ttl_timer, 5 * 1000);
     }
 
     if(ai) {

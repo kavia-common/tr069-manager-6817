@@ -344,23 +344,30 @@ cwmp_status_t cwmp_server_init() {
     SAH_TRACEZ_INFO("CWMPD", "lws init server");
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_LOCALIPADDRESS, &server_host) != 0) {
         SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the local ip address");
-        goto error;
+        goto exit;
+    }
+
+    // Check if wan is up
+    if(server_host && (!(*server_host) || (strcmp(server_host, "0.0.0.0") == 0))) {
+        SAH_TRACEZ_WARNING("CWMPD", "WAN is not connected, not initalizing server yet");
+        ret = cwmp_status_ok;
+        goto exit;
     }
 
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_CONNECTIONREQUESTPORT, &server_port) != 0) {
         SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the local connection request port #");
-        goto error;
+        goto exit;
     }
     SAH_TRACEZ_INFO("CWMPD", "Connection request host %s, port = %s", server_host, server_port);
 
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_CONNECTIONREQUESTPATH, &g_randomCpeUrl) != 0) {
         SAH_TRACEZ_ERROR("CWMPD", "failed to get the random path in the datamodel");
-        goto error;
+        goto exit;
     }
 
     cwmp_server_initConnectionTimestampList();
     ret = cwmp_server_init_lws(server_host, atoi(server_port));
-error:
+exit:
     if(server_host) {
         free(server_host);
     }
