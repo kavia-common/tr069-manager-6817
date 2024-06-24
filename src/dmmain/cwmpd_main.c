@@ -51,7 +51,6 @@
 ** USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **
 ****************************************************************************/
-#include <amxc/amxc_variant.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -78,7 +77,6 @@ static amxb_bus_ctx_t* sys_bus_ctx = NULL;
 static amxb_bus_ctx_t* acs_bus_ctx = NULL;
 static amxd_dm_t dm;
 static amxo_parser_t parser;
-static amxc_var_t* active_parameters = NULL;
 
 bool is_ipaddr(const char* ip) {
     struct in6_addr result;
@@ -122,40 +120,6 @@ void cwmp_add_sahtrace_zones(amxc_var_t* trace_zones) {
     }
     SAH_TRACE_OUT();
 }
-
-void cwmp_add_subscriptions(void) {
-    SAH_TRACE_IN();
-    int k = 0;
-    DM_ENG_ParameterAttributesStruct** pParameterList = NULL;
-
-    if(!active_parameters) {
-        return;
-    }
-
-    amxc_var_for_each(path, active_parameters) {
-        k++;
-    }
-    pParameterList = DM_ENG_newTabParameterAttributesStruct(k + 1);
-    k = 0;
-    amxc_var_for_each(path, active_parameters) {
-        const char* objpath = amxc_var_constcast(cstring_t, path);
-        SAH_TRACEZ_INFO("CWMPD", "Add subscription for [%s]", objpath);
-        pParameterList[k] = DM_ENG_newParameterAttributesStruct(objpath, 2, NULL);
-        k++;
-    }
-
-    pParameterList[k] = NULL;
-
-    if(DM_ENG_SetParameterAttributes(DM_ENG_EntityType_ACS, pParameterList)) {
-        SAH_TRACEZ_ERROR("CWMPD", "Failed to add additional subscriptions");
-    }
-
-    if(pParameterList) {
-        DM_ENG_deleteTabParameterAttributesStruct(pParameterList);
-    }
-    SAH_TRACE_OUT();
-}
-
 
 static cwmp_status_t cwmp_app_parse_config(void) {
     cwmp_status_t ret = cwmp_status_ko;
@@ -215,8 +179,6 @@ static cwmp_status_t cwmp_app_parse_config(void) {
     if(trace_zones) {
         cwmp_add_sahtrace_zones(trace_zones);
     }
-
-    active_parameters = amxc_var_get_key(config, "active-parameters", AMXC_VAR_FLAG_DEFAULT);
 
     retval = amxo_parser_parse_file(&parser, prefix_file, amxd_dm_get_root(&dm));
     when_false_trace(retval != -1, exit, ERROR, "CWMPD: ODL parsing failed - message = %s", amxo_parser_get_message(&parser));
@@ -463,8 +425,6 @@ static cwmp_status_t cwmp_app_enable_notifications() {
         SAH_TRACEZ_ERROR("CWMPD", "Failed to initialize DM_COM");
         rc = cwmp_status_ko;
     }
-    SAH_TRACEZ_INFO("CWMPD", "Add forced parameters");
-    cwmp_add_subscriptions();
 
     /* Start the main loop */
     SAH_TRACEZ_INFO("CWMPD", "starting cwmpd main loop");

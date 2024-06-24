@@ -5,12 +5,5 @@
        "Obj": "rw-n",
        "InstantiatedObj": "rw-n",
        "CommandEvent": "rw-n"
-   },
-   "Device.ManagementServer.Subscription": {
-    "Order": 3,
-    "Param": "rw-n",
-    "Obj": "rw-n",
-    "InstantiatedObj": "rw-n",
-    "CommandEvent": "rw-n"
-    }
+   }
 }

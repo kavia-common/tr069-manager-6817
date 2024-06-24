@@ -366,7 +366,7 @@ exit:
 
 static void add_subscription_to_dm(const char* path, DM_ENG_NotificationMode mode) {
     amxc_var_t sub, ret, * value;
-    dm_amx_env_t* amx = DM_ENG_Device_GetSystemInfo();
+    dm_amx_env_t* amx = DM_ENG_Device_GetACSInfo();
     int amx_ret;
 
     amxc_var_init(&sub);
@@ -386,7 +386,7 @@ static void add_subscription_to_dm(const char* path, DM_ENG_NotificationMode mod
 }
 
 static void remove_subscription_from_dm(const char* subscriptionPath) {
-    dm_amx_env_t* amx = DM_ENG_Device_GetSystemInfo();
+    dm_amx_env_t* amx = DM_ENG_Device_GetACSInfo();
     amxc_string_t expr_path;
     amxc_var_t ret;
     int amx_ret;
