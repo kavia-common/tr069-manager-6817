@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.1 - 2024-07-02(16:29:57 +0000)
+
+### Other
+
+- Optimize GPV when used to get all datamodel
+
 ## Release v1.33.0 - 2024-06-24(09:56:48 +0000)
 
 ### New
