@@ -15,7 +15,7 @@ case $1 in
         fi
         ;;
     debuginfo)
-	ubus-cli "ManagementServer.?"
+	ubus-cli "protected; ManagementServer.?"
         ;;
     restart)
         $0 stop
