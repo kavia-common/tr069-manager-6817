@@ -257,16 +257,9 @@ application_t cwmp_app_getconf(void) {
 }
 
 static cwmp_status_t cwmp_app_http_server_restart() {
-    /* Stop http Server */
     if(cwmp_server_stop() != cwmp_status_ok) {
         SAH_TRACEZ_WARNING("CWMPD", "failed to stop HTTP server");
     }
-    /* Init http Server */
-    if(cwmp_server_init() != cwmp_status_ok) {
-        SAH_TRACEZ_ERROR("CWMPD", "failed to initialize HTTP server");
-        return cwmp_status_ko;
-    }
-    /* Start http Server */
     if(cwmp_server_start() != cwmp_status_ok) {
         SAH_TRACEZ_ERROR("CWMPD", "failed to start HTTP server");
         return cwmp_status_ko;
@@ -312,10 +305,6 @@ int cwmp_app_engineEventHandler(const char* eventType) {
             SAH_TRACEZ_ERROR("CWMPD", "Stopping HTTP server failed");
         }
     } else if(strcmp(eventType, EVENT_ENG_SRV_START) == 0) {
-        if(cwmp_server_init() != cwmp_status_ok) {
-            SAH_TRACEZ_WARNING("CWMPD", "HTTP server initialization failed");
-        }
-        /* Start http Server */
         if(cwmp_server_start() != cwmp_status_ok) {
             SAH_TRACEZ_ERROR("CWMPD", "Starting HTTP server failed");
             raise(SIGTERM);
@@ -382,13 +371,7 @@ static cwmp_status_t cwmp_app_init_dmengine() {
 
 static cwmp_status_t cwmp_app_init_services() {
     cwmp_status_t rc = cwmp_status_ko;
-    /* Init http Server */
-    if(cwmp_server_init() != cwmp_status_ok) {
-        SAH_TRACEZ_ERROR("CWMPD", "Failed to initialize HTTP server");
-        goto error;
-    }
 
-    /* Start http Server */
     if(cwmp_server_start() != cwmp_status_ok) {
         SAH_TRACEZ_ERROR("CWMPD", "Failed to start HTTP server");
         goto error;

@@ -70,8 +70,11 @@ static timer_list_item* timer_list = NULL;
  * Find the specified timer and return the struct using name
  */
 static timer_list_item* timer_find(const char* name) {
+    if((name == NULL) || (*name == 0)) {
+        return NULL;
+    }
     for(timer_list_item* timer = timer_list; name && timer; timer = timer->next) {
-        if(timer->name && (strcmp(timer->name->buffer, name) == 0)) {
+        if(timer->name && (amxc_string_get(timer->name, 0) != NULL) && (strcmp(amxc_string_get(timer->name, 0), name) == 0)) {
             return timer;
         }
     }
@@ -175,7 +178,11 @@ static void timer_append(timer_list_item* item_to_add) {
 }
 
 int cwmp_timer_start(const char* name, int waitTime, int intervalTime, timerHandler handler) {
-    timer_list_item* timer = timer_find(name);
+    timer_list_item* timer = NULL;
+    if((name == NULL) || (*name == 0)) {
+        return cwmp_status_ko;
+    }
+    timer = timer_find(name);
 
     if(!timer) {
         timer = (timer_list_item*) malloc(sizeof(*timer));
@@ -204,7 +211,11 @@ int cwmp_timer_start(const char* name, int waitTime, int intervalTime, timerHand
 }
 
 int cwmp_timer_stop(const char* name) {
-    timer_list_item* item = timer_find(name);
+    timer_list_item* item = NULL;
+    if((name == NULL) || (*name == 0)) {
+        return cwmp_status_ko;
+    }
+    item = timer_find(name);
 
     if(item) {
         amxp_timer_stop(item->timer);

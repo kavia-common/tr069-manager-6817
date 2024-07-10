@@ -106,8 +106,6 @@ typedef struct application application_t;
 application_t cwmp_app_getconf(void);
 
 //Server
-cwmp_status_t cwmp_server_init(void);
-
 cwmp_status_t cwmp_server_start(void);
 
 cwmp_status_t cwmp_server_stop(void);

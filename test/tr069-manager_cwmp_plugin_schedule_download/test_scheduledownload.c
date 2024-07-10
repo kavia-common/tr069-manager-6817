@@ -94,6 +94,14 @@ void __wrap_cwmp_plugin_transfer_init() {
     //Does nothing
 }
 
+void __wrap_start_cwmpd() {
+    //Does nothing
+}
+
+void __wrap_stop_cwmpd() {
+    //Does nothing
+}
+
 amxd_status_t _deviceinfo_firmwareimage_download(amxd_object_t* obj,
                                                  amxd_function_t* func,
                                                  amxc_var_t* args,

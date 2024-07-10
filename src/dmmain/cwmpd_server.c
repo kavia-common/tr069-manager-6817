@@ -335,85 +335,70 @@ static cwmp_status_t cwmp_server_init_lws(const char* server_host, int port) {
     }
     return cwmp_status_ok;
 }
-/* fetch all server info from data model and feed them to server info struct*/
-cwmp_status_t cwmp_server_init() {
+
+cwmp_status_t cwmp_server_start() {
     cwmp_status_t ret = cwmp_status_ko;
     char* server_host = NULL;
     char* server_port = NULL;
+    char* cwmp_enabled = NULL;
 
-    SAH_TRACEZ_INFO("CWMPD", "lws init server");
+    SAH_TRACEZ_INFO("CWMPD", "Start server");
+
+    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ENABLECWMP, &cwmp_enabled) != 0) {
+        SAH_TRACEZ_ERROR("CWMPD", "Failed to get: enable cwmp");
+        return cwmp_status_ko;
+    }
+    if((cwmp_enabled == NULL) || (strcmp(cwmp_enabled, "0") == 0)) {
+        SAH_TRACEZ_ERROR("CWMPD", "CWMP disabled, server could not be started");
+        goto exit;
+    }
+
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_LOCALIPADDRESS, &server_host) != 0) {
-        SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the local ip address");
+        SAH_TRACEZ_ERROR("CWMPD", "Failed to get: local ip address");
         goto exit;
     }
 
     // Check if wan is up
     if(server_host && (!(*server_host) || (strcmp(server_host, "0.0.0.0") == 0))) {
-        SAH_TRACEZ_WARNING("CWMPD", "WAN is not connected, not initalizing server yet");
+        SAH_TRACEZ_WARNING("CWMPD", "WAN is not connected, server could not be started");
         ret = cwmp_status_ok;
         goto exit;
     }
 
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_CONNECTIONREQUESTPORT, &server_port) != 0) {
-        SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the local connection request port #");
+        SAH_TRACEZ_ERROR("CWMPD", "Failed to get: connection request port");
         goto exit;
     }
-    SAH_TRACEZ_INFO("CWMPD", "Connection request host %s, port = %s", server_host, server_port);
 
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_CONNECTIONREQUESTPATH, &g_randomCpeUrl) != 0) {
-        SAH_TRACEZ_ERROR("CWMPD", "failed to get the random path in the datamodel");
+        SAH_TRACEZ_ERROR("CWMPD", "Failed to get: connection request path");
         goto exit;
     }
 
     cwmp_server_initConnectionTimestampList();
-    ret = cwmp_server_init_lws(server_host, atoi(server_port));
+    SAH_TRACEZ_INFO("CWMPD", "Connection request host %s, port = %s", server_host, server_port);
+    if(cwmp_server_init_lws(server_host, atoi(server_port)) == cwmp_status_ko) {
+        goto exit;
+    }
+
+    /* create the vhost */
+    lws_server_vhost = lws_create_vhost(lws_server_ctx, &lws_server_ctx_info);
+
+    if(lws_server_vhost == NULL) {
+        SAH_TRACEZ_ERROR("CWMPD", "lws vhost creation failed");
+        goto exit;
+    }
+
+    ret = cwmp_status_ok;
 exit:
-    if(server_host) {
-        free(server_host);
-    }
-    if(server_port) {
-        free(server_port);
-    }
+    free(server_host);
+    free(server_port);
+    free(cwmp_enabled);
     return ret;
 }
 
-/* Start the main server */
-cwmp_status_t cwmp_server_start() {
-    SAH_TRACEZ_IN("CWMPD");
-    char* cpe_enabled = NULL;
-    bool cpe_enabled_b = false;
-
-    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ENABLECWMP, &cpe_enabled) != 0) {
-        SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the ACS enable flag");
-        return cwmp_status_ko;
-    }
-
-    if(cpe_enabled && ( strcmp(cpe_enabled, "1") == 0)) {
-        cpe_enabled_b = true;
-    }
-    free(cpe_enabled);
-
-    if(cpe_enabled_b) {
-        /* create the vhost */
-        lws_server_vhost = lws_create_vhost(lws_server_ctx, &lws_server_ctx_info);
-
-        if(lws_server_vhost == NULL) {
-            SAH_TRACEZ_ERROR("CWMPD", "lws vhost creation failed");
-            return cwmp_status_ko;
-        }
-
-        // All good, server is now listening
-        return cwmp_status_ok;
-    } else {
-        SAH_TRACEZ_ERROR("CWMPD", "CWMP Server is not Started : CPE not enabled !");
-        return cwmp_status_ko;
-    }
-    SAH_TRACEZ_OUT("CWMPD");
-    return cwmp_status_ok;
-}
-
 cwmp_status_t cwmp_server_stop() {
-    SAH_TRACEZ_INFO("CWMPD", "Server is going to stop Cleaning ressources");
+    SAH_TRACEZ_INFO("CWMPD", "Stop server");
     if(lws_server_vhost) {
         lws_vhost_destroy(lws_server_vhost);
     }

@@ -87,6 +87,14 @@ void __wrap_cwmp_plugin_transfer_init() {
     //Does nothing
 }
 
+void __wrap_start_cwmpd() {
+    //Does nothing
+}
+
+void __wrap_stop_cwmpd() {
+    //Does nothing
+}
+
 int test_xmpp_setup(UNUSED void** state) {
     amxut_bus_setup(state);
 

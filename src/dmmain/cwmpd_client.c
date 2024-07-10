@@ -750,7 +750,12 @@ int DM_CloseHttpSession(bool closeMode) {
 }
 
 int DM_SendHttpMessage(const char* soap_msg) {
-    int msg_len = strlen(soap_msg);
+    int msg_len = 0;
+    if(soap_msg == NULL) {
+        SAH_TRACEZ_WARNING("CWMPD", "Invalid SOAP message");
+        return -1;
+    }
+    msg_len = strlen(soap_msg);
 
     SAH_TRACEZ_INFO("CWMPD", "sending a new soap message \n >>>>>>>>>>> \n %s \n >>>>>>>>>>>> \n",
                     (msg_len != 0) ? soap_msg : "EMPTY MESSAGE");

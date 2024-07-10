@@ -76,6 +76,7 @@ static void deferred_init_timer_cb(UNUSED amxp_timer_t* timer, UNUSED void* priv
     cwmp_plugin_netmodel_find_ip();
     smm_differed_init();
     amxp_timer_delete(&deferred_init_timer);
+    start_cwmpd();
     SAH_TRACEZ_OUT(ME);
 }
 

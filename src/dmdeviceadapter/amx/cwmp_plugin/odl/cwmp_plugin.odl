@@ -46,6 +46,7 @@
 
     trace-zones = {
         CWMP_PLUGIN = "${default_log_level}",
+        mod_pcm_svc = "${default_log_level}",
         ftx = "${default_log_level}",
         ftx_func = "${default_log_level}"
     };

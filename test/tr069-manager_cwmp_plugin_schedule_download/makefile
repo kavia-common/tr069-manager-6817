@@ -7,6 +7,8 @@ TARGET = run_test
 SOURCES += $(wildcard ./*.c)
 OBJECTS = $(addprefix $(OBJDIR)/,$(notdir $(SOURCES:.c=.o))) 
 LDFLAGS += -Wl,--wrap=cwmp_plugin_transfer_init \
+			-Wl,--wrap=start_cwmpd \
+			-Wl,--wrap=stop_cwmpd \
 			-lsahtrace -luriparser -lfiletransfer -lgmap-client
 
 include ../test_targets.mk
