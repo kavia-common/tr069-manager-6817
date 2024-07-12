@@ -223,7 +223,7 @@ int DM_ENG_Device_GetParameterValues_GetValues(dm_amx_env_t* amx, const char* pa
         SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "cwmp has no access rights to [%s] ", path);
     }
 
-    ret = amxb_get(amx->bus_ctx, path, (path[strlen(path) - 1] == '.') ? 20 : 1, &get, 10);
+    ret = amxb_get(amx->bus_ctx, path, (path[strlen(path) - 1] == '.') ? 20 : 0, &get, 10);
 
     if((ret != AMXB_STATUS_OK) || amxc_var_is_null(&get)) {
         if((ret == AMXB_ERROR_NOT_SUPPORTED_SCHEME)) {
