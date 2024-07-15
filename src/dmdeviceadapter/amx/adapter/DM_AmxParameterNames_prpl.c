@@ -111,13 +111,14 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 **
 ****************************************************************************/
-#ifndef CONFIG_SAH_AMX_TR069_MANAGER_USE_GSDM
+#ifdef CONFIG_SAH_AMX_TR069_MANAGER_USE_GSDM
 
 #include <amxc/amxc_llist.h>
 #include <amxc/amxc_string.h>
 #include <amxc/amxc_variant.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 #include <dmengine/DM_ENG_ParameterInfoStruct.h>
 #include <dmengine/DM_ENG_Device.h>
@@ -156,13 +157,12 @@ static bool DM_ENG_Device_GetParameterNames_GetParameter(const char* object_path
     amxc_string_t paramPath;
     amxc_string_init(&paramPath, 0);
     const char* param_name = NULL;
-    amxc_var_t* attributes = NULL;
-    int is_read_only = 0;
+    bool is_writable = false;
     dm_amx_env_t* acsInfo = DM_ENG_Device_GetACSInfo();
     amxc_llist_t filters;
     amxc_llist_init(&filters);
 
-    param_name = GETP_CHAR(parameter, "name");
+    param_name = GETP_CHAR(parameter, "param_name");
 
     if(param_name == NULL) {
         GotoStop("The parameterName is NULL?, parent Path [%s]", object_path);
@@ -177,11 +177,9 @@ static bool DM_ENG_Device_GetParameterNames_GetParameter(const char* object_path
         GotoStop("Filtered Path [%s], no access rights", amxc_string_get(&paramPath, 0));
     }
 
-    // Find parameter attributes
-    attributes = GET_ARG(parameter, "attributes");
-    is_read_only = GET_INT32(attributes, "read-only");
+    is_writable = GET_INT32(parameter, "access") == 1 ? true : false;
 
-    dmis = DM_ENG_newParameterInfoStruct(amxc_string_get(&paramPath, 0), (is_read_only == 0));
+    dmis = DM_ENG_newParameterInfoStruct(amxc_string_get(&paramPath, 0), is_writable);
     DM_ENG_addParameterInfoStruct(pnsList, dmis);
 
     ret = true;
@@ -191,88 +189,6 @@ stop:
     return ret;
 }
 
-//---------------------------------------------------------------------------------------------
-/**
-   @brief
-   Get the parameter names of the specified object, put the result into the parameter info struct.
-
-   @details
-   Get the parameters for the specified object and fill in the pararmeternamelist.
-
-   @param path The full tr69 path of the parent object
-   @param incObject determine if we should include parent object in result
-   @param object The data of the object for which we want to get the parameter values from
-   @param pnsList Linked list of parameter info structs which will be returned to the calling routine
-
-   @return
-   - false if an error occurred
-   - true if succesfull
- */
-static bool DM_ENG_Device_GetParameterNames_GetParameters(const char* acspath, const char* path, bool incObject, amxc_var_t* object, DM_ENG_ParameterInfoStruct** pnsList) {
-    bool ret = false;
-    DM_ENG_ParameterInfoStruct* dmis = NULL;
-    const amxc_htable_t* htable = NULL;
-    amxc_var_t* parameters = NULL;
-    dm_amx_env_t* acsInfo = DM_ENG_Device_GetACSInfo();
-    char* object_path = NULL;
-    amxc_llist_t filters;
-    amxc_llist_init(&filters);
-
-    int type_id = GET_INT32(object, "type_id");
-
-    amxa_resolve_search_paths(acsInfo->bus_ctx, acsInfo->acl_rules, path);
-    amxa_get_filters(acsInfo->acl_rules, AMXA_PERMIT_GET, &filters, path);
-
-    if(!amxa_is_get_allowed(&filters, path)) {
-        ret = true;
-        GotoStop("Object Filtred out [%s], user cwmp has no access rights", path);
-    }
-
-    if(acsInfo->instanceAlias) {
-        DM_ENG_Device_Common_IndexToAlias(acsInfo, acspath, path, &object_path);
-    }
-
-    if(incObject) {
-        dmis = DM_ENG_newParameterInfoStruct((object_path != NULL) ? object_path : path, (type_id == 2) || (type_id == 3));
-        DM_ENG_addParameterInfoStruct(pnsList, dmis);
-    }
-
-    /*
-     * Response exemple : only template object Name is included not its parameters
-     * parameters are included only in case of a instance
-     * Device.LANDevice.1.Hosts.
-     * Device.LANDevice.1.Hosts.HostNumberOfEntries
-     * Device.LANDevice.1.Hosts.Host.
-     * Device.LANDevice.1.Hosts.Host.1.
-     * Device.LANDevice.1.Hosts.Host.1.IPAddress
-     * Device.LANDevice.1.Hosts.Host.1.AddressSource
-     */
-    if(type_id == 2) {//template
-        ret = true;
-        goto stop;
-    }
-
-    parameters = GETP_ARG(object, "parameters");
-    if(parameters) {
-        htable = amxc_var_constcast(amxc_htable_t, parameters);
-        amxc_htable_iterate(hit, htable) {
-            amxc_var_t* parameter = amxc_var_from_htable_it(hit);
-            if(!DM_ENG_Device_GetParameterNames_GetParameter((object_path != NULL) ? object_path : path, parameter, pnsList)) {
-                ret = false;
-                GotoStop("Adding parameter failed [%s]", path);
-            }
-        }
-    }
-
-    ret = true;
-stop:
-    if(object_path) {
-        free(object_path);
-        object_path = NULL;
-    }
-    amxc_llist_clean(&filters, amxc_string_list_it_free);
-    return ret;
-}
 //---------------------------------------------------------------------------------------------
 /**
     @brief
@@ -292,98 +208,109 @@ stop:
    @return
    Returns 0 (zero) if OK or a fault code (9002, ...) according to the TR-069.
  */
-
 static int DM_ENG_Device_GetParameterNames_GetNames(dm_amx_env_t* amx, bool nextlevel, const char* acspath, const char* path, DM_ENG_ParameterInfoStruct** pnsList) {
     int error = 0;
-    int rv = 0;
-    int type_id = 0;
-    amxc_string_t childPath;
+    u_int32_t flags = AMXB_FLAG_PARAMETERS | (nextlevel ? AMXB_FLAG_FIRST_LVL : 0);
+    uint32_t entry_depth = 0;
     amxc_var_t result;
-    amxc_var_t* childobjects = NULL;
-    amxc_var_t* object = NULL;
-    char* object_path = NULL;
+    amxc_var_t rslt;
+    amxc_var_t ret_obj;
+    amxd_path_t entry_path;
+    amxd_path_t obj_path;
+    amxc_string_t supported_path_inst;
+    const amxc_htable_t* htable = NULL;
     amxc_var_init(&result);
-    amxc_string_init(&childPath, 0);
+    amxc_var_init(&rslt);
+    amxc_var_init(&ret_obj);
 
-    u_int32_t flags = AMXB_FLAG_PARAMETERS | AMXB_FLAG_OBJECTS | AMXB_FLAG_INSTANCES;
-    rv = amxb_describe(amx->bus_ctx, path, flags, &result, 1);
+    // Get the object from the bus
+    if((amxb_get(amx->bus_ctx, path, nextlevel ? 1 : -1, &result, 1) != 0) || amxc_var_is_null(&result)) {
+        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "amxb_get failed for object [%s]", path);
+    }
 
-    if((rv != 0) || amxc_var_is_null(&result)) {
-        if((rv == AMXB_ERROR_NOT_SUPPORTED_SCHEME) || (rv == AMXB_ERROR_NOT_SUPPORTED_OP)) {
-            SetErrorGotoStop(0, "Skip Object [%s]", path);
-        } else {
-            SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "amxb_describe failed for object [%s]", path);
+    // Get supported objects
+    if((amxb_get_supported(amx->bus_ctx, path, flags, &rslt, 1) != 0) || amxc_var_is_null(&rslt)) {
+        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "amxb_get_supported failed for object [%s]", path);
+    }
+
+    amxd_path_init(&entry_path, NULL);
+    amxd_path_setf(&entry_path, false, "%s", path);
+    entry_depth = amxd_path_get_depth(&entry_path);
+    amxd_path_clean(&entry_path);
+
+    htable = amxc_var_constcast(amxc_htable_t, GETI_ARG(&result, 0));
+    amxc_htable_iterate(hit, htable) {
+        char* child_path = NULL;
+        const char* key = amxc_htable_it_get_key(hit);
+        amxc_var_t* var = NULL;
+        char* supported_path = NULL;
+        bool is_multi_instance = false;
+        DM_ENG_ParameterInfoStruct* dmis = NULL;
+
+        amxd_path_init(&obj_path, NULL);
+        amxd_path_setf(&obj_path, false, "%s", key);
+        uint32_t object_depth = amxd_path_get_depth(&obj_path);
+
+        if(nextlevel && (object_depth > (entry_depth + 1))) {
+            amxd_path_clean(&obj_path);
+            continue;
         }
-    }
+        supported_path = amxd_path_build_supported_path(&obj_path);
+        amxc_string_init(&supported_path_inst, 0);
+        amxc_string_setf(&supported_path_inst, "%s{i}.", supported_path);
 
-    object = GETI_ARG(&result, 0);
+        var = amxc_var_get_key(GETI_ARG(&rslt, 0), amxc_string_get(&supported_path_inst, 0), AMXC_VAR_FLAG_DEFAULT);
+        if(var == NULL) {
+            var = amxc_var_get_key(GETI_ARG(&rslt, 0), supported_path, AMXC_VAR_FLAG_DEFAULT);
+        }
 
-    if(!DM_ENG_Device_GetParameterNames_GetParameters(acspath, path, !nextlevel, object, pnsList)) {
-        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "GetParameterNames(nextLevel=TRUE) failed, object [%s]", path);
-    }
-
-    type_id = GET_INT32(object, "type_id");
-
-    if(type_id == 2) {
-        childobjects = GETP_ARG(object, "instances");
-    } else {
-        childobjects = GETP_ARG(object, "objects");
-    }
-
-    if(childobjects) {
-        amxc_var_for_each(child, childobjects) {
-            if(nextlevel) {
-                amxc_string_t childPath;
-                amxc_string_init(&childPath, 0);
-                amxc_var_t childobject;
-                amxc_var_init(&childobject);
-                amxc_llist_t filters;
-                amxc_llist_init(&filters);
-                DM_ENG_ParameterInfoStruct* dmis = NULL;
-                int type_id = 0;
-                const char* childName = amxc_var_constcast(cstring_t, child);
-                amxc_string_setf(&childPath, "%s%s.", path, childName);
-                flags = AMXB_FLAG_OBJECTS | AMXB_FLAG_INSTANCES;
-                amxa_resolve_search_paths(amx->bus_ctx, amx->acl_rules, amxc_string_get(&childPath, 0));
-                amxa_get_filters(amx->acl_rules, AMXA_PERMIT_GET, &filters, path);
-                rv = amxb_describe(amx->bus_ctx, amxc_string_get(&childPath, 0), flags, &childobject, 1);
-
-                if((rv == 0) && (amxa_is_get_allowed(&filters, amxc_string_get(&childPath, 0)))) {
-                    type_id = GET_INT32(GETI_ARG(&childobject, 0), "type_id");
-
-                    if(amx->instanceAlias) {
-                        DM_ENG_Device_Common_IndexToAlias(amx, acspath, amxc_string_get(&childPath, 0), &object_path);
-                    }
-
-                    dmis = DM_ENG_newParameterInfoStruct((object_path != NULL) ? object_path : amxc_string_get(&childPath, 0), (type_id == 2) || (type_id == 3));
-                    DM_ENG_addParameterInfoStruct(pnsList, dmis);
-
-                    if(object_path) {
-                        free(object_path);
-                        object_path = NULL;
-                    }
-                } else {
-                    SAH_TRACEZ_WARNING("DM_DA", "Object [%s] doesn't exist on target", amxc_string_get(&childPath, 0));
-                }
-                amxc_llist_clean(&filters, amxc_string_list_it_free);
-                amxc_var_clean(&childobject);
-                amxc_string_clean(&childPath);
-            } else {
-                const char* childName = amxc_var_constcast(cstring_t, child);
-                amxc_string_clean(&childPath);
-                amxc_string_setf(&childPath, "%s%s.", path, childName);
-                error = DM_ENG_Device_GetParameterNames_GetNames(amx, false, acspath, amxc_string_get(&childPath, 0), pnsList);
-                amxc_string_clean(&childPath);
+        if(var == NULL) {
+            amxc_var_clean(&ret_obj);
+            amxc_var_init(&ret_obj);
+            if((amxb_get_supported(amx->bus_ctx, key, flags, &ret_obj, 1) != 0) || amxc_var_is_null(&ret_obj)) {
+                SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "amxb_get_supported failed for object [%s]", key);
+            }
+            var = amxc_var_get_key(GETI_ARG(&ret_obj, 0), amxc_string_get(&supported_path_inst, 0), AMXC_VAR_FLAG_DEFAULT);
+            if(var == NULL) {
+                var = amxc_var_get_key(GETI_ARG(&ret_obj, 0), supported_path, AMXC_VAR_FLAG_DEFAULT);
+            }
+            if(var == NULL) {
+                amxd_path_clean(&obj_path);
+                continue;
             }
         }
+
+        is_multi_instance = GET_UINT32(var, "is_multi_instance") == 1 ? true : false;
+        if(amx->instanceAlias) {
+            DM_ENG_Device_Common_IndexToAlias(amx, acspath, key, &child_path);
+        }
+
+        dmis = DM_ENG_newParameterInfoStruct((child_path != NULL) ? child_path : key, is_multi_instance);
+        DM_ENG_addParameterInfoStruct(pnsList, dmis);
+
+        if((!nextlevel || (strcmp(key, path) == 0)) && (!is_multi_instance || amxd_path_is_instance_path(&obj_path))) {
+            const amxc_llist_t* llist = NULL;
+            llist = amxc_var_constcast(amxc_llist_t, GET_ARG(var, "supported_params"));
+            amxc_llist_iterate(lit, llist) {
+                amxc_var_t* parameter = amxc_var_from_llist_it(lit);
+                if(!DM_ENG_Device_GetParameterNames_GetParameter((child_path != NULL) ? child_path : key, parameter, pnsList)) {
+                    SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Adding parameter failed [%s]", key);
+                }
+            }
+        }
+
+        amxd_path_clean(&obj_path);
+        free(supported_path);
+        free(child_path);
+
+        amxc_string_clean(&supported_path_inst);
     }
+
 stop:
-    if(object_path) {
-        free(object_path);
-        object_path = NULL;
-    }
-    amxc_string_clean(&childPath);
+    amxd_path_clean(&obj_path);
     amxc_var_clean(&result);
+    amxc_var_clean(&rslt);
+    amxc_var_clean(&ret_obj);
     return error;
 }
 
@@ -455,9 +382,7 @@ int DM_ENG_Device_GetParameterNames_Parameter(dm_amx_env_t* amx_env, char* path,
     amxc_var_t parameters;
     amxd_path_t paramPath;
     amxc_var_t object;
-    amxc_string_t paramName;
     amxd_path_init(&paramPath, 0);
-    amxc_string_init(&paramName, 0);
     amxc_var_init(&object);
     amxc_var_init(&parameters);
 
@@ -470,26 +395,31 @@ int DM_ENG_Device_GetParameterNames_Parameter(dm_amx_env_t* amx_env, char* path,
         amxc_llist_iterate(it, path_list) {
             const char* ppath = amxc_var_constcast(cstring_t, amxc_var_from_llist_it(it));
             char* object_path = NULL;
+            amxc_var_t* pm_var = NULL;
             amxd_path_clean(&paramPath);
             amxd_path_init(&paramPath, ppath);
 
-            int rv = amxb_describe(amx_env->bus_ctx, amxd_path_get(&paramPath, AMXD_OBJECT_TERMINATE), flags, &object, 1);
+            int rv = amxb_get_supported(amx_env->bus_ctx, amxd_path_get(&paramPath, AMXD_OBJECT_TERMINATE), flags, &object, 1);
             if((rv != 0) || amxc_var_is_null(&object)) {
-                SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "amxb_describe failed to path [%s]", amxd_path_get(&paramPath, AMXD_OBJECT_TERMINATE));
-            }
-            amxc_string_clean(&paramName);
-            amxc_string_setf(&paramName, "0.parameters.%s", amxd_path_get_param(&paramPath));
-            amxc_var_t* parameter = GETP_ARG(&object, amxc_string_get(&paramName, 0));
-
-            if(amx_env->instanceAlias) {
-                DM_ENG_Device_Common_IndexToAlias(amx_env, path, amxd_path_get(&paramPath, AMXD_OBJECT_TERMINATE), &object_path);
+                SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "amxb_get_supported failed to path [%s]", amxd_path_get(&paramPath, AMXD_OBJECT_TERMINATE));
             }
 
-            amxa_resolve_search_paths(amx_env->bus_ctx, amx_env->acl_rules, amxd_path_get(&paramPath, AMXD_OBJECT_TERMINATE));
+            pm_var = amxc_var_get_first(amxc_var_get_first(&object));
+            const amxc_llist_t* llist = amxc_var_constcast(amxc_llist_t, GET_ARG(pm_var, "supported_params"));
+            amxc_llist_iterate(lit, llist) {
+                amxc_var_t* parameter = amxc_var_from_llist_it(lit);
+                if(strcmp(GETP_CHAR(parameter, "param_name"), amxd_path_get_param(&paramPath)) == 0) {
+                    if(amx_env->instanceAlias) {
+                        DM_ENG_Device_Common_IndexToAlias(amx_env, path, amxd_path_get(&paramPath, AMXD_OBJECT_TERMINATE), &object_path);
+                    }
+                    amxa_resolve_search_paths(amx_env->bus_ctx, amx_env->acl_rules, amxd_path_get(&paramPath, AMXD_OBJECT_TERMINATE));
 
-            if(!DM_ENG_Device_GetParameterNames_GetParameter((object_path != NULL) ? object_path : amxd_path_get(&paramPath, AMXD_OBJECT_TERMINATE), parameter, infoList)) {
-                free(object_path);
-                SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Could not get the object parameters [%s]", amxd_path_get(&paramPath, AMXD_OBJECT_TERMINATE));
+                    if(!DM_ENG_Device_GetParameterNames_GetParameter((object_path != NULL) ? object_path : amxd_path_get(&paramPath, AMXD_OBJECT_TERMINATE), parameter, infoList)) {
+                        free(object_path);
+                        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Could not get the object parameters [%s]", amxd_path_get(&paramPath, AMXD_OBJECT_TERMINATE));
+                    }
+                    break;
+                }
             }
             if(object_path) {
                 free(object_path);
@@ -503,10 +433,8 @@ stop:
     amxd_path_clean(&paramPath);
     amxc_var_clean(&parameters);
     amxc_var_clean(&object);
-    amxc_string_clean(&paramName);
     return error;
 }
 #endif
-
 
 // /** @} */

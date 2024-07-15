@@ -51,7 +51,7 @@
 ** USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **
 ****************************************************************************/
-#ifndef CONFIG_SAH_AMX_TR069_MANAGER_USE_GSDM
+#ifdef CONFIG_SAH_AMX_TR069_MANAGER_USE_GSDM
 
 #include <amxc/amxc_macros.h>
 #include <stdbool.h>
@@ -69,6 +69,7 @@
 
 #include "DM_AmxCommon.h"
 #include "DM_DeviceAdapter.h"
+
 //---------------------------------------------------------------------------------------------
 /**
  * @addtogroup sah_cwmp_amxdeviceadapter
@@ -109,17 +110,17 @@ static int DM_ENG_Device_GetParameterValues_ParseValues(dm_amx_env_t* amx, const
     const amxc_htable_t* htable = NULL;
     amxc_string_t param_name;
     amxc_var_t desc;
-    amxc_var_init(&desc);
 
     htable = amxc_var_constcast(amxc_htable_t, GETI_ARG(object, 0));
 
     amxc_htable_iterate(hit, htable) {
+        amxc_var_init(&desc);
         const char* key = amxc_htable_it_get_key(hit);
         amxc_var_t* hit_val = amxc_var_from_htable_it(hit);
         const amxc_htable_t* param = amxc_var_constcast(amxc_htable_t, hit_val);
 
-        if(amxb_describe(amx->bus_ctx, key, AMXB_FLAG_PARAMETERS, &desc, 1)) {
-            SAH_TRACEZ_WARNING("DM_DA", "amxb_describe failed for [%s], parameter types maybe reported wrong in the GPV response", key);
+        if(amxb_get_supported(amx->bus_ctx, key, AMXB_FLAG_PARAMETERS, &desc, 1)) {
+            SAH_TRACEZ_WARNING("DM_DA", "amxb_get_supported failed for [%s], parameter types maybe reported wrong in the GPV response", key);
         }
 
         amxc_htable_iterate(hit_param, param) {
@@ -129,17 +130,22 @@ static int DM_ENG_Device_GetParameterValues_ParseValues(dm_amx_env_t* amx, const
             const char* paramkey = amxc_htable_it_get_key(hit_param);
             amxc_var_t* param_var = amxc_var_from_htable_it(hit);
             amxc_var_t* value = GETP_ARG(param_var, paramkey);
+            amxc_var_t* pm_var = amxc_var_get_first(amxc_var_get_first(&desc));
+            const amxc_llist_t* llist = amxc_var_constcast(amxc_llist_t, GET_ARG(pm_var, "supported_params"));
 
-            amxc_string_init(&param_name, 0);
-            amxc_string_setf(&param_name, "0.parameters.%s", paramkey);
-            type = GET_INT32(GETP_ARG(&desc, amxc_string_get(&param_name, 0)), "type_id");
+            amxc_llist_iterate(lit, llist) {
+                amxc_var_t* parameter = amxc_var_from_llist_it(lit);
+                if(strcmp(GETP_CHAR(parameter, "param_name"), paramkey) == 0) {
+                    type = GET_INT32(parameter, "type");
+                    break;
+                }
+            }
 
             if(type == -1) {
                 type = amxc_var_type_of(value);
             }
 
             param_val = amxc_var_dyncast(cstring_t, value);
-            amxc_string_clean(&param_name);
             amxc_string_init(&param_name, 0);
             amxc_string_setf(&param_name, "%s%s", key, paramkey);
 
@@ -283,7 +289,6 @@ int DM_ENG_Device_SetParameterValues_Validate(dm_amx_env_t* amx, DM_ENG_Paramete
     int amxb_ret = 0;
     bool checkType = false;
     char* tempString = NULL;
-    amxc_var_t* parameters = NULL;
     amxd_path_t obj_path;
     amxc_var_t obj_desc;
     char* object_path = NULL;
@@ -306,7 +311,7 @@ int DM_ENG_Device_SetParameterValues_Validate(dm_amx_env_t* amx, DM_ENG_Paramete
     }
 
     flags = AMXB_FLAG_PARAMETERS;
-    amxb_ret = amxb_describe(amx->bus_ctx, amxd_path_get(&obj_path, AMXD_OBJECT_TERMINATE), flags, &obj_desc, 2);
+    amxb_ret = amxb_get_supported(amx->bus_ctx, amxd_path_get(&obj_path, AMXD_OBJECT_TERMINATE), flags, &obj_desc, 2);
 
     if((amxb_ret != 0) || amxc_var_is_null(&obj_desc)) {
         DM_ENG_Device_SetParameterValuesFault(faultsList, parameterList[*i]->parameterName, DM_ENG_INVALID_PARAMETER_NAME, nbFaults);
@@ -321,12 +326,19 @@ int DM_ENG_Device_SetParameterValues_Validate(dm_amx_env_t* amx, DM_ENG_Paramete
     }
     amxa_resolve_search_paths(amx->bus_ctx, amx->acl_rules, amxd_path_get(&obj_path, AMXD_OBJECT_TERMINATE));
 
-    parameters = GETP_ARG(&obj_desc, "0.parameters");
-
     // check all parameters that belong to the current object
     while(strcmp(amxd_path_get(&obj_path, AMXD_OBJECT_TERMINATE), object_path) == 0) {
+        amxc_var_t* parameter = NULL;
+        amxc_var_t* pm_var = amxc_var_get_first(amxc_var_get_first(&obj_desc));
+        const amxc_llist_t* llist = amxc_var_constcast(amxc_llist_t, GET_ARG(pm_var, "supported_params"));
 
-        amxc_var_t* parameter = GETP_ARG(parameters, amxd_path_get_param(&obj_path));
+        amxc_llist_iterate(lit, llist) {
+            amxc_var_t* param = amxc_var_from_llist_it(lit);
+            if(strcmp(GETP_CHAR(param, "param_name"), amxd_path_get_param(&obj_path)) == 0) {
+                parameter = param;
+                break;
+            }
+        }
 
         if(amxc_var_is_null(parameter)) {
             DM_ENG_Device_SetParameterValuesFault(faultsList, parameterList[*i]->parameterName, DM_ENG_INVALID_PARAMETER_NAME, nbFaults);
@@ -334,7 +346,7 @@ int DM_ENG_Device_SetParameterValues_Validate(dm_amx_env_t* amx, DM_ENG_Paramete
         }
 
         if(checkType &&
-           (parameterList[*i]->type != DM_ENG_Device_Common_ConvertParameterType(GET_INT32(parameter, "type_id")))) {
+           (parameterList[*i]->type != DM_ENG_Device_Common_ConvertParameterType(GET_INT32(parameter, "type")))) {
             DM_ENG_Device_SetParameterValuesFault(faultsList, parameterList[*i]->parameterName, DM_ENG_INVALID_PARAMETER_TYPE, nbFaults);
             SetErrorGotoStop(DM_ENG_INVALID_ARGUMENTS, "Wrong type");
         }
@@ -344,7 +356,7 @@ int DM_ENG_Device_SetParameterValues_Validate(dm_amx_env_t* amx, DM_ENG_Paramete
         }
 
 
-        if(GET_INT32(GETP_ARG(parameter, "attributes"), "read-only")) {
+        if(!GET_INT32(parameter, "access")) {
             DM_ENG_Device_SetParameterValuesFault(faultsList, parameterList[*i]->parameterName, DM_ENG_READ_ONLY_PARAMETER, nbFaults);
             SetErrorGotoStop(DM_ENG_INVALID_ARGUMENTS, "parameter is read-only");
         }
@@ -484,5 +496,4 @@ stop:
     return error;
 }
 #endif
-
 // /** @} */

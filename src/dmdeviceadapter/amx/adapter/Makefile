@@ -1,6 +1,7 @@
 
 ROOT = ../../../..
 
+-include $(STAGINGDIR)/components.config
 include $(ROOT)/makefile.inc
 
 #lib NAME
@@ -47,6 +48,10 @@ LDFLAGS += $(STAGING_LIBDIR) -ldl -lsahtrace \
 ifeq ($(COVERAGE), y)
 	CFLAGS +=-fprofile-arcs -ftest-coverage
 	LDFLAGS += -fprofile-arcs -ftest-coverage
+endif
+
+ifeq ($(CONFIG_SAH_AMX_TR069_MANAGER_USE_GSDM),y)
+    CFLAGS += -DCONFIG_SAH_AMX_TR069_MANAGER_USE_GSDM
 endif
 
 test: all

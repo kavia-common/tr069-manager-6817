@@ -153,9 +153,7 @@ int DM_ENG_Device_AddDeleteObject_Add(dm_amx_env_t* amx, char* objectName, unsig
     int error = DM_ENG_INVALID_PARAMETER_NAME;
     int rv = 0;
     amxc_var_t ret;
-    amxc_var_t desc;
     amxc_var_init(&ret);
-    amxc_var_init(&desc);
     amxd_path_t path;
     amxd_path_init(&path, "");
 
@@ -169,10 +167,6 @@ int DM_ENG_Device_AddDeleteObject_Add(dm_amx_env_t* amx, char* objectName, unsig
                      "Add failed : Not valid object path [%s]", objectName);
     when_true_trace(amxd_path_is_search_path(&path), stop, ERROR,
                     "Add failed : Not valid object path [%s]", objectName);
-    when_failed_trace(amxb_describe(amx->bus_ctx, amxd_path_get(&path, AMXD_OBJECT_TERMINATE), 0, &desc, 2), stop, ERROR,
-                      "Add failed : Not valid object path [%s]", objectName);
-    when_false_trace(GET_INT32(GETI_ARG(&desc, 0), "type_id") == amxd_object_template, stop, ERROR,
-                     "Add failed : not a template? [%s]", objectName);
     when_false_trace(amxa_is_add_allowed(amx->bus_ctx, amx->acl_rules, objectName), stop, ERROR,
                      "Add failed : cwmp has no access right to [%s]", objectName);
 
@@ -187,7 +181,6 @@ int DM_ENG_Device_AddDeleteObject_Add(dm_amx_env_t* amx, char* objectName, unsig
     error = 0;
 
 stop:
-    amxc_var_clean(&desc);
     amxc_var_clean(&ret);
     amxd_path_clean(&path);
     return error;
@@ -215,9 +208,7 @@ int DM_ENG_Device_AddDeleteObject_Delete(dm_amx_env_t* amx, char* objectName, DM
     int error = DM_ENG_INVALID_PARAMETER_NAME;
     int rv = 0;
     amxc_var_t ret;
-    amxc_var_t desc;
     amxc_var_init(&ret);
-    amxc_var_init(&desc);
     amxd_path_t path;
     amxd_path_init(&path, "");
     *pStatus = DM_ENG_ParameterStatus_UNDEFINED;
@@ -229,10 +220,6 @@ int DM_ENG_Device_AddDeleteObject_Delete(dm_amx_env_t* amx, char* objectName, DM
                     "del failed : Not valid object path [%s]", objectName);
     when_true_trace(amxd_path_is_search_path(&path), stop, ERROR,
                     "del failed : Not valid object path [%s]", objectName);
-    when_failed_trace(amxb_describe(amx->bus_ctx, amxd_path_get(&path, AMXD_OBJECT_TERMINATE), 0, &desc, 2), stop, ERROR,
-                      "del failed : Not valid object path [%s]", objectName);
-    when_false_trace(GET_INT32(GETI_ARG(&desc, 0), "type_id") == amxd_object_instance, stop, ERROR,
-                     "del failed : not a valid instance [%s]", objectName);
     when_false_trace(amxa_is_del_allowed(amx->bus_ctx, amx->acl_rules, objectName), stop, ERROR,
                      "Add failed : cwmp has no access right to delete [%s]", objectName);
 
@@ -246,7 +233,6 @@ int DM_ENG_Device_AddDeleteObject_Delete(dm_amx_env_t* amx, char* objectName, DM
     error = 0;
 
 stop:
-    amxc_var_clean(&desc);
     amxc_var_clean(&ret);
     amxd_path_clean(&path);
     return error;

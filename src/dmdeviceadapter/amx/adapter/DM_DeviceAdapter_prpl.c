@@ -51,7 +51,7 @@
 ** USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **
 ****************************************************************************/
-#ifndef CONFIG_SAH_AMX_TR069_MANAGER_USE_GSDM
+#ifdef CONFIG_SAH_AMX_TR069_MANAGER_USE_GSDM
 
 /**
  * @file DM_DeviceAdapter.c
@@ -103,7 +103,6 @@ const char* DM_ENG_EVENT_VALUE_CHANGE = "4 VALUE CHANGE";
 static dm_deviceadapter_t da;
 static char* externalIPAddress = NULL;
 static char* persistentRPCPath = NULL;
-
 
 //----------------------------------------------------------------------------------
 /**
@@ -330,38 +329,45 @@ static int build_gpv_all_body(dm_amx_env_t* acs_info, UNUSED xmlNodePtr node_bod
     const amxc_htable_t* htable = NULL;
     const char* key = NULL;
     amxc_var_t desc_result;
-    amxc_var_init(&desc_result);
     xmlNodePtr rsp_node = NULL;
     xmlNodePtr plist_node = NULL;
     amxc_string_t pvs_node_attr_value;
     uint32_t param_count = 0;
-    amxc_string_init(&pvs_node_attr_value, 0);
 
     rsp_node = xmlNewChild(node_body, NULL, BAD_CAST "cwmp:GetParameterValuesResponse", NULL);
     plist_node = xmlNewChild(rsp_node, NULL, BAD_CAST "ParameterList", NULL);
     amxc_var_for_each(entry, GETI_ARG(get_result, 0)) {
+        amxc_var_init(&desc_result);
         htable = amxc_var_constcast(amxc_htable_t, entry);
         if(amxc_htable_is_empty(htable)) {
             continue;
         }
         key = amxc_var_key(entry);
         SAH_TRACEZ_INFO("DM_DA", "Key [%s]", key);
-        if(amxb_describe(acs_info->bus_ctx, key, AMXB_FLAG_PARAMETERS, &desc_result, 1)) {
-            SAH_TRACEZ_WARNING("DM_DA", "describe failed [%s]", key);
+        if(amxb_get_supported(acs_info->bus_ctx, key, AMXB_FLAG_PARAMETERS, &desc_result, 1)) {
+            SAH_TRACEZ_WARNING("DM_DA", "get_supported failed [%s]", key);
             continue;
         }
         amxc_htable_iterate(hit, htable) {
             char* alias_path = NULL;
             char* param_value = NULL;
             uint32_t param_type = 0;
+            amxc_var_t* pm_var = NULL;
             const char* param_key = amxc_htable_it_get_key(hit);
             amxc_var_t* param_var = amxc_var_from_htable_it(hit);
             amxc_string_t param_name;
-            amxc_string_init(&param_name, 0);
-            amxc_string_setf(&param_name, "0.parameters.%s", param_key);
-            param_type = GET_INT32(GETP_ARG(&desc_result, amxc_string_get(&param_name, 0)), "type_id");
+
+            pm_var = amxc_var_get_first(amxc_var_get_first(&desc_result));
+            const amxc_llist_t* llist = amxc_var_constcast(amxc_llist_t, GET_ARG(pm_var, "supported_params"));
+            amxc_llist_iterate(lit, llist) {
+                amxc_var_t* parameter = amxc_var_from_llist_it(lit);
+                if(strcmp(GETP_CHAR(parameter, "param_name"), param_key) == 0) {
+                    param_type = GET_INT32(parameter, "type");
+                    break;
+                }
+            }
+
             param_value = amxc_var_dyncast(cstring_t, param_var);
-            amxc_string_clean(&param_name);
             amxc_string_init(&param_name, 0);
             amxc_string_setf(&param_name, "%s%s", key, param_key);
             if(acs_info->instanceAlias) {
@@ -379,6 +385,7 @@ static int build_gpv_all_body(dm_amx_env_t* acs_info, UNUSED xmlNodePtr node_bod
         amxc_var_clean(&desc_result);
     }
 
+    amxc_string_init(&pvs_node_attr_value, 0);
     amxc_string_appendf(&pvs_node_attr_value, "cwmp:ParameterValueStruct[%d]", param_count);
     xmlNewProp(plist_node, BAD_CAST "soap-enc:arrayType", BAD_CAST amxc_string_get(&pvs_node_attr_value, 0));
     amxc_string_clean(&pvs_node_attr_value);
@@ -1269,12 +1276,3 @@ void __attribute__ ((destructor)) fini(void) {
 #endif
 
 /** @} */
-
-
-
-
-
-
-
-
-
