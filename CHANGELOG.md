@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.2 - 2024-07-15(07:52:36 +0000)
+
+### Other
+
+- [TR-069] OBUSPA Compatibility: Modify the TR-069 agent to use _get_supported() instead of _describe() method
+
 ## Release v1.33.1 - 2024-07-02(16:29:57 +0000)
 
 ### Other
