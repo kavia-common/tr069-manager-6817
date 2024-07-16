@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.3 - 2024-07-16(10:04:29 +0000)
+
+### Other
+
+- Add protected parameters to debuginfo command
+
 ## Release v1.33.2 - 2024-07-15(07:52:36 +0000)
 
 ### Other
