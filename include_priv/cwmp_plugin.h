@@ -199,6 +199,8 @@ void _connreq_xmpp_connection_changed(const char* const sig_name,
                                       const amxc_var_t* const data,
                                       void* const priv);
 
+void cwmp_plugin_dm_save(void);
+
 #ifdef __cplusplus
 }
 #endif

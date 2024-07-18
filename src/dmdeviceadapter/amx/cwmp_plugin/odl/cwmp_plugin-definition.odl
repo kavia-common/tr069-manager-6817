@@ -802,7 +802,7 @@
             */
             %persistent string Status {
                 userflags %upc;
-                on action validate call check_enum ["Initial","Transferring","Applying","Applied","Finished"];
+                on action validate call check_enum ["Initial","Applying","Finished"];
                 default "Initial";
             }
           /**

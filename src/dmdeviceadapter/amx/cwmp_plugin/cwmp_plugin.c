@@ -71,6 +71,59 @@ static cwmp_plugin_app_t app;
 static amxm_shared_object_t* fw_module = NULL;
 static amxp_timer_t* deferred_init_timer = NULL;
 
+static char* cwmp_plugin_get_directory(amxo_parser_t* parser) {
+    amxc_string_t dir;
+    const char* odl_dir = GETP_CHAR(&parser->config, "odl.directory");
+    char* resolved_dir = NULL;
+    amxc_string_init(&dir, 0);
+    if(odl_dir == NULL) {
+        odl_dir = GETP_CHAR(&parser->config, "storage-path");
+    }
+    if(odl_dir != NULL) {
+        amxc_string_setf(&dir, "%s", odl_dir);
+        amxc_string_resolve(&dir, &parser->config);
+        resolved_dir = amxc_string_take_buffer(&dir);
+    }
+    return resolved_dir;
+}
+
+static int cwmp_plugin_dm_save_object(amxo_parser_t* parser,
+                                      amxd_object_t* object,
+                                      const char* dir,
+                                      const char* name) {
+    int status = -1;
+    amxc_string_t file;
+    amxc_string_init(&file, 0);
+    amxc_string_setf(&file, "%s/%s.odl", dir, name);
+    status = amxo_parser_save_object(parser, amxc_string_get(&file, 0), object, false);
+    when_failed_trace(status, stop, ERROR, "Failed to write %s file", amxc_string_get(&file, 0));
+stop:
+    amxc_string_clean(&file);
+    return status;
+}
+
+static int cwmp_plugin_dm_save_impl(amxd_dm_t* dm, amxo_parser_t* parser) {
+    int status = -1;
+    char* odl_dir = NULL;
+    when_true_trace(((dm == NULL) || (parser == NULL)), stop, ERROR, "Invalid arg(s)");
+    SAH_TRACEZ_INFO(ME, "Saving datamodel");
+    odl_dir = cwmp_plugin_get_directory(parser);
+    when_true_trace((odl_dir == NULL) || (*odl_dir == 0), stop, ERROR, "No odl directory specified");
+    amxd_object_t* root = amxd_dm_get_root(dm);
+    const char* name = GETP_CHAR(&parser->config, "name");
+    when_null_trace(name, stop, ERROR, "Failed to get name");
+    status = cwmp_plugin_dm_save_object(parser, root, odl_dir, name);
+stop:
+    free(odl_dir);
+    return status;
+}
+
+void cwmp_plugin_dm_save(void) {
+    if(cwmp_plugin_dm_save_impl(cwmp_plugin_get_dm(), cwmp_plugin_get_parser()) != 0) {
+        SAH_TRACEZ_ERROR(ME, "Failed to save datamodel");
+    }
+}
+
 static void deferred_init_timer_cb(UNUSED amxp_timer_t* timer, UNUSED void* priv) {
     SAH_TRACEZ_IN(ME);
     cwmp_plugin_netmodel_find_ip();

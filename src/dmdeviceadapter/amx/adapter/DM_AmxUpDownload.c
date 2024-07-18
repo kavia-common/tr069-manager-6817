@@ -629,7 +629,7 @@ int DM_ENG_Device_GetQueuedTransfers(dm_amx_env_t* amx, DM_ENG_AllQueuedTransfer
         int state = 1;
         if(strcmp(status, "Initial") == 0) {
             state = 1;
-        } else if(strcmp(status, "Transferring") == 0) {
+        } else if(strcmp(status, "Applying") == 0) {
             state = 2;
         } else {
             state = 3;
@@ -751,8 +751,8 @@ bool DM_ENG_Device_UpDownloadInitialize(dm_amx_env_t* amx) {
             const char* fileType = GETP_CHAR(transfer, "FileType");
             if(strcmp(fileType, "1 Firmware Upgrade Image") == 0) {
                 handle_pending_upgrade(key);
+                DM_ENG_NotificationInterface_timerStart(key, 0, 0, DM_ENG_Device_TransferCompleteEvent);
             }
-            DM_ENG_NotificationInterface_timerStart(key, 0, 0, DM_ENG_Device_TransferCompleteEvent);
         }
     }
     ret = true;

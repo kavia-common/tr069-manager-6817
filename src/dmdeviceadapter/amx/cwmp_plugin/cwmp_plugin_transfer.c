@@ -644,11 +644,6 @@ static void firmwareimage_notification(UNUSED const char* const sig_name,
         amxc_ts_parse(&tsp, UNKNOWN_TIME, strlen(UNKNOWN_TIME));
         update_transfer_obj(transfer_obj, "Finished", NULL, &tsp, &fault_code);
         firmwareimage_del_subscription(transfer_obj);
-    } else if(strcmp(status, "Downloading") == 0) {
-        update_transfer_obj(transfer_obj, "Transferring", NULL, NULL, NULL);
-    } else if(strcmp(status, "Validating") == 0) {
-        update_transfer_obj(transfer_obj, "Applying", NULL, NULL, NULL);
-        /* expecting a reboot now or an error */
     }
 stop:
     return;
@@ -727,13 +722,15 @@ stop:
 }
 
 void download_timer_cb(amxp_timer_t* timer, void* priv) {
-    when_null_trace(priv, stop, ERROR, "Invalid arg(s)")
     amxd_object_t* transfer_obj = (amxd_object_t*) priv;
+    when_null_trace(transfer_obj, stop, ERROR, "transfer object is null");
+    update_transfer_obj(transfer_obj, "Applying", NULL, NULL, NULL);
     if(firmware_upgrade(transfer_obj) != 0) {
         uint32_t fault_code = 9002;
         update_transfer_obj(transfer_obj, "Finished", NULL, NULL, &fault_code);
         firmwareimage_del_subscription(transfer_obj);
     }
+    cwmp_plugin_dm_save();
 stop:
     amxp_timer_delete(&timer);
 }
@@ -781,6 +778,14 @@ static int filetransfer_request_prepare(amxc_var_t* args) {
             when_failed_trace(amxp_timer_start(download_timer, delaySeconds * 1000),
                               stop, ERROR, "Failed to start timer");
             SAH_TRACEZ_INFO(ME, "Transfer [%d]: Initiate the Download [%s] within [%d] seconds", transfer_index, fileType, delaySeconds);
+            if(delaySeconds <= 1) {
+                /**
+                 * The condition to enter this block should normally be "DelaySeconds equal to zero", but some HDM when configured to send zero
+                 * they will send one instead. This should be fixed on HDM side.
+                 */
+                update_transfer_obj(transfer_obj, "Applying", NULL, NULL, NULL);
+            }
+            cwmp_plugin_dm_save();
             ret = 0;
             goto stop;
         }
