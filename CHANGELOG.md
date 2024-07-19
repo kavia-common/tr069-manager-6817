@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.4 - 2024-07-19(09:06:57 +0000)
+
+### Other
+
+- Fix cmwpd crashes and unexpected bootstrap event
+
 ## Release v1.33.3 - 2024-07-16(10:04:29 +0000)
 
 ### Other
