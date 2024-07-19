@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.5 - 2024-07-19(14:05:44 +0000)
+
+### Other
+
+- [TR-069] OBUSPA Compatibility: Handling the case of not ordered returned objects lists when calling amxb_get_supported
+
 ## Release v1.33.4 - 2024-07-19(09:06:57 +0000)
 
 ### Other
