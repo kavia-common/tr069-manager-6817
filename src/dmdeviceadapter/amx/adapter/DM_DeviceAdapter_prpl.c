@@ -333,6 +333,10 @@ static int build_gpv_all_body(dm_amx_env_t* acs_info, UNUSED xmlNodePtr node_bod
     xmlNodePtr plist_node = NULL;
     amxc_string_t pvs_node_attr_value;
     uint32_t param_count = 0;
+    amxc_var_t* pm_var = NULL;
+    char* supported_path = NULL;
+    amxc_string_t supported_path_inst;
+    amxd_path_t obj_path;
 
     rsp_node = xmlNewChild(node_body, NULL, BAD_CAST "cwmp:GetParameterValuesResponse", NULL);
     plist_node = xmlNewChild(rsp_node, NULL, BAD_CAST "ParameterList", NULL);
@@ -348,6 +352,19 @@ static int build_gpv_all_body(dm_amx_env_t* acs_info, UNUSED xmlNodePtr node_bod
             SAH_TRACEZ_WARNING("DM_DA", "get_supported failed [%s]", key);
             continue;
         }
+
+        amxd_path_init(&obj_path, NULL);
+        amxd_path_setf(&obj_path, false, "%s", key);
+        supported_path = amxd_path_build_supported_path(&obj_path);
+
+        amxc_string_init(&supported_path_inst, 0);
+        amxc_string_setf(&supported_path_inst, "%s{i}.", supported_path);
+
+        pm_var = amxc_var_get_key(GETI_ARG(&desc_result, 0), amxc_string_get(&supported_path_inst, 0), AMXC_VAR_FLAG_DEFAULT);
+        if(pm_var == NULL) {
+            pm_var = amxc_var_get_key(GETI_ARG(&desc_result, 0), supported_path, AMXC_VAR_FLAG_DEFAULT);
+        }
+
         amxc_htable_iterate(hit, htable) {
             char* alias_path = NULL;
             char* param_value = NULL;
@@ -357,7 +374,6 @@ static int build_gpv_all_body(dm_amx_env_t* acs_info, UNUSED xmlNodePtr node_bod
             amxc_var_t* param_var = amxc_var_from_htable_it(hit);
             amxc_string_t param_name;
 
-            pm_var = amxc_var_get_first(amxc_var_get_first(&desc_result));
             const amxc_llist_t* llist = amxc_var_constcast(amxc_llist_t, GET_ARG(pm_var, "supported_params"));
             amxc_llist_iterate(lit, llist) {
                 amxc_var_t* parameter = amxc_var_from_llist_it(lit);
@@ -382,6 +398,9 @@ static int build_gpv_all_body(dm_amx_env_t* acs_info, UNUSED xmlNodePtr node_bod
             free(param_value);
             free(alias_path);
         }
+        amxd_path_clean(&obj_path);
+        free(supported_path);
+        amxc_string_clean(&supported_path_inst);
         amxc_var_clean(&desc_result);
     }
 

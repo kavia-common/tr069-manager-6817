@@ -118,9 +118,25 @@ static int DM_ENG_Device_GetParameterValues_ParseValues(dm_amx_env_t* amx, const
         const char* key = amxc_htable_it_get_key(hit);
         amxc_var_t* hit_val = amxc_var_from_htable_it(hit);
         const amxc_htable_t* param = amxc_var_constcast(amxc_htable_t, hit_val);
+        amxc_var_t* pm_var = NULL;
+        char* supported_path = NULL;
+        amxc_string_t supported_path_inst;
+        amxd_path_t obj_path;
 
         if(amxb_get_supported(amx->bus_ctx, key, AMXB_FLAG_PARAMETERS, &desc, 1)) {
             SAH_TRACEZ_WARNING("DM_DA", "amxb_get_supported failed for [%s], parameter types maybe reported wrong in the GPV response", key);
+        }
+
+        amxd_path_init(&obj_path, NULL);
+        amxd_path_setf(&obj_path, false, "%s", key);
+        supported_path = amxd_path_build_supported_path(&obj_path);
+
+        amxc_string_init(&supported_path_inst, 0);
+        amxc_string_setf(&supported_path_inst, "%s{i}.", supported_path);
+
+        pm_var = amxc_var_get_key(GETI_ARG(&desc, 0), amxc_string_get(&supported_path_inst, 0), AMXC_VAR_FLAG_DEFAULT);
+        if(pm_var == NULL) {
+            pm_var = amxc_var_get_key(GETI_ARG(&desc, 0), supported_path, AMXC_VAR_FLAG_DEFAULT);
         }
 
         amxc_htable_iterate(hit_param, param) {
@@ -130,9 +146,8 @@ static int DM_ENG_Device_GetParameterValues_ParseValues(dm_amx_env_t* amx, const
             const char* paramkey = amxc_htable_it_get_key(hit_param);
             amxc_var_t* param_var = amxc_var_from_htable_it(hit);
             amxc_var_t* value = GETP_ARG(param_var, paramkey);
-            amxc_var_t* pm_var = amxc_var_get_first(amxc_var_get_first(&desc));
-            const amxc_llist_t* llist = amxc_var_constcast(amxc_llist_t, GET_ARG(pm_var, "supported_params"));
 
+            const amxc_llist_t* llist = amxc_var_constcast(amxc_llist_t, GET_ARG(pm_var, "supported_params"));
             amxc_llist_iterate(lit, llist) {
                 amxc_var_t* parameter = amxc_var_from_llist_it(lit);
                 if(strcmp(GETP_CHAR(parameter, "param_name"), paramkey) == 0) {
@@ -162,6 +177,9 @@ static int DM_ENG_Device_GetParameterValues_ParseValues(dm_amx_env_t* amx, const
             free(param_val);
             free(alias_path);
         }
+        amxd_path_clean(&obj_path);
+        free(supported_path);
+        amxc_string_clean(&supported_path_inst);
         amxc_var_clean(&desc);
     }
 
@@ -294,6 +312,9 @@ int DM_ENG_Device_SetParameterValues_Validate(dm_amx_env_t* amx, DM_ENG_Paramete
     char* object_path = NULL;
     amxd_path_init(&obj_path, "");
     amxc_var_init(&obj_desc);
+    amxc_var_t* pm_var = NULL;
+    amxc_string_t supported_path_inst;
+    char* supported_path = NULL;
 
     SAH_TRACEZ_IN("DM_DA");
 
@@ -318,6 +339,14 @@ int DM_ENG_Device_SetParameterValues_Validate(dm_amx_env_t* amx, DM_ENG_Paramete
         SetErrorGotoStop(DM_ENG_INVALID_ARGUMENTS, "Object dosent exist ?");
     }
 
+    supported_path = amxd_path_build_supported_path(&obj_path);
+    amxc_string_init(&supported_path_inst, 0);
+    amxc_string_setf(&supported_path_inst, "%s{i}.", supported_path);
+    pm_var = amxc_var_get_key(GETI_ARG(&obj_desc, 0), amxc_string_get(&supported_path_inst, 0), AMXC_VAR_FLAG_DEFAULT);
+    if(pm_var == NULL) {
+        pm_var = amxc_var_get_key(GETI_ARG(&obj_desc, 0), supported_path, AMXC_VAR_FLAG_DEFAULT);
+    }
+
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_VERIFYPARAMETERTYPE, &tempString) == 0) {
         if(tempString) {
             checkType = atoi(tempString) ? true : false;
@@ -329,7 +358,6 @@ int DM_ENG_Device_SetParameterValues_Validate(dm_amx_env_t* amx, DM_ENG_Paramete
     // check all parameters that belong to the current object
     while(strcmp(amxd_path_get(&obj_path, AMXD_OBJECT_TERMINATE), object_path) == 0) {
         amxc_var_t* parameter = NULL;
-        amxc_var_t* pm_var = amxc_var_get_first(amxc_var_get_first(&obj_desc));
         const amxc_llist_t* llist = amxc_var_constcast(amxc_llist_t, GET_ARG(pm_var, "supported_params"));
 
         amxc_llist_iterate(lit, llist) {
@@ -381,6 +409,8 @@ int DM_ENG_Device_SetParameterValues_Validate(dm_amx_env_t* amx, DM_ENG_Paramete
     (*i)--;
 
 stop:
+    free(supported_path);
+    amxc_string_clean(&supported_path_inst);
     amxd_path_clean(&obj_path);
     amxc_var_clean(&obj_desc);
     free(object_path);

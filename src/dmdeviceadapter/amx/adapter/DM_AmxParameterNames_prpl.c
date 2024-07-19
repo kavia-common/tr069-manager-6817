@@ -285,8 +285,10 @@ static int DM_ENG_Device_GetParameterNames_GetNames(dm_amx_env_t* amx, bool next
             DM_ENG_Device_Common_IndexToAlias(amx, acspath, key, &child_path);
         }
 
-        dmis = DM_ENG_newParameterInfoStruct((child_path != NULL) ? child_path : key, is_multi_instance);
-        DM_ENG_addParameterInfoStruct(pnsList, dmis);
+        if(!nextlevel || (strcmp(key, path) != 0)) {
+            dmis = DM_ENG_newParameterInfoStruct((child_path != NULL) ? child_path : key, is_multi_instance);
+            DM_ENG_addParameterInfoStruct(pnsList, dmis);
+        }
 
         if((!nextlevel || (strcmp(key, path) == 0)) && (!is_multi_instance || amxd_path_is_instance_path(&obj_path))) {
             const amxc_llist_t* llist = NULL;
@@ -396,6 +398,8 @@ int DM_ENG_Device_GetParameterNames_Parameter(dm_amx_env_t* amx_env, char* path,
             const char* ppath = amxc_var_constcast(cstring_t, amxc_var_from_llist_it(it));
             char* object_path = NULL;
             amxc_var_t* pm_var = NULL;
+            amxc_string_t supported_path_inst;
+            char* supported_path = NULL;
             amxd_path_clean(&paramPath);
             amxd_path_init(&paramPath, ppath);
 
@@ -404,7 +408,14 @@ int DM_ENG_Device_GetParameterNames_Parameter(dm_amx_env_t* amx_env, char* path,
                 SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "amxb_get_supported failed to path [%s]", amxd_path_get(&paramPath, AMXD_OBJECT_TERMINATE));
             }
 
-            pm_var = amxc_var_get_first(amxc_var_get_first(&object));
+            supported_path = amxd_path_build_supported_path(&paramPath);
+            amxc_string_init(&supported_path_inst, 0);
+            amxc_string_setf(&supported_path_inst, "%s{i}.", supported_path);
+            pm_var = amxc_var_get_key(GETI_ARG(&object, 0), amxc_string_get(&supported_path_inst, 0), AMXC_VAR_FLAG_DEFAULT);
+            if(pm_var == NULL) {
+                pm_var = amxc_var_get_key(GETI_ARG(&object, 0), supported_path, AMXC_VAR_FLAG_DEFAULT);
+            }
+
             const amxc_llist_t* llist = amxc_var_constcast(amxc_llist_t, GET_ARG(pm_var, "supported_params"));
             amxc_llist_iterate(lit, llist) {
                 amxc_var_t* parameter = amxc_var_from_llist_it(lit);
@@ -421,10 +432,9 @@ int DM_ENG_Device_GetParameterNames_Parameter(dm_amx_env_t* amx_env, char* path,
                     break;
                 }
             }
-            if(object_path) {
-                free(object_path);
-                object_path = NULL;
-            }
+            free(supported_path);
+            amxc_string_clean(&supported_path_inst);
+            free(object_path);
         }
     } else {
         SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "failed to resolve path [%s]", path);
