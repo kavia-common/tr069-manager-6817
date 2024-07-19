@@ -1,31 +1,33 @@
 #!/bin/sh
 
-[ -f /etc/environment ] && source /etc/environment
-ulimit -c ${ULIMIT_CONFIGURATION:-0}
+. /usr/lib/amx/scripts/amx_init_functions.sh
+
 name="cwmp_plugin"
+datamodel_root="ManagementServer"
 
 case $1 in
-    start|boot)
-        source /etc/environment
-        LD_LIBRARY_PATH=/opt/prplos/usr/lib cwmp_plugin -D
+    boot)
+        export LD_LIBRARY_PATH=/opt/prplos/usr/lib
+        process_boot ${name} -D
         ;;
-    stop|shutdown)
-        if [ -f /var/run/cwmp_plugin.pid ]; then
-            kill `cat /var/run/cwmp_plugin.pid`
-        fi
+    start)
+        export LD_LIBRARY_PATH=/opt/prplos/usr/lib
+        process_start ${name} -D
         ;;
-    debuginfo)
-	ubus-cli "protected; ManagementServer.?"
+    stop)
+        process_stop ${name}
+        ;;
+    shutdown)
+        process_shutdown ${name}
         ;;
     restart)
         $0 stop
-        sleep 1
         $0 start
         ;;
-    log)
-	echo "TODO log cwmp_plugin"
-	;;
+    debuginfo)
+        process_debug_info ${datamodel_root}
+        ;;
     *)
-        echo "Usage : $0 [start|boot|stop|debuginfo|log]"
+        echo "Usage : $0 [start|boot|stop|shutdown|debuginfo|restart]"
         ;;
 esac
