@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.6 - 2024-07-20(06:15:35 +0000)
+
+### Other
+
+- - [amx] Failing to restart processes with init scripts
+
 ## Release v1.33.5 - 2024-07-19(14:05:44 +0000)
 
 ### Other
