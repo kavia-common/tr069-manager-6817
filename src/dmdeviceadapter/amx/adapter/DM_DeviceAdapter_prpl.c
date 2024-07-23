@@ -369,7 +369,6 @@ static int build_gpv_all_body(dm_amx_env_t* acs_info, UNUSED xmlNodePtr node_bod
             char* alias_path = NULL;
             char* param_value = NULL;
             uint32_t param_type = 0;
-            amxc_var_t* pm_var = NULL;
             const char* param_key = amxc_htable_it_get_key(hit);
             amxc_var_t* param_var = amxc_var_from_htable_it(hit);
             amxc_string_t param_name;
