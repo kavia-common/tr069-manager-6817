@@ -282,6 +282,7 @@ int DM_ENG_Device_SetParameterValues_Validate(dm_amx_env_t* amx, DM_ENG_Paramete
     u_int32_t flags = 0;
     int amxb_ret = 0;
     bool checkType = false;
+    bool acceptUnsignedIntAsBoolean = false;
     char* tempString = NULL;
     amxc_var_t* parameters = NULL;
     amxd_path_t obj_path;
@@ -319,6 +320,12 @@ int DM_ENG_Device_SetParameterValues_Validate(dm_amx_env_t* amx, DM_ENG_Paramete
             free(tempString);
         }
     }
+    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ACCEPTUNSIGNEDINTASBOOLEAN, &tempString) == 0) {
+        if(tempString) {
+            acceptUnsignedIntAsBoolean = atoi(tempString) ? true : false;
+            free(tempString);
+        }
+    }
     amxa_resolve_search_paths(amx->bus_ctx, amx->acl_rules, amxd_path_get(&obj_path, AMXD_OBJECT_TERMINATE));
 
     parameters = GETP_ARG(&obj_desc, "0.parameters");
@@ -333,10 +340,12 @@ int DM_ENG_Device_SetParameterValues_Validate(dm_amx_env_t* amx, DM_ENG_Paramete
             SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Parameter Not found");
         }
 
-        if(checkType &&
-           (parameterList[*i]->type != DM_ENG_Device_Common_ConvertParameterType(GET_INT32(parameter, "type_id")))) {
-            DM_ENG_Device_SetParameterValuesFault(faultsList, parameterList[*i]->parameterName, DM_ENG_INVALID_PARAMETER_TYPE, nbFaults);
-            SetErrorGotoStop(DM_ENG_INVALID_ARGUMENTS, "Wrong type");
+        DM_ENG_ParameterType dmType = DM_ENG_Device_Common_ConvertParameterType(GET_INT32(parameter, "type_id"));
+        if(checkType && (parameterList[*i]->type != dmType)) {
+            if(!acceptUnsignedIntAsBoolean || (parameterList[*i]->type != DM_ENG_ParameterType_UINT) || (dmType != DM_ENG_ParameterType_BOOLEAN)) {
+                DM_ENG_Device_SetParameterValuesFault(faultsList, parameterList[*i]->parameterName, DM_ENG_INVALID_PARAMETER_TYPE, nbFaults);
+                SetErrorGotoStop(DM_ENG_INVALID_ARGUMENTS, "Wrong type");
+            }
         }
 
         if(DM_ENG_Device_SetParameterValues_CheckForDuplicates(parameterList, *i, faultsList, nbFaults)) {
