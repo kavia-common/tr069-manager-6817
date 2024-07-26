@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.9 - 2024-07-26(09:48:18 +0000)
+
+### Other
+
+- Save datamodel immediatly when an upgrade is in progress
+
 ## Release v1.33.8 - 2024-07-24(09:50:23 +0000)
 
 ### Other
