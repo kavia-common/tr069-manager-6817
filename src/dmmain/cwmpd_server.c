@@ -60,6 +60,7 @@
 #include <dmengine/DM_ENG_RPCInterface.h>
 #include <dmcommon/DM_GlobalDefs.h>
 #include <dmcom/dm_com.h>
+#include <debug/user_trace.h>
 
 // Size of the CPE URL
 #define CPE_URL_SIZE (16)
@@ -244,21 +245,25 @@ static int cwmp_server_handle_request(struct lws* wsi, char* in, int len) {
 
     if(len < 1) {
         lws_return_http_status(wsi, HTTP_STATUS_BAD_REQUEST, "Bad REQUEST");
+        USER_TRACE_WARNING(TRACE_CAT_SYSTEM, "[Authentication][tr69:ConnectionRequest][FAILED] <Bad REQUEST>");
         goto exit;
     }
 
     if(cwmp_server_check_availability() != 0) {
         lws_return_http_status(wsi, HTTP_STATUS_SERVICE_UNAVAILABLE, HTTP_STRING_SVR_BUSY);
+        USER_TRACE_WARNING(TRACE_CAT_SYSTEM, "[Authentication][tr69:ConnectionRequest][FAILED] <Service Unavailable>");
         goto exit;
     }
 
     if(cwmp_server_validate_uri(wsi, requested_uri) != 0) {
         lws_return_http_status(wsi, HTTP_STATUS_NOT_FOUND, "Service Not Found");
+        USER_TRACE_WARNING(TRACE_CAT_SYSTEM, "[Authentication][tr69:ConnectionRequest][FAILED] <Wrong path>");
         goto exit;
     }
 
     if(cwmp_server_validate_authentication(wsi, requested_uri) == cwmp_status_ko) {
         SAH_TRACEZ_INFO("CWMPD", "Ask ACS to provide authentication headers");
+        USER_TRACE_WARNING(TRACE_CAT_SYSTEM, "[Authentication][tr69:ConnectionRequest][FAILED] <Authentification failed>");
         cwmp_server_reply_http_unauthorized(wsi);
         if(lws_http_transaction_completed(wsi)) {
             rc = -1;
@@ -267,10 +272,12 @@ static int cwmp_server_handle_request(struct lws* wsi, char* in, int len) {
         //authentication OK, schedule a new session
         if(DM_ENG_RequestConnection(DM_ENG_EntityType_ACS) == 0) {
             // Send a HTTP response with either the code 200 or 204
+            USER_TRACE_WARNING(TRACE_CAT_SYSTEM, "[Authentication][tr69:ConnectionRequest][SUCCESS]");
             cwmp_server_reply_http_no_content(wsi);
             rc = -1;//close TCP connection immediately
         } else {
             lws_return_http_status(wsi, HTTP_STATUS_SERVICE_UNAVAILABLE, HTTP_STRING_SVR_BUSY);
+            USER_TRACE_WARNING(TRACE_CAT_SYSTEM, "[Authentication][tr69:ConnectionRequest][FAILED] <Service Unavailable>");
         }
     }
 exit:
