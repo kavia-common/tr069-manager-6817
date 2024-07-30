@@ -279,6 +279,7 @@ static const char* DM_ENG_Device_ConvertToObjectName(DM_ENG_SystemParameter_t pa
     case DM_ENG_PERIODICINFORMTIME:
     case DM_ENG_PERIODICINFORMENABLE:
     case DM_ENG_PERIODICINFORMCOUNTER:
+    case DM_ENG_INFORMFAILURECOUNT:
     case DM_ENG_PARAMETERKEY:
     case DM_ENG_ENABLECWMP:
     case DM_ENG_DEFAULTACTIVENOTIFICATIONTHROTTLE:
@@ -411,6 +412,7 @@ static const char* DM_ENG_Device_ConvertToParameterName(DM_ENG_SystemParameter_t
     case DM_ENG_REBOOTBYACS:                       return "RebootByACS";
     case DM_ENG_SESSIONSTATUS:                     return "SessionStatus";
     case DM_ENG_SESSIONSSINCEBOOT:                 return "SessionsSinceReboot";
+    case DM_ENG_INFORMFAILURECOUNT:                return "InformFailureCount";
     case DM_ENG_LASTSESSION:                       return "LastSession";
     case DM_ENG_SSLACCEPTSELFSIGNED:               return "SSLAcceptSelfSigned";
     case DM_ENG_SSLVERIFYHOSTNAME:                 return "SSLVerifyHostname";

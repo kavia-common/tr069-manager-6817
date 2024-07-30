@@ -983,6 +983,11 @@
             * @version 1.0
             */
             uint32 SessionsSinceReboot=0;
+          /**
+            * Number of unsuccesfull delivered inform since reboot
+            * @version 1.0
+            */
+            %read-only uint32 InformFailureCount=0;
         }
 
       /**
