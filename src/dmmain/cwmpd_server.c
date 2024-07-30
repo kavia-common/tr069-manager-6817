@@ -263,7 +263,7 @@ static int cwmp_server_handle_request(struct lws* wsi, char* in, int len) {
 
     if(cwmp_server_validate_authentication(wsi, requested_uri) == cwmp_status_ko) {
         SAH_TRACEZ_INFO("CWMPD", "Ask ACS to provide authentication headers");
-        USER_TRACE_WARNING(TRACE_CAT_SYSTEM, "[Authentication][tr69:ConnectionRequest][FAILED] <Authentification failed>");
+        USER_TRACE_WARNING(TRACE_CAT_SYSTEM, "[Authentication][tr69:ConnectionRequest][FAILED] <Authentication failed>");
         cwmp_server_reply_http_unauthorized(wsi);
         if(lws_http_transaction_completed(wsi)) {
             rc = -1;
