@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.11 - 2024-07-30(13:56:41 +0000)
+
+### Other
+
+- Add counter of Inform retries
+
 ## Release v1.33.10 - 2024-07-30(10:44:21 +0000)
 
 ### Other
