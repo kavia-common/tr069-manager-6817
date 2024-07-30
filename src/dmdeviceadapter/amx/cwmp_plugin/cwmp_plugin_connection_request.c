@@ -89,6 +89,11 @@
 #define CPE_URL_SIZE (16)
 
 static bool conn_req_path_created = false;
+static bool cwmpd_start_avoided = false;
+
+bool cwmp_plugin_cwmpd_start_avoided(void) {
+    return cwmpd_start_avoided;
+}
 
 // GCOVR_EXCL_START
 
@@ -427,7 +432,20 @@ void _updateConnectionRequestURL(UNUSED const char* const sig_name,
             cwmp_plugin_create_conreq_path(host);
             conn_req_path_created = true;
         }
-        open_cwmpd_listening_port();
+        if((get_cwmpd_subproc() == NULL) || !(get_cwmpd_subproc()->is_running)) {
+            /**
+             * If the cwmp_plugin init isn't done yet, and cwmpd is started directly, cwmpd will detect a URL change and send a unexpected bootstrap.
+             * Avoid the cwmpd start.
+             **/
+            if(cwmp_plugin_init_done() == true) {
+                start_cwmpd();
+            } else {
+                SAH_TRACEZ_INFO(ME, "cwmpd start avoided, init isn't done");
+                cwmpd_start_avoided = true;
+            }
+        } else {
+            open_cwmpd_listening_port();
+        }
     } else {
         close_cwmpd_listening_port();
     }

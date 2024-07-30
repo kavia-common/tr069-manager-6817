@@ -86,6 +86,7 @@ typedef struct _cwmp_plugin_app {
     amxd_dm_t* dm;
     amxo_parser_t* parser;
     amxb_bus_ctx_t* amxb_bus_ctx;
+    bool init_done;
 } cwmp_plugin_app_t;
 
 typedef void (* proc_ctrl_cb_t)(void* priv);
@@ -200,6 +201,9 @@ void _connreq_xmpp_connection_changed(const char* const sig_name,
                                       void* const priv);
 
 void cwmp_plugin_dm_save(void);
+
+bool cwmp_plugin_init_done(void);
+bool cwmp_plugin_cwmpd_start_avoided(void);
 
 #ifdef __cplusplus
 }

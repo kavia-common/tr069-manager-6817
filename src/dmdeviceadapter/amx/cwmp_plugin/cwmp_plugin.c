@@ -71,6 +71,10 @@ static cwmp_plugin_app_t app;
 static amxm_shared_object_t* fw_module = NULL;
 static amxp_timer_t* deferred_init_timer = NULL;
 
+bool cwmp_plugin_init_done(void) {
+    return app.init_done;
+}
+
 static char* cwmp_plugin_get_directory(amxo_parser_t* parser) {
     amxc_string_t dir;
     const char* odl_dir = GETP_CHAR(&parser->config, "odl.directory");
@@ -126,10 +130,13 @@ void cwmp_plugin_dm_save(void) {
 
 static void deferred_init_timer_cb(UNUSED amxp_timer_t* timer, UNUSED void* priv) {
     SAH_TRACEZ_IN(ME);
+    app.init_done = true;
     cwmp_plugin_netmodel_find_ip();
     smm_differed_init();
+    if(cwmp_plugin_cwmpd_start_avoided() == true) {
+        start_cwmpd();
+    }
     amxp_timer_delete(&deferred_init_timer);
-    start_cwmpd();
     SAH_TRACEZ_OUT(ME);
 }
 
@@ -181,6 +188,7 @@ static void cwmp_plugin_init(amxd_dm_t* dm, amxo_parser_t* parser) {
     SAH_TRACEZ_INFO(ME, "cwmp_plugin started");
     app.dm = dm;
     app.parser = parser;
+    app.init_done = false;
 
     amxc_array_t* uris = amxb_list_uris();
     const char* uri = (const char*) amxc_array_get_data_at(uris, 0);
