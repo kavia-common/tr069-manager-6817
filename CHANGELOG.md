@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.12 - 2024-07-31(06:51:45 +0000)
+
+### Other
+
+- PPP cdrouter tests are not starting on mxl-osp: no TR-069 inform
+
 ## Release v1.33.11 - 2024-07-30(13:56:41 +0000)
 
 ### Other
