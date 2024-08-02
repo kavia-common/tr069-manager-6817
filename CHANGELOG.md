@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.13 - 2024-08-02(15:00:59 +0000)
+
+### Other
+
+- Add dedicated log for value change of Periodic Inform Interval
+
 ## Release v1.33.12 - 2024-07-31(06:51:45 +0000)
 
 ### Other
