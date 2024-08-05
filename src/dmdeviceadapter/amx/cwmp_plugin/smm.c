@@ -279,6 +279,7 @@ static amxd_object_t* op_obj_get_by_id(uint32_t id) {
     amxc_llist_init(&paths);
     when_true((id == 0), stop);
     when_failed(amxd_dm_resolve_pathf(cwmp_plugin_get_dm(), &paths, "ManagementServer.SMM.DUStateChangeComplete.*.Operations.[ID==%u].", id), stop);
+    when_true(amxc_llist_is_empty(&paths), stop);
     obj_path = amxc_string_get(amxc_string_from_llist_it(amxc_llist_get_first(&paths)), 0);
     when_str_empty(obj_path, stop);
     obj = amxd_dm_findf(cwmp_plugin_get_dm(), obj_path, id);
