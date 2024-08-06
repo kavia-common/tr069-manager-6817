@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.15 - 2024-08-06(09:15:15 +0000)
+
+### Other
+
+- Fix amxb_get depth for GPV
+
 ## Release v1.33.14 - 2024-08-06(08:15:03 +0000)
 
 ### Other
