@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.16 - 2024-08-08(15:01:17 +0000)
+
+### Other
+
+- [TR069] Box answer with global error code 9005 iso 9003 for wrong path
+
 ## Release v1.33.15 - 2024-08-06(09:15:15 +0000)
 
 ### Other
