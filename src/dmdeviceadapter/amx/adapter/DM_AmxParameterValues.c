@@ -337,7 +337,7 @@ int DM_ENG_Device_SetParameterValues_Validate(dm_amx_env_t* amx, DM_ENG_Paramete
 
         if(amxc_var_is_null(parameter)) {
             DM_ENG_Device_SetParameterValuesFault(faultsList, parameterList[*i]->parameterName, DM_ENG_INVALID_PARAMETER_NAME, nbFaults);
-            SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Parameter Not found");
+            SetErrorGotoStop(DM_ENG_INVALID_ARGUMENTS, "Parameter Not found");
         }
 
         DM_ENG_ParameterType dmType = DM_ENG_Device_Common_ConvertParameterType(GET_INT32(parameter, "type_id"));
