@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.17 - 2024-08-09(12:46:00 +0000)
+
+### Other
+
+- Enable Translation for GPA, GPN, and GPV
+
 ## Release v1.33.16 - 2024-08-08(15:01:17 +0000)
 
 ### Other
