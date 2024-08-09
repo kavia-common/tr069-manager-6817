@@ -1353,6 +1353,37 @@
           }
         }
       }
+
+      /**
+        * The Mapping object is used to establish a translation rule that applies when the ACS utilizes GPA, GPV, or GPA RPCs.
+        * - For GPN and GPV, the ParameterPath will be translated.
+        * - For GPA, the Name will be translated.
+        * This translation occurs in a single direction, from the ACS to the CPE.
+        * @version 1.0
+        */
+      %protected %persistent object Mapping[] {
+          /**
+            * Alias of the mapping instance.
+            * @version 1.0
+            */
+            %protected %persistent %unique %key string Alias {
+                userflags %upc;
+            }
+          /**
+            * The source path that will be translated
+            * @version 1.0
+            */
+            %protected %persistent string Src {
+                userflags %upc;
+            }
+          /**
+            * The destination path that will be translated into
+            * @version 1.0
+            */
+            %protected %persistent string Dst {
+                userflags %upc;
+            }
+      }
     }
 }
 

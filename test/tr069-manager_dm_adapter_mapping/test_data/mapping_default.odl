@@ -1,0 +1,14 @@
+%populate {
+	object ManagementServer {
+		object Mapping {
+			instance add(0) {
+				parameter Src = "Device.Hosts.Host.*.X_TEST-COM.*";
+				parameter Dst = "Device.Hosts.Host.*.X_TEST-COM.";
+			}
+			instance add(0) {
+				parameter Src = "Device.Hosts.Host.*.X_TEST-COM_*";
+				parameter Dst = "Device.Hosts.Host.*.X_TEST-COM_DeviceName";
+			}
+		}
+	}
+}

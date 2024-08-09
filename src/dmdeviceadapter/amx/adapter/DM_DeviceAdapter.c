@@ -323,7 +323,7 @@ static xmlNodePtr xml_add_parameter_value_struct(xmlNodePtr node, const char* na
     return pvs_node;
 }
 
-static int build_gpv_all_body(dm_amx_env_t* acs_info, UNUSED xmlNodePtr node_body, amxc_var_t* get_result) {
+static int build_gpv_all_body(dm_amx_env_t* acs_info, xmlNodePtr node_body, amxc_var_t* get_result) {
     SAH_TRACEZ_IN("DM_DA");
     int error = 0;
     const char* path = "Device.";
@@ -385,6 +385,32 @@ static int build_gpv_all_body(dm_amx_env_t* acs_info, UNUSED xmlNodePtr node_bod
 
     SAH_TRACEZ_OUT("DM_DA");
     return error;
+}
+
+int DM_ENG_Device_GetMapping(amxc_var_t* data) {
+    int retval = -1;
+    dm_amx_env_t* system_info = NULL;
+    amxc_var_t get_result;
+    amxc_var_init(&get_result);
+
+    SAH_TRACEZ_IN("DM_DA");
+    if(data == NULL) {
+        SAH_TRACEZ_ERROR("DM_DA", "Invalid arg(s)");
+        goto stop;
+    }
+
+    system_info = DM_ENG_Device_GetSystemInfo();
+    SAH_TRACEZ_INFO("DM_DA", "Getting All Mappings");
+    if(amxb_get(system_info->bus_ctx, "ManagementServer.Mapping.", 0, &get_result, 10) != AMXB_STATUS_OK) {
+        SAH_TRACEZ_ERROR("DM_DA", "Could not get Mapping Object");
+        goto stop;
+    }
+    amxc_var_copy(data, &get_result);
+    retval = 0;
+stop:
+    amxc_var_clean(&get_result);
+    SAH_TRACEZ_OUT("DM_DA");
+    return retval;
 }
 
 int DM_ENG_Device_GetParameterValuesAll(xmlNodePtr node_body) {
