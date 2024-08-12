@@ -1,0 +1,12 @@
+{
+    "Initiator": "ACS",
+    "CommandKey": "240391",
+    "Operations": [
+        {
+            "Type": "Uninstall",
+            "UUID": "1234",
+            "Version": "v1.2",
+            "ExecutionEnvRef": "MyEnv"
+        }
+    ]
+}

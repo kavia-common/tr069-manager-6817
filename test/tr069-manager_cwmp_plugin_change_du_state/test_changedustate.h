@@ -58,7 +58,9 @@
 int test_changedustate_setup(void** state);
 int test_changedustate_teardown(void** state);
 
-void test_changedustate_ok_rpc_call(void** state);
+void test_changedustate_install_du(void** state);
+void test_changedustate_update_du(void** state);
+void test_changedustate_uninstall_du(void** state);
 void test_dscc_instance_delete(void** state);
 
 #endif // __TEST_CHANGEDUSTATE_H__

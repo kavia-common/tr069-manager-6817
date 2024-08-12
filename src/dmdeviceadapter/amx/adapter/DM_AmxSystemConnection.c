@@ -358,6 +358,8 @@ static const char* DM_ENG_Device_ConvertToObjectName(DM_ENG_SystemParameter_t pa
     case DM_ENG_GETPARAMETERVALUEREQUESTS:
     case DM_ENG_SESSIONSSINCEBOOT:
         return "Device.ManagementServer.Stats.";
+    case DM_ENG_SMM_MAPPING:
+        return "Device.ManagementServer.SMM.";
     default: break;
     }
     return NULL;
@@ -452,6 +454,7 @@ static const char* DM_ENG_Device_ConvertToParameterName(DM_ENG_SystemParameter_t
     case DM_ENG_ALLOWMULTIPLESCHEDULEINFORM:       return "AllowMultipleScheduleInform";
     case DM_ENG_VERIFYPARAMETERTYPE:               return "VerifyParameterType";
     case DM_ENG_ACCEPTUNSIGNEDINTASBOOLEAN:        return "AcceptUnsignedIntAsBoolean";
+    case DM_ENG_SMM_MAPPING:                       return "Mapping";
     default: break;
     }
     return NULL;

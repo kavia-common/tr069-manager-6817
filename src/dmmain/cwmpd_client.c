@@ -63,6 +63,7 @@
 #include <dmcom/dm_com.h>
 #include "dmmain/cwmpd.h"
 #include <dmengine/DM_ENG_RPCInterface.h>
+#include <dmengine/DM_ENG_Mapping.h>
 #include <dmcom/dm_com_digest.h>
 #include <stdlib.h>
 
@@ -105,7 +106,7 @@ static char* acs_server_path = NULL;              /* ACS server path */
 static char* acs_server_scheme = NULL;            /* ACS server connection scheme */
 int http_status = 0;                              /* ACS last http return code */
 static char* rcv_buf = NULL;                      /* Buffer for SOAP message received from ACS */
-static int rcv_buf_len = 0;                       /* SOAP buffer size */
+static size_t rcv_buf_len = 0;                    /* SOAP buffer size */
 static int session_timeout = 0;                   /* session timeout  */
 static char* pending_msg = NULL;                  /* SOAP message waiting to be sent to ACS */
 static char* session_cookie = NULL;               /* HTTP session Cookie if any */
@@ -365,7 +366,7 @@ static int cwmp_client_recieve_raw_cb(struct lws* wsi) {
 }
 
 static int cwmp_client_receive_http_cb(void* in, size_t len) {
-    int rlen = (int) len;
+    size_t rlen = len;
     const char* msg = (const char*) in;
     if(!rcv_buf) { // create the buffer
         rcv_buf = malloc((rlen + 1) * sizeof(char));
@@ -394,6 +395,7 @@ static int cwmp_client_http_complete_cb() {
         // check if we have a soap message
         if(strstr(rcv_buf, DM_COM_ENV_TAG)) {
             DM_SoapXml SoapMsg;
+            DM_ENG_Mapping_smm_translate(&rcv_buf, &rcv_buf_len, true);
             DM_HttpCheckNamespace(rcv_buf, rcv_buf_len);
             DM_InitSoapMsgReceived(&SoapMsg);
             if(DM_OK == DM_AnalyseSoapMessage(&SoapMsg, rcv_buf, TYPE_ACS, false)) {
@@ -763,6 +765,8 @@ int DM_SendHttpMessage(const char* soap_msg) {
     if(pending_msg != soap_msg) {
         CWMPD_FREE(pending_msg);
         pending_msg = strdup(soap_msg);
+        size_t pending_msg_len = strlen(pending_msg);
+        DM_ENG_Mapping_smm_translate(&pending_msg, &pending_msg_len, false);
         DM_UpdateRetryBuffer(soap_msg, msg_len);
     }
 

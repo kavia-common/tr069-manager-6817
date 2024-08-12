@@ -68,22 +68,12 @@
 #include <amxo/amxo_save.h>
 
 int smm_init(void);
-int smm_clean(void);
-void smm_differed_init(void);
 
 /* methods, events, actions */
 amxd_status_t _changeDUState(amxd_object_t* object,
                              amxd_function_t* func,
                              amxc_var_t* args,
                              amxc_var_t* ret);
-
-void _dscc_added(const char* const sig_name,
-                 const amxc_var_t* const data,
-                 void* const priv);
-
-void _dscc_op_added(const char* const sig_name,
-                    const amxc_var_t* const data,
-                    void* const priv);
 
 void _dscc_op_done(const char* const sig_name,
                    const amxc_var_t* const data,

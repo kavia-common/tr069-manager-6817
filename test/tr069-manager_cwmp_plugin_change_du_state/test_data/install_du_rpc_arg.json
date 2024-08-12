@@ -1,0 +1,14 @@
+{
+    "Initiator": "ACS",
+    "CommandKey": "240391",
+    "Operations": [
+        {
+            "Type": "Install",
+            "URL": "my_url.com",
+            "UUID": "1234",
+            "Username": "my_username",
+            "Password": "my_password",
+            "ExecutionEnvRef": "MyEnv"
+        }
+    ]
+}

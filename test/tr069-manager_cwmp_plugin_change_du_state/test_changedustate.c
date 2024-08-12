@@ -81,7 +81,35 @@
 #include "smm.h"
 #include "test_changedustate.h"
 
+typedef struct _op_result_t {
+    amxd_status_t amxd_status;
+    uint32_t operationId;
+} op_result_t;
+
 static const char* odl_defs = "../../src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-definition.odl";
+static const char* softwaremodules_odl = "./test_data/softwaremodules.odl";
+static op_result_t op_result = {0};
+
+amxd_status_t _softwaremodules_install_update_uninstall_du(amxd_object_t* obj,
+                                                           amxd_function_t* func,
+                                                           amxc_var_t* args,
+                                                           amxc_var_t* ret);
+
+amxd_status_t _softwaremodules_install_update_uninstall_du(UNUSED amxd_object_t* obj,
+                                                           UNUSED amxd_function_t* func,
+                                                           UNUSED amxc_var_t* args,
+                                                           amxc_var_t* ret) {
+
+    amxd_status_t status = op_result.amxd_status;
+
+    amxc_var_t* tmp = NULL;
+    amxc_var_set_type(ret, AMXC_VAR_ID_LIST);
+    amxc_var_add(uint32_t, ret, op_result.operationId);
+    tmp = amxc_var_add(amxc_htable_t, ret, NULL);
+    amxc_var_add_key(uint32_t, tmp, "OperationId", op_result.operationId);
+    amxc_var_dump(ret, STDOUT_FILENO);
+    return status;
+}
 
 void __wrap_cwmp_plugin_transfer_init() {
     //Does nothing
@@ -97,8 +125,13 @@ int test_changedustate_setup(UNUSED void** state) {
 
     amxut_resolve_function("cwmp_plugin_main", _cwmp_plugin_main);
     amxut_resolve_function("ManagementServer.SMM.changeDUState", _changeDUState);
+    amxut_resolve_function("dscc_op_done", _dscc_op_done);
+    amxut_resolve_function("CWMP_SoftwareModules.InstallDU", _softwaremodules_install_update_uninstall_du);
+    amxut_resolve_function("CWMP_SoftwareModules.UpdateDU", _softwaremodules_install_update_uninstall_du);
+    amxut_resolve_function("CWMP_SoftwareModules.UninstallDU", _softwaremodules_install_update_uninstall_du);
 
     amxut_dm_load_odl(odl_defs);
+    amxut_dm_load_odl(softwaremodules_odl);
 
     const char* default_odl = (const char*) *state;
 
@@ -120,7 +153,7 @@ int test_changedustate_teardown(UNUSED void** state) {
     return amxut_bus_teardown(state);
 }
 
-void test_changedustate_ok_rpc_call(UNUSED void** state) {
+void test_changedustate_install_du(UNUSED void** state) {
     amxd_object_t* smm = NULL;
     amxd_status_t status = amxd_status_ok;
     amxc_var_t* args = NULL;
@@ -128,7 +161,9 @@ void test_changedustate_ok_rpc_call(UNUSED void** state) {
     amxc_var_init(&ret);
     smm = amxd_dm_findf(amxut_bus_dm(), "ManagementServer.SMM.");
     assert_non_null(smm);
-    args = amxut_util_read_json_from_file("./test_data/rpc_arg_01.json");
+    args = amxut_util_read_json_from_file("./test_data/install_du_rpc_arg.json");
+    op_result.amxd_status = amxd_status_ok;
+    op_result.operationId = 1;
     status = amxd_object_invoke_function(smm, "changeDUState", args, &ret);
     amxc_var_delete(&args);
     amxc_var_clean(&ret);
@@ -139,7 +174,7 @@ void test_changedustate_ok_rpc_call(UNUSED void** state) {
     amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.", "Initiator", "ACS");
     amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.", "Status", "");
 
-    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.1.", "Status", "");
+    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.1.", "Status", "In Progress");
     amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.1.", "Type", "Install");
     amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.1.", "URL", "my_url.com");
     amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.1.", "Username", "my_username");
@@ -147,26 +182,69 @@ void test_changedustate_ok_rpc_call(UNUSED void** state) {
     amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.1.", "UUID", "1234");
     amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.1.", "ExecutionEnvRef", "MyEnv");
     amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.1.", "Version", "");
-
-    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.2.", "Status", "");
-    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.2.", "Type", "Update");
-    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.2.", "URL", "my_url.com");
-    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.2.", "Username", "");
-    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.2.", "Password", "");
-    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.2.", "UUID", "1234");
-    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.2.", "ExecutionEnvRef", "");
-    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.2.", "Version", "v1.2");
-
-    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.3.", "Status", "");
-    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.3.", "Type", "Uninstall");
-    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.3.", "URL", "");
-    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.3.", "Username", "");
-    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.3.", "Password", "");
-    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.3.", "UUID", "1234");
-    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.3.", "ExecutionEnvRef", "MyEnv");
-    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.3.", "Version", "v1.2");
 }
 
+void test_changedustate_update_du(UNUSED void** state) {
+    amxd_object_t* smm = NULL;
+    amxd_status_t status = amxd_status_ok;
+    amxc_var_t* args = NULL;
+    amxc_var_t ret;
+    amxc_var_init(&ret);
+    smm = amxd_dm_findf(amxut_bus_dm(), "ManagementServer.SMM.");
+    assert_non_null(smm);
+    args = amxut_util_read_json_from_file("./test_data/update_du_rpc_arg.json");
+    op_result.amxd_status = amxd_status_ok;
+    op_result.operationId = 1;
+    status = amxd_object_invoke_function(smm, "changeDUState", args, &ret);
+    amxc_var_delete(&args);
+    amxc_var_clean(&ret);
+    assert_int_equal(status, amxd_status_ok);
+    amxut_bus_handle_events();
+
+    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.", "CommandKey", "240391");
+    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.", "Initiator", "ACS");
+    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.", "Status", "");
+
+    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.1.", "Status", "In Progress");
+    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.1.", "Type", "Update");
+    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.1.", "URL", "my_url.com");
+    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.1.", "Username", "");
+    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.1.", "Password", "");
+    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.1.", "UUID", "1234");
+    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.1.", "ExecutionEnvRef", "");
+    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.1.", "Version", "v1.2");
+}
+
+void test_changedustate_uninstall_du(UNUSED void** state) {
+    amxd_object_t* smm = NULL;
+    amxd_status_t status = amxd_status_ok;
+    amxc_var_t* args = NULL;
+    amxc_var_t ret;
+    amxc_var_init(&ret);
+    smm = amxd_dm_findf(amxut_bus_dm(), "ManagementServer.SMM.");
+    assert_non_null(smm);
+    args = amxut_util_read_json_from_file("./test_data/uninstall_du_rpc_arg.json");
+    op_result.amxd_status = amxd_status_ok;
+    op_result.operationId = 1;
+    status = amxd_object_invoke_function(smm, "changeDUState", args, &ret);
+    amxc_var_delete(&args);
+    amxc_var_clean(&ret);
+    assert_int_equal(status, amxd_status_ok);
+    amxut_bus_handle_events();
+
+    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.", "CommandKey", "240391");
+    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.", "Initiator", "ACS");
+    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.", "Status", "");
+
+    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.1.", "Status", "In Progress");
+    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.1.", "Type", "Uninstall");
+    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.1.", "URL", "");
+    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.1.", "Username", "");
+    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.1.", "Password", "");
+    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.1.", "UUID", "1234");
+    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.1.", "ExecutionEnvRef", "MyEnv");
+    amxut_dm_param_equals(cstring_t, "ManagementServer.SMM.DUStateChangeComplete.1.Operations.1.", "Version", "v1.2");
+}
 
 void test_dscc_instance_delete(UNUSED void** state) {
     amxc_var_t ret;

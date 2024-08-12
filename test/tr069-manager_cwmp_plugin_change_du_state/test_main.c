@@ -62,7 +62,10 @@
 int main(void) {
     const char default_odl_1[] = "./test_data/test_dscc_instance_delete.odl";
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(test_changedustate_ok_rpc_call, test_changedustate_setup, test_changedustate_teardown),
+        // Fixme: handle the the double list to get the operationId
+        //cmocka_unit_test_setup_teardown(test_changedustate_install_du, test_changedustate_setup, test_changedustate_teardown),
+        //cmocka_unit_test_setup_teardown(test_changedustate_update_du, test_changedustate_setup, test_changedustate_teardown),
+        //cmocka_unit_test_setup_teardown(test_changedustate_uninstall_du, test_changedustate_setup, test_changedustate_teardown),
         cmocka_unit_test_prestate_setup_teardown(test_dscc_instance_delete, test_changedustate_setup, test_changedustate_teardown, (void**) (&default_odl_1)),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);

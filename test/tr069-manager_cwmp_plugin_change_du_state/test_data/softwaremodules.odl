@@ -1,0 +1,20 @@
+%define {
+    object CWMP_SoftwareModules {
+    %async uint32 InstallDU(%in %mandatory %strict string URL,
+                    %in %strict string UUID,
+                    %in %strict string Username,
+                    %in %strict string Password,
+                    %in %strict string ExecutionEnvRef
+                    );
+    %async uint32 UpdateDU(%in %strict string URL,
+                    %in %strict string UUID,
+                    %in %strict string Username,
+                    %in %strict string Password,
+                    %in %strict string Version
+                    );
+    %async uint32 UninstallDU(%in %mandatory %strict string UUID,
+                    %in %strict string Version,
+                    %in %strict string ExecutionEnvRef
+                    );
+    }
+}

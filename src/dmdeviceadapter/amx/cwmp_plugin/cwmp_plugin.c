@@ -132,7 +132,6 @@ static void deferred_init_timer_cb(UNUSED amxp_timer_t* timer, UNUSED void* priv
     SAH_TRACEZ_IN(ME);
     app.init_done = true;
     cwmp_plugin_netmodel_find_ip();
-    smm_differed_init();
     if(cwmp_plugin_cwmpd_start_avoided() == true) {
         start_cwmpd();
     }
@@ -269,7 +268,6 @@ int _cwmp_plugin_main(int reason, amxd_dm_t* dm, amxo_parser_t* parser) {
         break;
     case AMXO_STOP: // STOP
         transfers_clean();
-        smm_clean();
         cwmp_plugin_exit(dm, parser);
         break;
     default:
