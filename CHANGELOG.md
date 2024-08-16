@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.18 - 2024-08-16(12:33:05 +0000)
+
+### Other
+
+- Add SMM Mapping and Fix issues on TR157
+
 ## Release v1.33.17 - 2024-08-09(12:46:00 +0000)
 
 ### Other
