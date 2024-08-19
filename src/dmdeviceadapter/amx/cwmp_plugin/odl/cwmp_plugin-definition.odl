@@ -509,7 +509,9 @@
             * if 1, the host name in the certificate will be checked
             * @version 1.0
             */
-            %persistent bool SSLVerifyHostname;
+            %persistent bool SSLVerifyHostname {
+                default true;
+            }
 
           /**
             * This parameter changes the behavior of certificate verification:

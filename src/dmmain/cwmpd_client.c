@@ -770,20 +770,20 @@ int DM_SendHttpMessage(const char* soap_msg) {
         DM_UpdateRetryBuffer(soap_msg, msg_len);
     }
 
-    if(acs_server_ip == NULL) {
+    if(acs_server_host == NULL) {
         return -1;
     } else {
-        lws_connect_info.address = acs_server_ip;
+        lws_connect_info.address = acs_server_host;
         // link : https://www.rfc-editor.org/rfc/rfc7230#section-5.4
         //work arround the problem of the broken pipelining
         //on TLS this work around doesnt work?
         //again the only solution is to use lws internal DNS handler
         //check https://github.com/warmcat/libwebsockets/issues/2575
-        lws_connect_info.host = acs_server_ip;
-        lws_connect_info.origin = acs_server_ip;
+        lws_connect_info.host = acs_server_host;
+        lws_connect_info.origin = acs_server_host;
         //try to send the message
         if(!lws_client_connect_via_info(&lws_connect_info)) {
-            SAH_TRACEZ_ERROR("CWMPD", "Couldn't connect to %s", acs_server_ip);
+            SAH_TRACEZ_ERROR("CWMPD", "Couldn't connect to %s", acs_server_host);
             CWMPD_FREE(pending_msg);
             return -1;
         }
