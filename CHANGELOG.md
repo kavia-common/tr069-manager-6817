@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.19 - 2024-08-19(12:53:44 +0000)
+
+### Other
+
+- Wrong value for ManagementServer.SSLVerifyHostname
+
 ## Release v1.33.18 - 2024-08-16(12:33:05 +0000)
 
 ### Other
