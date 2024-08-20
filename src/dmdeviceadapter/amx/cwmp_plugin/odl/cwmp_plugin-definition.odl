@@ -1270,8 +1270,8 @@
       *
       * @version 1.0
       */
-      %protected object SMM {
-        %read-only string Mapping;
+      %protected %persistent object SMM {
+        %protected %persistent %read-only string Mapping;
         uint32 changeDUState(%in %mandatory string Initiator, %in %mandatory string CommandKey, %in %mandatory list Operations);
         object DUStateChangeComplete[] {
           %protected %unique %key string Alias;
