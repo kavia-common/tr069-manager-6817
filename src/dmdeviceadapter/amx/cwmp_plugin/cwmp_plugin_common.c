@@ -60,6 +60,48 @@
 #include <debug/sahtrace.h>
 #include <debug/sahtrace_macros.h>
 
+static const int _MAX_FAULT_MESSAGES = 20; // Index of the last element in the _FAULT_MESSAGES table (Vendor specific fault)
+
+static const char* _FAULT_MESSAGES[] =
+{
+    "Method not supported",                             // 9000
+    "Request denied (no reason specified)",             // 9001
+    "Internal error",                                   // 9002
+    "Invalid arguments",                                // 9003
+    "Resources exceeded",                               // 9004
+    "Invalid parameter name",                           // 9005
+    "Invalid parameter type",                           // 9006
+    "Invalid parameter value",                          // 9007
+    "Attempt to set a non-writable parameter",          // 9008
+    "Notification request rejected",                    // 9009
+    "Download failure",                                 // 9010
+    "Upload failure",                                   // 9011
+    "File transfer server authentication failure",      // 9012
+    "Unsupported protocol for file transfer",           // 9013
+    "Download failure: unable to join multicast group", // 9014
+    "Download failure: unable to contact file server",  // 9015
+    "Download failure: unable to access file",          // 9016
+    "Download failure: unable to complete download",    // 9017
+    "Download failure: file corrupted",                 // 9018
+    "Download failure: file authentication failure",    // 9019
+    "Vendor specific fault"                             // 9800 - 9899
+};
+
+/**
+ * @param code Fault code
+ * @return The corresponding fault string
+ */
+const char* cwmp_plugin_getFaultString(int code) {
+    const char* res = NULL;
+    int i = code - 9000;
+    if((i >= 0) && (i < _MAX_FAULT_MESSAGES)) {
+        res = _FAULT_MESSAGES[i];
+    } else if((i >= 800) && (i <= 899)) {
+        res = _FAULT_MESSAGES[_MAX_FAULT_MESSAGES];
+    }
+    return res;
+}
+
 amxb_bus_ctx_t* get_bus_ctx(const char* inpath) {
     amxb_bus_ctx_t* bus_ctx = NULL;
     amxd_path_t path;

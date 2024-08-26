@@ -216,8 +216,8 @@ stop:
 }
 
 static void filetransfer_download_finished(const char* path) {
-    const char* fileType = NULL;
-    const char* targetFileName = NULL;
+    char* fileType = NULL;
+    char* targetFileName = NULL;
     const char* script = NULL;
     amxd_object_t* transfer = amxd_dm_findf(cwmp_plugin_get_dm(), "%s", path);
 
@@ -240,6 +240,8 @@ static void filetransfer_download_finished(const char* path) {
         SAH_TRACEZ_ERROR(ME, "Failed to start task [%s %s]", script, targetFileName);
     }
 stop:
+    free(fileType);
+    free(targetFileName);
     return;
 }
 
@@ -586,6 +588,7 @@ static void update_transfer_obj(amxd_object_t* transfer_obj,
     }
     if(fault_code != NULL) {
         amxd_trans_set_value(uint32_t, &trans, "FaultCode", *fault_code);
+        amxd_trans_set_value(cstring_t, &trans, "FaultString", cwmp_plugin_getFaultString((int) *fault_code));
     }
     amxd_trans_apply(&trans, cwmp_plugin_get_dm());
 
@@ -638,6 +641,9 @@ static void firmwareimage_notification(UNUSED const char* const sig_name,
        (strcmp(status, "ActivationFailed") == 0)) {
         amxc_ts_t tsp;
         fault_code = 9010;
+        if(strcmp(bootFailureLog, "(67) Error") == 0) {
+            fault_code = 9012;
+        }
         if(strcmp(bootFailureLog, "Protocol not supported") == 0) {
             fault_code = 9013;
         }
@@ -678,9 +684,9 @@ static int firmwareimage_del_subscription(amxd_object_t* transfer_obj) {
 
 static int firmwareimage_download(amxd_object_t* transfer_obj) {
     int retval = -1;
-    const char* url = NULL;
-    const char* username = NULL;
-    const char* password = NULL;
+    char* url = NULL;
+    char* username = NULL;
+    char* password = NULL;
     amxc_var_t args;
     amxc_var_init(&args);
 
@@ -704,6 +710,9 @@ static int firmwareimage_download(amxd_object_t* transfer_obj) {
     when_failed_trace(retval, stop, ERROR, "Failed to Call %sDownload()", DEVICEINFO_FIRMWAREIMAGE);
 
 stop:
+    free(url);
+    free(username);
+    free(password);
     amxc_var_clean(&args);
     return retval;
 }

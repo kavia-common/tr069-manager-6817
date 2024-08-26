@@ -185,6 +185,8 @@ int cwmp_proc_ctx_new(cwmp_proc_ctx_t** ctx,
                       proc_ctrl_clean_cb_t clean_cb,
                       void* priv);
 
+const char* cwmp_plugin_getFaultString(int code);
+
 amxb_bus_ctx_t* get_bus_ctx(const char* inpath);
 
 int cwmp_plugin_add_subscription(const char* path, const char* filter, amxp_slot_fn_t cb);

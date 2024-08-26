@@ -1,0 +1,21 @@
+%define {
+    object DeviceInfo {
+        object FirmwareImage [] {
+            string Alias;
+            string Status;
+            string BootFailureLog;
+            void Download(%in %mandatory string URL, %in %mandatory bool AutoActivate, %in string Username, %in string Password);
+        }
+    }
+}
+
+%populate {
+    object "DeviceInfo" {
+        object FirmwareImage {
+            instance add (1, "active"){
+                parameter Status = "";
+                parameter BootFailureLog = "";
+            }
+        }
+    }
+}
