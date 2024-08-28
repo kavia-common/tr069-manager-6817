@@ -185,8 +185,7 @@ exit:
 
 static void cwmp_plugin_init(amxd_dm_t* dm, amxo_parser_t* parser) {
     SAH_TRACEZ_INFO(ME, "cwmp_plugin started");
-    app.dm = dm;
-    app.parser = parser;
+    cwmp_plugin_set_app(dm, parser);
     app.init_done = false;
 
     amxc_array_t* uris = amxb_list_uris();
@@ -208,7 +207,7 @@ static void cwmp_plugin_init(amxd_dm_t* dm, amxo_parser_t* parser) {
     load_fw_controller();
     cwmp_plugin_netmodel_init();
     cwmp_plugin_transfer_init();
-    cwmp_plugin_manageableDevice_init();
+    cwmp_plugin_manageabledevice_init();
 }
 
 static void cwmp_plugin_exit(UNUSED amxd_dm_t* dm,
@@ -218,7 +217,7 @@ static void cwmp_plugin_exit(UNUSED amxd_dm_t* dm,
     app.amxb_bus_ctx = NULL;
     stop_cwmpd();
     cwmp_plugin_netmodel_cleanup();
-    cwmp_plugin_manageableDevice_clean();
+    cwmp_plugin_manageabledevice_clean();
     cwmp_plugin_transfer_clean();
     unsetenv("AMXB_URI");
     unsetenv("AMXB_BACKEND");
@@ -235,6 +234,11 @@ void cwmp_plugin_netmodel_init(void) {
 void cwmp_plugin_netmodel_cleanup(void) {
     cwmp_plugin_netmodel_close_queries();
     netmodel_cleanup();
+}
+
+void cwmp_plugin_set_app(amxd_dm_t* dm, amxo_parser_t* parser) {
+    app.dm = dm;
+    app.parser = parser;
 }
 
 amxd_dm_t* cwmp_plugin_get_dm(void) {

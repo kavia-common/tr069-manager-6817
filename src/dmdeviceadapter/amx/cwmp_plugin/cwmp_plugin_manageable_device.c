@@ -69,12 +69,36 @@
 #define DEVICES_DEVICE_PATH             DEVICES_PATH "Device."
 #define HOSTS_PATH                      "Hosts."
 #define HOST_HOSTS_PATH                 HOSTS_PATH "Host."
+#define DM_FILTER_HOST_PHYS_CHANGED     "(notification in ['dm:object-changed']) and contains('parameters.PhysAddress')"
 
-#define GMAP_QUERY_NAME                 "tr069-manager"
+#define GMAP_QUERY_NAME                 "tr069-manager-active"
 #define GMAP_QUERY_TAG                  "manageable && .Active != 0"
 
 static gmap_query_t* manageable_gmap_query = NULL;
 static amxp_timer_t* retry_timer = NULL;
+
+static amxc_llist_t md_requests;
+
+typedef struct {
+    amxc_llist_it_t it;
+    amxc_var_t* deviceInfo;
+} md_cache_context_t;
+
+static char* cwmp_plugin_get_matching_path(const amxc_htable_t* htable, const char* host_path) {
+    char* output_key = NULL;
+
+    amxc_htable_iterate(hit, htable) {
+        const char* key = amxc_htable_it_get_key(hit);
+        amxc_var_t* host = amxc_var_from_htable_it(hit);
+        const char* path = GET_CHAR(host, "Host");
+
+        if(key && path && strstr(path, host_path)) {
+            output_key = strdup(key);
+            break;
+        }
+    }
+    return output_key;
+}
 
 static int cwmp_plugin_search_for_manageable_device(const char* host_path, char** manageable_device_path) {
     int ret = -1;
@@ -89,17 +113,9 @@ static int cwmp_plugin_search_for_manageable_device(const char* host_path, char*
     when_failed_trace(amxb_get(bus_ctx, MANAGEABLE_DEVICE_PATH "*.", 1, &get, 10), stop, ERROR, "Failed to get " MANAGEABLE_DEVICE_PATH);
 
     htable = amxc_var_constcast(amxc_htable_t, GETI_ARG(&get, 0));
-    amxc_htable_iterate(hit, htable) {
-        const char* key = amxc_htable_it_get_key(hit);
-        amxc_var_t* host = amxc_var_from_htable_it(hit);
-        const char* path = GET_CHAR(host, "Host");
+    *manageable_device_path = cwmp_plugin_get_matching_path(htable, host_path);
 
-        if(key && path && strstr(path, host_path)) {
-            *manageable_device_path = strdup(key);
-            ret = 0;
-            goto stop;
-        }
-    }
+    ret = 0;
 stop:
     amxc_var_clean(&get);
     return ret;
@@ -122,10 +138,11 @@ stop:
 
 static int cwmp_plugin_add_manageable_host(amxd_object_t* inst, const char* host) {
     int ret = -1;
+    char* hosts = NULL;
     amxc_string_t new_host_val;
     amxc_string_init(&new_host_val, 0);
 
-    const char* hosts = amxd_object_get_cstring_t(inst, "Host", NULL);
+    hosts = amxd_object_get_cstring_t(inst, "Host", NULL);
     when_null(hosts, stop);
 
     when_false((strstr(hosts, host) == NULL), exit);
@@ -134,6 +151,7 @@ static int cwmp_plugin_add_manageable_host(amxd_object_t* inst, const char* host
 exit:
     ret = 0;
 stop:
+    free(hosts);
     amxc_string_clean(&new_host_val);
     return ret;
 }
@@ -179,6 +197,7 @@ stop:
 
 static int cwmp_plugin_update_manageable_device(const char* manageable, const char* host) {
     int ret = -1;
+    char* hosts = NULL;
     amxd_object_t* inst = NULL;
     amxc_string_t manageable_hosts, new_manageable_hosts;
     amxc_llist_t string_list;
@@ -189,7 +208,7 @@ static int cwmp_plugin_update_manageable_device(const char* manageable, const ch
     inst = amxd_dm_findf(cwmp_plugin_get_dm(), "%s", manageable);
     when_null(inst, stop);
 
-    const char* hosts = amxd_object_get_cstring_t(inst, "Host", NULL);
+    hosts = amxd_object_get_cstring_t(inst, "Host", NULL);
     when_null(hosts, stop);
     amxc_string_setf(&manageable_hosts, "%s", hosts);
     when_failed(amxc_string_split_to_llist(&manageable_hosts, &string_list, ','), stop);
@@ -211,6 +230,7 @@ static int cwmp_plugin_update_manageable_device(const char* manageable, const ch
     }
     ret = 0;
 stop:
+    free(hosts);
     amxc_llist_clean(&string_list, amxc_string_list_it_free);
     amxc_string_clean(&new_manageable_hosts);
     amxc_string_clean(&manageable_hosts);
@@ -226,7 +246,8 @@ static int cwmp_plugin_add_manageable_device(amxc_var_t* manageableDeviceInfo) {
     const char* sn = GET_CHAR(manageableDeviceInfo, "SerialNumber");
     const char* pc = GET_CHAR(manageableDeviceInfo, "ProductClass");
     const char* host = GET_CHAR(manageableDeviceInfo, "Host");
-    when_false((moui && sn && pc && host), stop);
+    when_false_trace((moui && sn && pc && host), stop,
+                     ERROR, "Incomplete manageable device moui:[%s] sn:[%s] pc:[%s] host:[%s]", moui, sn, pc, host);
 
     inst = amxd_dm_findf(cwmp_plugin_get_dm(), "%s[ManufacturerOUI == '%s' && SerialNumber == '%s' && ProductClass == '%s'].",
                          MANAGEABLE_DEVICE_PATH, moui, sn, pc);
@@ -242,17 +263,17 @@ stop:
     return ret;
 }
 
-static int cwmp_plugin_search_for_host(const char* mac, char** host_path) {
+static int cwmp_plugin_search_for_hosts(const char* mac, amxc_llist_t* host_paths) {
     int ret = -1;
     amxb_bus_ctx_t* host_bus_ctx = NULL;
     const amxc_htable_t* htable = NULL;
     amxc_var_t* host = NULL;
     amxc_var_t hosts_object;
-    amxc_string_t host_string;
-    amxc_string_init(&host_string, 0);
+    amxc_string_t* host_string = NULL;
+
     amxc_var_init(&hosts_object);
     when_null(mac, stop);
-    when_null(host_path, stop);
+    when_null(host_paths, stop);
 
     host_bus_ctx = amxb_be_who_has(HOSTS_PATH);
     when_null(host_bus_ctx, stop);
@@ -266,19 +287,18 @@ static int cwmp_plugin_search_for_host(const char* mac, char** host_path) {
         amxc_var_log(host);
         const char* host_mac = GET_CHAR(host, "PhysAddress");
         if(key && host_mac && (strcasecmp(host_mac, mac) == 0)) {
-            amxc_string_setf(&host_string, "Device.%s", key);
-            *host_path = amxc_string_take_buffer(&host_string);
+            amxc_string_new(&host_string, 0);
+            amxc_string_setf(host_string, "Device.%s", key);
+            amxc_llist_append(host_paths, &host_string->it);
             ret = 0;
-            goto stop;
         }
     }
 stop:
-    amxc_string_clean(&host_string);
     amxc_var_clean(&hosts_object);
     return ret;
 }
 
-static int cwmp_plugin_search_for_host_by_device_key(const char* device_key, char** host_path) {
+static int cwmp_plugin_search_for_hosts_by_device_key(const char* device_key, amxc_llist_t* host_paths) {
     int ret = -1;
     const char* physaddress = NULL;
     amxb_bus_ctx_t* device_bus_ctx = NULL;
@@ -297,7 +317,7 @@ static int cwmp_plugin_search_for_host_by_device_key(const char* device_key, cha
     physaddress = GETP_CHAR(&device, "0.0.PhysAddress");
     when_null(physaddress, stop);
 
-    when_failed(cwmp_plugin_search_for_host(physaddress, host_path), stop);
+    when_failed(cwmp_plugin_search_for_hosts(physaddress, host_paths), stop);
     ret = 0;
 stop:
     amxc_string_clean(&device_path);
@@ -305,45 +325,125 @@ stop:
     return ret;
 }
 
-static int cwmp_plugin_set_manageable_deviceinfo(amxc_var_t* manageableDeviceInfo, amxc_var_t* device) {
+static int cwmp_plugin_set_manageable_deviceinfo(amxc_var_t* manageableDeviceInfo, amxc_var_t* device, const char* host_path) {
     int ret = -1;
-    char* host_path = NULL;
     when_true(amxc_htable_is_empty(amxc_var_constcast(amxc_htable_t, device)), stop);
 
-    const char* physaddress = GET_CHAR(device, "PhysAddress");
-    when_failed(cwmp_plugin_search_for_host(physaddress, &host_path), stop);
     amxc_var_add_key(cstring_t, manageableDeviceInfo, "Host", host_path);
+    amxc_var_add_key(cstring_t, manageableDeviceInfo, "Key", GET_CHAR(device, "Key"));
+    amxc_var_add_key(cstring_t, manageableDeviceInfo, "PhysAddress", GET_CHAR(device, "PhysAddress"));
     amxc_var_add_key(cstring_t, manageableDeviceInfo, "ManufacturerOUI", GET_CHAR(device, "OUI"));
     amxc_var_add_key(cstring_t, manageableDeviceInfo, "SerialNumber", GET_CHAR(device, "SerialNumber"));
     amxc_var_add_key(cstring_t, manageableDeviceInfo, "ProductClass", GET_CHAR(device, "ProductClass"));
     ret = 0;
 stop:
-    free(host_path);
     return ret;
 }
 
-static void cwmp_plugin_manageable_query(gmap_query_t* query, const char* key, amxc_var_t* device, gmap_query_action_t action) {
-    char* host_path = NULL;
+static md_cache_context_t* cwmp_plugin_md_cache_find(const char* parameter, const char* value) {
+    md_cache_context_t* md = NULL;
+    amxc_llist_for_each(it, &md_requests) {
+        md = amxc_container_of(it, md_cache_context_t, it);
+        const char* param = GET_CHAR(md->deviceInfo, parameter);
+        if(param && (0 == strcmp(param, value))) {
+            return md;
+        }
+    }
+    return NULL;
+}
+
+static void cwmp_plugin_md_cache_init(void) {
+    amxc_llist_init(&md_requests);
+}
+
+static void cwmp_plugin_md_cache_free(amxc_llist_it_t* it) {
+    md_cache_context_t* md = amxc_container_of(it, md_cache_context_t, it);
+    amxc_var_delete(&md->deviceInfo);
+    free(md);
+}
+
+static void cwmp_plugin_md_cache_cleanup(void) {
+    amxc_llist_clean(&md_requests, cwmp_plugin_md_cache_free);
+}
+
+static int cwmp_plugin_md_cache_create(md_cache_context_t** md, amxc_var_t* deviceInfo) {
+    int ret = -1;
+    when_null(md, stop);
+    *md = (md_cache_context_t*) calloc(1, sizeof(md_cache_context_t));
+    when_null_trace(*md, stop, ERROR, "alloc failed");
+    amxc_var_new(&(*md)->deviceInfo);
+    amxc_var_copy((*md)->deviceInfo, deviceInfo);
+    ret = 0;
+stop:
+    return ret;
+}
+
+static int cwmp_plugin_add_manageable_device_to_cache(amxc_var_t* manageableDeviceInfo) {
+    int ret = -1;
+    md_cache_context_t* md = NULL;
+    when_failed(cwmp_plugin_md_cache_create(&md, manageableDeviceInfo), stop);
+    amxc_llist_append(&md_requests, &md->it);
+    ret = 0;
+stop:
+    return ret;
+}
+
+static void cwmp_plugin_clean_manageable_device_cache(const char* key) {
+    md_cache_context_t* md = NULL;
+
+    md = cwmp_plugin_md_cache_find("Key", key);
+    when_null(md, exit);
+    amxc_llist_it_take(&md->it);
+    cwmp_plugin_md_cache_free(&md->it);
+exit:
+    return;
+}
+
+static void cwmp_plugin_manageable_query(gmap_query_t* query UNUSED, const char* key, amxc_var_t* device, gmap_query_action_t action) {
+    const char* host_path = NULL;
+    amxc_llist_t host_paths;
     char* manageable_device_path = NULL;
     amxc_var_t manageableDevice;
+
+    amxc_llist_init(&host_paths);
     amxc_var_init(&manageableDevice);
     amxc_var_set_type(&manageableDevice, AMXC_VAR_ID_HTABLE);
-    when_null_trace(key, stop, ERROR, "NULL argument");
-    when_null_trace(query, stop, ERROR, "%s - NULL argument", key);
+    when_null_trace(key, stop, ERROR, "key == NULL");
 
     if(action == gmap_query_expression_start_matching) {
-        when_null_trace(device, stop, ERROR, "%s - NULL argument", key);
-        when_failed(cwmp_plugin_set_manageable_deviceinfo(&manageableDevice, device), stop);
-        when_failed(cwmp_plugin_add_manageable_device(&manageableDevice), stop);
+        when_null_trace(device, stop, ERROR, "%s - device==NULL", key);
+        if(0 == cwmp_plugin_search_for_hosts(GET_CHAR(device, "PhysAddress"), &host_paths)) {
+            amxc_llist_for_each(it, &host_paths) {
+                host_path = amxc_string_get(amxc_string_from_llist_it(it), 0);
+                when_failed_trace(cwmp_plugin_set_manageable_deviceinfo(&manageableDevice, device, host_path), stop, ERROR,
+                                  "Failed to set manageable deviceinfo - device:[%s] host_path:[%s]", GET_CHAR(device, "PhysAddress"), host_path);
+                when_failed_trace(cwmp_plugin_add_manageable_device(&manageableDevice), stop, ERROR,
+                                  "Failed to add manageable device - device:[%s] host_path:[%s]", GET_CHAR(device, "PhysAddress"), host_path);
+                SAH_TRACEZ_INFO(ME, "Added manageable device - device:[%s] host_path:[%s]", GET_CHAR(device, "PhysAddress"), host_path);
+                amxc_var_clean(&manageableDevice);
+            }
+        } else {
+            when_failed_trace(cwmp_plugin_set_manageable_deviceinfo(&manageableDevice, device, NULL), stop, ERROR,
+                              "Failed to set manageable deviceinfo - device:[%s]", GET_CHAR(device, "PhysAddress"));
+            when_failed_trace(cwmp_plugin_add_manageable_device_to_cache(&manageableDevice), stop, ERROR,
+                              "Failed to add manageable device to cache - device:[%s]", GET_CHAR(device, "PhysAddress"));
+            SAH_TRACEZ_INFO(ME, "Added manageable device to cache - device:[%s]", GET_CHAR(device, "PhysAddress"));
+        }
     } else if(action == gmap_query_expression_stop_matching) {
-        when_failed(cwmp_plugin_search_for_host_by_device_key(key, &host_path), stop);
-        when_failed(cwmp_plugin_search_for_manageable_device(host_path, &manageable_device_path), stop);
-        when_failed(cwmp_plugin_update_manageable_device(manageable_device_path, host_path), stop);
+        cwmp_plugin_clean_manageable_device_cache(key);
+        when_failed(cwmp_plugin_search_for_hosts_by_device_key(key, &host_paths), stop);
+        amxc_llist_for_each(it, &host_paths) {
+            host_path = amxc_string_get(amxc_string_from_llist_it(it), 0);
+            when_failed(cwmp_plugin_search_for_manageable_device(host_path, &manageable_device_path), stop);
+            when_failed(cwmp_plugin_update_manageable_device(manageable_device_path, host_path), stop);
+            free(manageable_device_path);
+            manageable_device_path = NULL;
+        }
     }
 stop:
     amxc_var_clean(&manageableDevice);
     free(manageable_device_path);
-    free(host_path);
+    amxc_llist_clean(&host_paths, amxc_string_list_it_free);
     return;
 }
 
@@ -374,10 +474,53 @@ stop:
     return;
 }
 
-void cwmp_plugin_manageableDevice_init(void) {
+static void cwmp_plugin_host_phys_changed(UNUSED const char* const sig_name, const amxc_var_t* const data, UNUSED void* const priv) {
+    amxc_var_t* parameters = NULL;
+    amxc_var_t* phys_var = NULL;
+    const char* physaddress = NULL;
+    md_cache_context_t* md_cache = NULL;
+    const char* path = NULL;
+    amxc_var_t* host = NULL;
+    amxc_string_t host_string;
+    amxc_string_init(&host_string, 0);
+
+    when_null_trace(data, stop, ERROR, "data == NULL");
+    parameters = GET_ARG(data, "parameters");
+    when_null_trace(parameters, stop, ERROR, "data.parameters == NULL");
+    phys_var = GET_ARG(parameters, "PhysAddress");
+    when_null_trace(phys_var, stop, ERROR, "No PhysAddress parameter found");
+    physaddress = GET_CHAR(phys_var, "to");
+    when_str_empty(physaddress, stop);
+    SAH_TRACEZ_INFO(ME, "Host physical address updated - device:[%s]", physaddress);
+    md_cache = cwmp_plugin_md_cache_find("PhysAddress", physaddress);
+    when_null(md_cache, stop);
+    SAH_TRACEZ_INFO(ME, "Found device in cache - device:[%s]", physaddress);
+
+    path = GET_CHAR(data, "path");
+    when_str_empty(path, stop);
+
+    amxc_string_setf(&host_string, "Device.%s", path);
+    host = amxc_var_add_new_key(md_cache->deviceInfo, "Host");
+    amxc_var_push(cstring_t, host, amxc_string_take_buffer(&host_string));
+
+    when_failed_trace(cwmp_plugin_add_manageable_device(md_cache->deviceInfo), stop, ERROR,
+                      "Failed to add manageable device - device:[%s] host_path:[%s]", physaddress, GET_CHAR(md_cache->deviceInfo, "Host"));
+    SAH_TRACEZ_INFO(ME, "Added manageable device - device:[%s] host_path:[%s]", physaddress, GET_CHAR(md_cache->deviceInfo, "Host"));
+    amxc_llist_it_take(&md_cache->it);
+    cwmp_plugin_md_cache_free(&md_cache->it);
+stop:
+    amxc_string_clean(&host_string);
+    return;
+}
+
+void cwmp_plugin_manageabledevice_init(void) {
     amxb_bus_ctx_t* gmap_ctx = amxb_be_who_has("Devices.Device");
     when_null_trace(gmap_ctx, stop, ERROR, "gMap data model not found 'Devices.Device' - is gmap-server running?");
     gmap_client_init(gmap_ctx);
+    cwmp_plugin_md_cache_init();
+
+    int retval = cwmp_plugin_add_subscription(HOST_HOSTS_PATH, DM_FILTER_HOST_PHYS_CHANGED, cwmp_plugin_host_phys_changed);
+    when_failed_trace(retval, stop, ERROR, "Could not create Host subscription");
 
     manageable_gmap_query = gmap_query_open(GMAP_QUERY_TAG, GMAP_QUERY_NAME, cwmp_plugin_manageable_query);
 
@@ -390,7 +533,9 @@ stop:
     return;
 }
 
-void cwmp_plugin_manageableDevice_clean(void) {
+void cwmp_plugin_manageabledevice_clean(void) {
     gmap_query_close(manageable_gmap_query);
     manageable_gmap_query = NULL;
+    cwmp_plugin_del_subscription(HOST_HOSTS_PATH, NULL);
+    cwmp_plugin_md_cache_cleanup();
 }

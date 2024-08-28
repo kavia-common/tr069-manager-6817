@@ -1,0 +1,21 @@
+%populate {
+    object "Hosts." {
+        object Host {
+            instance add (0, "cpe-Host-1", Alias = "cpe-Host-1"){
+                parameter PhysAddress = "00:00:00:00:00:01";
+            }
+            instance add (0, "cpe-Host-2", Alias = "cpe-Host-2"){
+                parameter PhysAddress = "00:00:00:00:00:02";
+            }
+            instance add (0, "cpe-Host-3", Alias = "cpe-Host-3"){
+                parameter PhysAddress = "00:00:00:00:00:03";
+            }
+            instance add (0, "cpe-Host-4", Alias = "cpe-Host-4"){
+                parameter PhysAddress = "";
+            }
+            instance add (0, "cpe-Host-5", Alias = "cpe-Host-5"){
+                parameter PhysAddress = "";
+            }
+        }
+    }
+}

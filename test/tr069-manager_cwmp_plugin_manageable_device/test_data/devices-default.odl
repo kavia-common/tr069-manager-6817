@@ -1,0 +1,36 @@
+%populate {
+    object "Devices." {
+        object Device {
+            instance add (0, "ID-1", Alias = "ID-1", Key = "ID-1"){
+                parameter PhysAddress = "00:00:00:00:00:01";
+                parameter SerialNumber = "1.0W1719A0000115";
+                parameter OUI = "1883BF";
+                parameter ProductClass = "TEST";
+            }
+            instance add (0, "ID-2", Alias = "ID-2", Key = "ID-2"){
+                parameter PhysAddress = "00:00:00:00:00:02";
+                parameter SerialNumber = "1.0W1719A0000116";
+                parameter OUI = "1883BF";
+                parameter ProductClass = "TEST";
+            }
+            instance add (0, "ID-3", Alias = "ID-3", Key = "ID-3"){
+                parameter PhysAddress = "00:00:00:00:00:03";
+                parameter SerialNumber = "1.0W1719A0000116";
+                parameter OUI = "1883BF";
+                parameter ProductClass = "TEST";
+            }
+            instance add (0, "ID-4", Alias = "ID-4", Key = "ID-4"){
+                parameter PhysAddress = "00:00:00:00:00:04";
+                parameter SerialNumber = "1.0W1719A0000117";
+                parameter OUI = "1883BF";
+                parameter ProductClass = "TEST";
+            }
+            instance add (0, "ID-5", Alias = "ID-5", Key = "ID-5"){
+                parameter PhysAddress = "00:00:00:00:00:05";
+                parameter SerialNumber = "1.0W1719A0000117";
+                parameter OUI = "1883BF";
+                parameter ProductClass = "TEST";
+            }
+        }
+    }
+}

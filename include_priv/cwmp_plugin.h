@@ -101,6 +101,7 @@ typedef struct _cwmp_proc_ctx {
 
 int _cwmp_plugin_main(int reason, amxd_dm_t* dm, amxo_parser_t* parser);
 
+void cwmp_plugin_set_app(amxd_dm_t* dm, amxo_parser_t* parser);
 amxd_dm_t* PRIVATE cwmp_plugin_get_dm(void);
 amxo_parser_t* PRIVATE cwmp_plugin_get_parser(void);
 amxc_var_t* PRIVATE cwmp_plugin_get_config(void);
@@ -174,9 +175,9 @@ void cwmp_plugin_transfer_init(void);
 
 void cwmp_plugin_transfer_clean(void);
 
-void cwmp_plugin_manageableDevice_init(void);
+void cwmp_plugin_manageabledevice_init(void);
 
-void cwmp_plugin_manageableDevice_clean(void);
+void cwmp_plugin_manageabledevice_clean(void);
 
 int cwmp_proc_ctx_new(cwmp_proc_ctx_t** ctx,
                       amxp_proc_ctrl_t* proc,

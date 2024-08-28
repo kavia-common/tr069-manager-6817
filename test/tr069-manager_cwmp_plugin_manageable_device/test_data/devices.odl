@@ -1,0 +1,12 @@
+%define {
+    object Devices {
+        object Device[]{
+            %key string Key;
+            %key string Alias;
+            string PhysAddress;
+            string SerialNumber;
+            string OUI;
+            string ProductClass;
+        }
+    }
+}

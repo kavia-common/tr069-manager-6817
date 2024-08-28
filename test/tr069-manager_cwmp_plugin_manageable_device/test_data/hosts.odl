@@ -1,0 +1,8 @@
+%define {
+    object Hosts {
+        object Host[]{
+            %key string Alias;
+            string PhysAddress;
+        }
+    }
+}
