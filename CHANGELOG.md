@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.21 - 2024-08-28(21:47:09 +0000)
+
+### Other
+
+- [tr069] Some manageable devices are not detected
+
 ## Release v1.33.20 - 2024-08-21(08:39:20 +0000)
 
 ### Other
