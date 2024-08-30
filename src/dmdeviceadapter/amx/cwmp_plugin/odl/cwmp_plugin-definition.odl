@@ -119,7 +119,7 @@
         * @version 1.0
         */
         %persistent %protected string Interface {
-            default "${ip_intf_wan}";
+            default "Device.Logical.Interface.1.";
         }
 
       /**

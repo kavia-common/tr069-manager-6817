@@ -112,7 +112,7 @@ netmodel_query_t* __wrap_netmodel_openQuery_luckyAddrAddress(const char* intf,
     assert_non_null(flag);
     assert_non_null(traverse);
     assert_non_null(handler);
-    assert_true(strncmp(intf, "Device.IP.Interface.", 20) == 0);
+    assert_true(strncmp(intf, "Device.Logical.Interface.", 20) == 0);
 
     amxc_var_t result;
     assert_int_equal(amxc_var_init(&result), 0);
@@ -197,7 +197,7 @@ void test_cwmp_plugin_write_interface(UNUSED void** state) {
     amxc_var_set_type(&data, AMXC_VAR_ID_HTABLE);
     parameters = amxc_var_add_key(amxc_htable_t, &data, "parameters", NULL);
     values = amxc_var_add_key(amxc_htable_t, parameters, "Interface", NULL);
-    amxc_var_add_key(cstring_t, values, "to", "Device.IP.Interface.2.");
+    amxc_var_add_key(cstring_t, values, "to", "Device.Logical.Interface.1.");
     _writeInterface(NULL, &data, NULL);
 
     amxd_object_t* conn_request = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer.ConnRequest");
