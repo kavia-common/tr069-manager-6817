@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.23 - 2024-08-30(17:27:25 +0000)
+
+### Other
+
+- Use system bus to add or delete subscriptions
+
 ## Release v1.33.22 - 2024-08-30(11:37:15 +0000)
 
 ### Other
