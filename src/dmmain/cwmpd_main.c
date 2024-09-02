@@ -124,10 +124,8 @@ void cwmp_add_sahtrace_zones(amxc_var_t* trace_zones) {
 static cwmp_status_t cwmp_app_parse_config(void) {
     cwmp_status_t ret = cwmp_status_ko;
     char* prefix_file = NULL;
-    amxd_dm_init(&dm);
-    amxo_parser_init(&parser);
-    int retval = amxo_parser_parse_file(&parser, cwmp_app.odl_config, amxd_dm_get_root(&dm));
-    when_false_trace(retval != -1, exit, ERROR, "CWMPD: ODL parsing failed - message = %s", amxo_parser_get_message(&parser));
+    int retval = 0;
+
     amxc_var_t* config = &parser.config;
     when_null_trace(config, exit, ERROR, "CWMPD: cwmpd configs should not be NULL");
 
@@ -168,17 +166,6 @@ static cwmp_status_t cwmp_app_parse_config(void) {
         prefix_file = strdup(GETP_CHAR(config, "prefix_file"));
     }
     cwmp_app.aclfile = GETP_CHAR(tr069_config, "cwmpd_acl_file");
-
-    // Set tracelevel
-    amxc_var_t* trace = amxc_var_get_key(config, "sahtrace", AMXC_VAR_FLAG_DEFAULT);
-    cwmp_app.traceLevel = GET_UINT32(trace, "level");
-    sahTraceSetLevel(cwmp_app.traceLevel);
-
-    // Add sahtrace zones
-    amxc_var_t* trace_zones = amxc_var_get_key(config, "trace-zones", AMXC_VAR_FLAG_DEFAULT);
-    if(trace_zones) {
-        cwmp_add_sahtrace_zones(trace_zones);
-    }
 
     retval = amxo_parser_parse_file(&parser, prefix_file, amxd_dm_get_root(&dm));
     when_false_trace(retval != -1, exit, ERROR, "CWMPD: ODL parsing failed - message = %s", amxo_parser_get_message(&parser));
@@ -329,12 +316,28 @@ static cwmp_status_t cwmp_app_settings(int argc, char** argv) {
     /* Configure APP*/
     cwmp_app_configureDefaults();
     cwmp_app_configureOptions(argc, argv);
-    sahTraceOpen("cwmpd", cwmp_app.traceType);
+
+    int retval = amxo_parser_parse_file(&parser, cwmp_app.odl_config, amxd_dm_get_root(&dm));
+    when_false_trace(retval != -1, exit, ERROR, "CWMPD: ODL parsing failed - message = %s", amxo_parser_get_message(&parser));
+    amxc_var_t* config = &parser.config;
+    when_null_trace(config, exit, ERROR, "CWMPD: cwmpd configs should not be NULL");
+
+    // Set tracelevel
+    amxc_var_t* trace = amxc_var_get_key(config, "sahtrace", AMXC_VAR_FLAG_DEFAULT);
+    cwmp_app.traceLevel = GET_UINT32(trace, "level");
     sahTraceSetLevel(cwmp_app.traceLevel);
+
+    // Add sahtrace zones
+    amxc_var_t* trace_zones = amxc_var_get_key(config, "trace-zones", AMXC_VAR_FLAG_DEFAULT);
+    if(trace_zones) {
+        cwmp_add_sahtrace_zones(trace_zones);
+    }
+
+    // Set trace id and type and call sahTraceLoadZones() to override the trace zones based on environment settings
+    sahTraceOpen("cwmpd", cwmp_app.traceType);
 
     if(cwmp_status_ko == cwmp_app_parse_config()) {
         SAH_TRACEZ_ERROR("CWMPD", "Failed to parse cwmpd config");
-        amxo_parser_clean(&parser);
         return rc;
     }
     /* Daemonize if needed */
@@ -345,6 +348,7 @@ static cwmp_status_t cwmp_app_settings(int argc, char** argv) {
         }
     }
     rc = cwmp_status_ok;
+exit:
     return rc;
 }
 
@@ -423,6 +427,9 @@ static cwmp_status_t cwmp_app_enable_notifications() {
 int main(int argc, char* argv[]) {
     int rc = 1;
 
+    amxd_dm_init(&dm);
+    amxo_parser_init(&parser);
+
     if(cwmp_status_ko == cwmp_app_settings(argc, argv)) {
         return rc;
     }
@@ -450,6 +457,9 @@ error:
     free(cwmp_app.da_path);
     cwmp_app.da_path = NULL;
     SAH_TRACE_APP_INFO("CWMPD is exiting with code [%d]", rc);
+    sahTraceClose();
+    amxo_parser_clean(&parser);
+    amxd_dm_clean(&dm);
     return rc;
 }
 
