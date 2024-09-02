@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.24 - 2024-09-02(08:18:38 +0000)
+
+### Other
+
+- [TR069][VZ_TC_TR069 TP_1162888834890342]HGW doesn't follow the TR069 session retry policy after triggering a HTTP error on the ACS
+
 ## Release v1.33.23 - 2024-08-30(17:27:25 +0000)
 
 ### Other
