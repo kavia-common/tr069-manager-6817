@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.25 - 2024-09-02(10:26:00 +0000)
+
+### Other
+
+- [debug] make SAH_TRACE_ZONES work on cwmpd
+
 ## Release v1.33.24 - 2024-09-02(08:18:38 +0000)
 
 ### Other
