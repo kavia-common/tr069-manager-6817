@@ -142,7 +142,7 @@ void DM_ENG_Device_SystemConnectionHandleParameterChanged(const char* path, cons
                 amxc_var_t* parameter = amxc_var_from_htable_it(hit);
                 uint32_t oldPeriodicInformInterval = amxc_var_dyncast(uint32_t, GETP_ARG(parameter, "from"));
                 uint32_t newPeriodicInformInterval = amxc_var_dyncast(uint32_t, GETP_ARG(parameter, "to"));
-                SAH_TRACEZ_INFO("DM_DA", "Periodic Inform interval changed from %d to %d", oldPeriodicInformInterval, newPeriodicInformInterval);
+                SAH_TRACEZ_WARNING("DM_DA", "Periodic Inform interval changed from %d to %d", oldPeriodicInformInterval, newPeriodicInformInterval);
                 DM_ENG_InformMessageScheduler_initializePeriodicInform();
             } else if((strcmp("PeriodicInformTime", key) == 0) ||
                       (strcmp("PeriodicInformEnable", key) == 0)) {
