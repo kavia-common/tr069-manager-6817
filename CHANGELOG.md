@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.27 - 2024-09-20(08:47:42 +0000)
+
+### Other
+
+- [TR-069][QoS]Management traffic initiated from the HGW is with wrong DSCP
+
 ## Release v1.33.26 - 2024-09-11(16:01:48 +0000)
 
 ### Other
