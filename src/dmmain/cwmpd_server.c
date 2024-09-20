@@ -243,6 +243,10 @@ static int cwmp_server_handle_request(struct lws* wsi, char* in, int len) {
     int rc = 0;
     SAH_TRACEZ_INFO("CWMPD", "Handling request %s", requested_uri);
 
+    if(cwmp_socket_set_dscp(wsi) != 0) {
+        SAH_TRACEZ_WARNING("CWMPD", "Failed to set DSCP value to server connection");
+    }
+
     if(len < 1) {
         lws_return_http_status(wsi, HTTP_STATUS_BAD_REQUEST, "Bad REQUEST");
         USER_TRACE_WARNING(TRACE_CAT_SYSTEM, "[Authentication][tr69:ConnectionRequest][FAILED] <Bad REQUEST>");

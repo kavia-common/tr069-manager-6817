@@ -320,6 +320,11 @@ static int cwmp_client_handle_cookies(struct lws* wsi) {
 
 static int cwmp_client_connection_established_cb(struct lws* wsi) {
     int ret = CWMP_HTTP_CALLBACK_CONTINUE;
+
+    if(cwmp_socket_set_dscp(wsi) != 0) {
+        SAH_TRACEZ_WARNING("CWMPD", "Failed to set DSCP value to client connection");
+    }
+
     http_status = lws_http_client_http_response(wsi);
     SAH_TRACEZ_INFO("CWMPD", "Server return code [%d]", http_status);
 

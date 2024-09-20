@@ -598,7 +598,7 @@ int DM_ENG_Device_Common_AddSubscription(amxc_llist_t* slist,
 
     // generate a UID for this subscription
     amxc_string_setf(&uidstr, "%s%s", path, filter);
-    subInfo->uniqueID = amxc_AP_hash(amxc_string_get(&uidstr, 0), amxc_string_text_length(&uidstr));
+    subInfo->uniqueID = amxc_AP_hash_string(amxc_string_get(&uidstr, 0));
     (*subscriptionID) = subInfo->uniqueID;
 
     if(sub == NULL) { //NO previous subscription for this object

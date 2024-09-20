@@ -2,7 +2,7 @@
 **
 ** SPDX-License-Identifier: BSD-2-Clause-Patent
 **
-** SPDX-FileCopyrightText: Copyright (c) 2023 SoftAtHome
+** SPDX-FileCopyrightText: Copyright (c) 2024 SoftAtHome
 **
 ** Redistribution and use in source and binary forms, with or without modification,
 ** are permitted provided that the following conditions are met:
@@ -51,110 +51,40 @@
 ** USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **
 ****************************************************************************/
-#if !defined(_CWMPD_H_)
-#define _CWMPD_H_
 
-#include <libwebsockets.h>
-#include <event2/event.h>
+#include <stdio.h>
 #include <debug/sahtrace.h>
+#include "dmmain/cwmpd.h"
+#include <dmengine/DM_ENG_RPCInterface.h>
 
-#include <amxc/amxc.h>
-#include <amxp/amxp.h>
-#include <amxd/amxd_dm.h>
-#include <amxd/amxd_object.h>
-#include <amxb/amxb.h>
-#include <amxo/amxo.h>
-#include <amxa/amxa_merger.h>
+#define IPTOS_DSCP(dscp) ((dscp) << 2)
 
-#include <dmengine/DM_ENG_NotificationInterface.h>
-#include <ares.h>
+int cwmp_socket_set_dscp(struct lws* wsi) {
+    int sockfd = 0;
+    int dscp_value = 0;
+    char* dscp_str = NULL;
+    int tos = 0;
 
-#define ME "CWMPD"
+    sockfd = lws_get_socket_fd(wsi);
+    if(sockfd == -1) {
+        SAH_TRACEZ_ERROR("CWMPD", "Failed to get socket descriptor");
+        return -1;
+    }
 
-#define CWMPD_FREE(p) { free(p); p = NULL; }
-
-#define COPY_BUFFER_SIZE 4 * 1024
-
-#define EVENT_ENG_SRV_RESTART      "HTTP_SERVER_RESTART"
-#define EVENT_ENG_SRV_STOP         "HTTP_SERVER_STOP"
-#define EVENT_ENG_SRV_START        "HTTP_SERVER_START"
-#define EVENT_ENG_CLEAR_ACS_IP     "CLIENT_CLEAR_ACS_IP"
-#define EVENT_ENG_URL_CHANGED      "ACS_URL_CHANGED"
-
-typedef enum server_state {INIT = 0, RUN, EXIT, ERROR } server_state_t;
-typedef enum cwmp_status {cwmp_status_ok=0, cwmp_status_ko} cwmp_status_t;
-
-struct application {
-    const char* name;
-    const char* odl_config;
-    int daemonize;
-    int traceLevel;
-    sah_trace_type traceType;
-    server_state_t state;
-    const char* prefix;
-    const char* trustedCA;
-    const char* ssl_client_priv_key;
-    const char* ssl_client_cert;
-    const char* pidFile;
-    const char* persistent_rpc_path;
-    char* da_path;
-    const char* aclfile;
-};
-
-typedef struct application application_t;
-
-application_t cwmp_app_getconf(void);
-
-//Server
-cwmp_status_t cwmp_server_start(void);
-
-cwmp_status_t cwmp_server_stop(void);
-
-//Client
-cwmp_status_t cwmp_client_init(void);
-
-cwmp_status_t cwmp_client_stop(void);
-
-void cwmp_client_clear_ACSIP();
-
-// This routine is used to check the connection acceptance policy
-void cwmp_server_initConnectionTimestampList(void);
-
-void cwmp_server_maxConnectionsCleanup(void);
-
-void cwmp_server_maxConnectionsAdd(void);
-
-bool cwmp_server_maxConnectionsReached(void);
-
-//Eventloop
-cwmp_status_t cwmp_evlp_create(amxb_bus_ctx_t* acs_bus_ctx, amxb_bus_ctx_t* sys_bus_ctx);
-
-cwmp_status_t cwmp_evlp_start(void);
-
-cwmp_status_t cwmp_evlp_stop(void);
-
-cwmp_status_t cwmp_evlp_clean(void);
-
-struct event_base* cwmp_evlp_get(void);
-
-//Timer Interface
-int cwmp_timer_stop(const char* name);
-
-int cwmp_timer_start(const char* name, int waitTime, int intervalTime, timerHandler handler);
-
-unsigned int cwmp_timer_remainingTime(const char* name);
-
-//DNS Resolver
-cwmp_status_t cwmp_dns_init();
-
-cwmp_status_t cwmp_dns_resolve(bool send_boot_strap);
-
-cwmp_status_t cwmp_dns_stop();
-
-void cwmp_dns_get_random_ip(char** ip);
-
-bool is_ipaddr(const char* ip);
-
-int cwmp_socket_set_dscp(struct lws* wsi);
-
-#endif // !_CWMPD_H_
+    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_DSCP, &dscp_str) != 0) {
+        SAH_TRACEZ_ERROR("CWMPD", "Failed to retrieve DSCP value");
+        return -1;
+    }
+    if(dscp_str) {
+        dscp_value = atoi(dscp_str);
+        free(dscp_str);
+        dscp_str = NULL;
+        tos = IPTOS_DSCP(dscp_value);
+        if(setsockopt(sockfd, IPPROTO_IP, IP_TOS, &tos, sizeof(tos)) < 0) {
+            SAH_TRACEZ_ERROR("CWMPD", "Failed to set DSCP option");
+            return -1;
+        }
+        SAH_TRACEZ_INFO("CWMPD", "DSCP option set to %d (TOS value: 0x%X)", dscp_value, tos);
+    }
+    return 0;
+}
