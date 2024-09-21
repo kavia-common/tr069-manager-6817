@@ -1,6 +1,10 @@
 #include "mod_sahtrace.odl";
 #include "global_amxb_timeouts.odl";
 
+// default value(s) for Device.IP.Interface reference
+%config {
+    %global ip_intf_wan = "Device.IP.Interface.2.";
+}
 
 %config {
     name = "cwmp_plugin";
