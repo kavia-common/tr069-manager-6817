@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.28 - 2024-09-21(07:29:36 +0000)
+
+### Other
+
+- [TR69-Manager] Set ManagementServer.Interface to Logical wan interface
+
 ## Release v1.33.27 - 2024-09-20(08:47:42 +0000)
 
 ### Other
