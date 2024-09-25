@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.29 - 2024-09-25(18:19:09 +0000)
+
+### Other
+
+- [TR-069] Device.IP.Interface.3.IPv6Address.1.IPAddress is No more included in 14 HEARTBEAT
+
 ## Release v1.33.28 - 2024-09-21(07:29:36 +0000)
 
 ### Other
