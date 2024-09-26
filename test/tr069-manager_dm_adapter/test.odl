@@ -132,14 +132,31 @@
         }
 
         object GetParameterNames_Object_NextLevel_False {
+            %read-only string readonlystring ="test-read-only";
             int32 writableInteger =9999;
             string writablestring ="writable-string";
-            %read-only string readonlystring ="test-read-only";
             object GetParameterNames_Object1{
                 string test1 = "test";
             }
             object GetParameterNames_Object2{
                 string test1 = "test";
+            }
+        }
+
+        object GetParameter_Object_Sorted {
+            string cccc ="test";
+            int32 bbbb = 9999;
+            string aaaa ="test";
+            object GetParameter_Object2{
+                string eeee = "test";
+                string dddd = "test";
+            }
+            object GetParameter_Object1{
+                string ffff = "test";
+            }
+
+            object GetParameter_Object3[] {
+                string gggg;
             }
         }
 
@@ -179,3 +196,44 @@
     }
 }
 
+%populate {
+    object Device {
+        object GetParameter_Object_Sorted {
+            object GetParameter_Object3 {
+                instance add(0) {
+                    parameter gggg = "test1";
+                }
+                instance add(0) {
+                    parameter gggg = "test2";
+                }
+                instance add(0) {
+                    parameter gggg = "test3";
+                }
+                instance add(0) {
+                    parameter gggg = "test4";
+                }
+                instance add(0) {
+                    parameter gggg = "test5";
+                }
+                instance add(0) {
+                    parameter gggg = "test6";
+                }
+                instance add(0) {
+                    parameter gggg = "test7";
+                }
+                instance add(0) {
+                    parameter gggg = "test8";
+                }
+                instance add(0) {
+                    parameter gggg = "test9";
+                }
+                instance add(0) {
+                    parameter gggg = "test10";
+                }
+                instance add(0) {
+                    parameter gggg = "test11";
+                }
+            }
+        }
+    }
+}

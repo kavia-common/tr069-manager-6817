@@ -728,4 +728,24 @@ stop:
     amxc_llist_clean(slist, DM_list_removeSub);
 }
 
+//---------------------------------------------------------------------------------------------
+/**
+    @brief
+    String compare function for llist
+
+    @param it1 the first llist iterator
+    @param it2 the second llist iterator
+
+    @return
+    The callback function returns
+    - 0 when the string values are equal
+    - < 0 when the first string is less then the second
+    - > 0 when the first string is greater then then second
+ */
+int DM_ENG_Device_Common_String_Compare(amxc_llist_it_t* it1, amxc_llist_it_t* it2) {
+    const char* key1 = amxc_var_constcast(cstring_t, amxc_var_from_llist_it(it1));
+    const char* key2 = amxc_var_constcast(cstring_t, amxc_var_from_llist_it(it2));
+    return strcmp(key1 == NULL ? "" : key1, key2 == NULL ? "" : key2);
+}
+
 /** @} */

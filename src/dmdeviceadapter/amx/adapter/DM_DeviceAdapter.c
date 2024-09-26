@@ -327,7 +327,10 @@ static int build_gpv_all_body(dm_amx_env_t* acs_info, xmlNodePtr node_body, amxc
     SAH_TRACEZ_IN("DM_DA");
     int error = 0;
     const char* path = "Device.";
-    const amxc_htable_t* htable = NULL;
+    const amxc_htable_t* root_htable = NULL;
+    amxc_array_t* root_keys = NULL;
+    const amxc_htable_t* param_htable = NULL;
+    amxc_var_t* entry = NULL;
     const char* key = NULL;
     amxc_var_t desc_result;
     amxc_var_init(&desc_result);
@@ -339,22 +342,29 @@ static int build_gpv_all_body(dm_amx_env_t* acs_info, xmlNodePtr node_body, amxc
 
     rsp_node = xmlNewChild(node_body, NULL, BAD_CAST "cwmp:GetParameterValuesResponse", NULL);
     plist_node = xmlNewChild(rsp_node, NULL, BAD_CAST "ParameterList", NULL);
-    amxc_var_for_each(entry, GETI_ARG(get_result, 0)) {
-        htable = amxc_var_constcast(amxc_htable_t, entry);
-        if(amxc_htable_is_empty(htable)) {
+
+    root_htable = amxc_var_constcast(amxc_htable_t, GETI_ARG(get_result, 0));
+    root_keys = amxc_htable_get_sorted_keys(root_htable);
+
+    for(uint32_t i = 0; i < amxc_array_capacity(root_keys); i++) {
+        key = (const char*) amxc_array_it_get_data(amxc_array_get_at(root_keys, i));
+        entry = amxc_var_from_htable_it(amxc_htable_get(root_htable, key));
+        param_htable = amxc_var_constcast(amxc_htable_t, entry);
+        if(amxc_htable_is_empty(param_htable)) {
             continue;
         }
-        key = amxc_var_key(entry);
         SAH_TRACEZ_INFO("DM_DA", "Key [%s]", key);
         if(amxb_describe(acs_info->bus_ctx, key, AMXB_FLAG_PARAMETERS, &desc_result, 1)) {
             SAH_TRACEZ_WARNING("DM_DA", "describe failed [%s]", key);
             continue;
         }
-        amxc_htable_iterate(hit, htable) {
+        amxc_array_t* param_keys = amxc_htable_get_sorted_keys(param_htable);
+        for(uint32_t i = 0; i < amxc_array_capacity(param_keys); i++) {
             char* alias_path = NULL;
             char* param_value = NULL;
             uint32_t param_type = 0;
-            const char* param_key = amxc_htable_it_get_key(hit);
+            const char* param_key = (const char*) amxc_array_it_get_data(amxc_array_get_at(param_keys, i));
+            amxc_htable_it_t* hit = amxc_htable_get(param_htable, param_key);
             amxc_var_t* param_var = amxc_var_from_htable_it(hit);
             amxc_string_t param_name;
             amxc_string_init(&param_name, 0);
@@ -376,9 +386,12 @@ static int build_gpv_all_body(dm_amx_env_t* acs_info, xmlNodePtr node_body, amxc
             free(param_value);
             free(alias_path);
         }
+        amxc_array_delete(&param_keys, NULL);
+        param_keys = NULL;
         amxc_var_clean(&desc_result);
     }
 
+    amxc_array_delete(&root_keys, NULL);
     amxc_string_appendf(&pvs_node_attr_value, "cwmp:ParameterValueStruct[%d]", param_count);
     xmlNewProp(plist_node, BAD_CAST "soap-enc:arrayType", BAD_CAST amxc_string_get(&pvs_node_attr_value, 0));
     amxc_string_clean(&pvs_node_attr_value);

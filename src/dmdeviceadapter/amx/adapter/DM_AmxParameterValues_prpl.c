@@ -108,14 +108,17 @@ static int DM_ENG_Device_GetParameterValues_ParseValues(dm_amx_env_t* amx, const
     DM_ENG_ParameterValueStruct** pvsList = (DM_ENG_ParameterValueStruct**) data;
     DM_ENG_ParameterValueStruct* dmvs = NULL;
     const amxc_htable_t* htable = NULL;
+    amxc_array_t* keys = NULL;
     amxc_string_t param_name;
     amxc_var_t desc;
 
     htable = amxc_var_constcast(amxc_htable_t, GETI_ARG(object, 0));
+    keys = amxc_htable_get_sorted_keys(htable);
 
-    amxc_htable_iterate(hit, htable) {
+    for(uint32_t i = 0; i < amxc_array_capacity(keys); i++) {
         amxc_var_init(&desc);
-        const char* key = amxc_htable_it_get_key(hit);
+        const char* key = (const char*) amxc_array_it_get_data(amxc_array_get_at(keys, i));
+        amxc_htable_it_t* hit = amxc_htable_get(htable, key);
         amxc_var_t* hit_val = amxc_var_from_htable_it(hit);
         const amxc_htable_t* param = amxc_var_constcast(amxc_htable_t, hit_val);
         amxc_var_t* pm_var = NULL;
@@ -139,11 +142,12 @@ static int DM_ENG_Device_GetParameterValues_ParseValues(dm_amx_env_t* amx, const
             pm_var = amxc_var_get_key(GETI_ARG(&desc, 0), supported_path, AMXC_VAR_FLAG_DEFAULT);
         }
 
-        amxc_htable_iterate(hit_param, param) {
+        amxc_array_t* param_keys = amxc_htable_get_sorted_keys(param);
+        for(uint32_t i = 0; i < amxc_array_capacity(param_keys); i++) {
             int32_t type = -1;
             char* param_val = NULL;
             char* alias_path = NULL;
-            const char* paramkey = amxc_htable_it_get_key(hit_param);
+            const char* paramkey = (const char*) amxc_array_it_get_data(amxc_array_get_at(param_keys, i));
             amxc_var_t* param_var = amxc_var_from_htable_it(hit);
             amxc_var_t* value = GETP_ARG(param_var, paramkey);
 
@@ -177,12 +181,15 @@ static int DM_ENG_Device_GetParameterValues_ParseValues(dm_amx_env_t* amx, const
             free(param_val);
             free(alias_path);
         }
+        amxc_array_delete(&param_keys, NULL);
+        param_keys = NULL;
         amxd_path_clean(&obj_path);
         free(supported_path);
         amxc_string_clean(&supported_path_inst);
         amxc_var_clean(&desc);
     }
 
+    amxc_array_delete(&keys, NULL);
     SAH_TRACEZ_OUT("DM_DA");
     return error;
 }

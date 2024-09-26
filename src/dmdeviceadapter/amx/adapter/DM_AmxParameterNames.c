@@ -212,6 +212,7 @@ static bool DM_ENG_Device_GetParameterNames_GetParameters(const char* acspath, c
     bool ret = false;
     DM_ENG_ParameterInfoStruct* dmis = NULL;
     const amxc_htable_t* htable = NULL;
+    amxc_array_t* keys = NULL;
     amxc_var_t* parameters = NULL;
     dm_amx_env_t* acsInfo = DM_ENG_Device_GetACSInfo();
     char* object_path = NULL;
@@ -255,7 +256,10 @@ static bool DM_ENG_Device_GetParameterNames_GetParameters(const char* acspath, c
     parameters = GETP_ARG(object, "parameters");
     if(parameters) {
         htable = amxc_var_constcast(amxc_htable_t, parameters);
-        amxc_htable_iterate(hit, htable) {
+        keys = amxc_htable_get_sorted_keys(htable);
+        for(uint32_t i = 0; i < amxc_array_capacity(keys); i++) {
+            const char* key = (const char*) amxc_array_it_get_data(amxc_array_get_at(keys, i));
+            amxc_htable_it_t* hit = amxc_htable_get(htable, key);
             amxc_var_t* parameter = amxc_var_from_htable_it(hit);
             if(!DM_ENG_Device_GetParameterNames_GetParameter((object_path != NULL) ? object_path : path, parameter, pnsList)) {
                 ret = false;
@@ -266,6 +270,7 @@ static bool DM_ENG_Device_GetParameterNames_GetParameters(const char* acspath, c
 
     ret = true;
 stop:
+    amxc_array_delete(&keys, NULL);
     if(object_path) {
         free(object_path);
         object_path = NULL;
@@ -300,6 +305,7 @@ static int DM_ENG_Device_GetParameterNames_GetNames(dm_amx_env_t* amx, bool next
     amxc_string_t childPath;
     amxc_var_t result;
     amxc_var_t* childobjects = NULL;
+    amxc_llist_t* childlist = NULL;
     amxc_var_t* object = NULL;
     char* object_path = NULL;
     amxc_var_init(&result);
@@ -331,7 +337,10 @@ static int DM_ENG_Device_GetParameterNames_GetNames(dm_amx_env_t* amx, bool next
     }
 
     if(childobjects) {
-        amxc_var_for_each(child, childobjects) {
+        childlist = amxc_var_dyncast(amxc_llist_t, childobjects);
+        amxc_llist_sort(childlist, DM_ENG_Device_Common_String_Compare);
+        amxc_llist_for_each(it, childlist) {
+            amxc_var_t* child = amxc_var_from_llist_it(it);
             if(nextlevel) {
                 amxc_string_t childPath;
                 amxc_string_init(&childPath, 0);
@@ -378,6 +387,7 @@ static int DM_ENG_Device_GetParameterNames_GetNames(dm_amx_env_t* amx, bool next
         }
     }
 stop:
+    amxc_llist_delete(&childlist, variant_list_it_free);
     if(object_path) {
         free(object_path);
         object_path = NULL;

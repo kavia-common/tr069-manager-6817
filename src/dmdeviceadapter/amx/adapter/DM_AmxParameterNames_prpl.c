@@ -219,6 +219,7 @@ static int DM_ENG_Device_GetParameterNames_GetNames(dm_amx_env_t* amx, bool next
     amxd_path_t obj_path;
     amxc_string_t supported_path_inst;
     const amxc_htable_t* htable = NULL;
+    amxc_array_t* keys = NULL;
     amxc_var_init(&result);
     amxc_var_init(&rslt);
     amxc_var_init(&ret_obj);
@@ -239,9 +240,11 @@ static int DM_ENG_Device_GetParameterNames_GetNames(dm_amx_env_t* amx, bool next
     amxd_path_clean(&entry_path);
 
     htable = amxc_var_constcast(amxc_htable_t, GETI_ARG(&result, 0));
-    amxc_htable_iterate(hit, htable) {
+    keys = amxc_htable_get_sorted_keys(htable);
+
+    for(uint32_t i = 0; i < amxc_array_capacity(keys); i++) {
+        const char* key = (const char*) amxc_array_it_get_data(amxc_array_get_at(keys, i));
         char* child_path = NULL;
-        const char* key = amxc_htable_it_get_key(hit);
         amxc_var_t* var = NULL;
         char* supported_path = NULL;
         bool is_multi_instance = false;
@@ -309,6 +312,7 @@ static int DM_ENG_Device_GetParameterNames_GetNames(dm_amx_env_t* amx, bool next
     }
 
 stop:
+    amxc_array_delete(&keys, NULL);
     amxd_path_clean(&obj_path);
     amxc_var_clean(&result);
     amxc_var_clean(&rslt);

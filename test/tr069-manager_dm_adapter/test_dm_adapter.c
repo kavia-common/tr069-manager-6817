@@ -466,9 +466,9 @@ void test_dmadapter_GetParameterNames_Object_NextLevel_True(UNUSED void** state)
 void test_dmadapter_GetParameterNames_Object_NextLevel_False(UNUSED void** state) {
 
     char* objpath = "Device.GetParameterNames_Object_NextLevel_False.";
-    char* param1_path = "Device.GetParameterNames_Object_NextLevel_False.writableInteger";
-    char* param2_path = "Device.GetParameterNames_Object_NextLevel_False.writablestring";
-    char* param3_path = "Device.GetParameterNames_Object_NextLevel_False.readonlystring";
+    char* param1_path = "Device.GetParameterNames_Object_NextLevel_False.readonlystring";
+    char* param2_path = "Device.GetParameterNames_Object_NextLevel_False.writableInteger";
+    char* param3_path = "Device.GetParameterNames_Object_NextLevel_False.writablestring";
     char* child1_path = "Device.GetParameterNames_Object_NextLevel_False.GetParameterNames_Object1.";
     char* child2_path = "Device.GetParameterNames_Object_NextLevel_False.GetParameterNames_Object2.";
     char* child1_param_path = "Device.GetParameterNames_Object_NextLevel_False.GetParameterNames_Object1.test1";
@@ -482,8 +482,8 @@ void test_dmadapter_GetParameterNames_Object_NextLevel_False(UNUSED void** state
     /*
      * Expected Result:
      * [Device.GetParameterNames_Object_NextLevel_False.] , Writable= 0
-     * [Device.GetParameterNames_Object_NextLevel_False.writableInteger] , Writable= 1
      * [Device.GetParameterNames_Object_NextLevel_False.readonlystring] , Writable= 0
+     * [Device.GetParameterNames_Object_NextLevel_False.writableInteger] , Writable= 1
      * [Device.GetParameterNames_Object_NextLevel_False.writablestring] , Writable= 1
      * [Device.GetParameterNames_Object_NextLevel_False.GetParameterNames_Object1.] , Writable= 0
      * [Device.GetParameterNames_Object_NextLevel_False.GetParameterNames_Object1.test1] , Writable= 1
@@ -503,10 +503,10 @@ void test_dmadapter_GetParameterNames_Object_NextLevel_False(UNUSED void** state
     assert_string_equal(param_info_st[0]->parameterName, objpath);
     assert_int_equal(param_info_st[0]->writable, 0);
     assert_string_equal(param_info_st[1]->parameterName, param1_path);
-    assert_int_equal(param_info_st[1]->writable, 1);
-    assert_string_equal(param_info_st[2]->parameterName, param3_path);
-    assert_int_equal(param_info_st[2]->writable, 0);
-    assert_string_equal(param_info_st[3]->parameterName, param2_path);
+    assert_int_equal(param_info_st[1]->writable, 0);
+    assert_string_equal(param_info_st[2]->parameterName, param2_path);
+    assert_int_equal(param_info_st[2]->writable, 1);
+    assert_string_equal(param_info_st[3]->parameterName, param3_path);
     assert_int_equal(param_info_st[3]->writable, 1);
     assert_string_equal(param_info_st[4]->parameterName, child1_path);
     assert_int_equal(param_info_st[4]->writable, 0);
@@ -516,6 +516,97 @@ void test_dmadapter_GetParameterNames_Object_NextLevel_False(UNUSED void** state
     assert_int_equal(param_info_st[6]->writable, 0);
     assert_string_equal(param_info_st[7]->parameterName, child2_param_path);
     assert_int_equal(param_info_st[7]->writable, 1);
+
+    if(param_info_st) {
+        DM_ENG_deleteAllParameterInfoStruct(param_info_st);
+        free(param_info_st);
+    }
+    param_info_st = NULL;
+}
+
+void test_dmadapter_GetParameterNames_Object_NextLevel_False_Sorted(UNUSED void** state) {
+
+    char* objpath = "Device.GetParameter_Object_Sorted.";
+    char* cccc_path = "Device.GetParameter_Object_Sorted.cccc";
+    char* bbbb_path = "Device.GetParameter_Object_Sorted.bbbb";
+    char* aaaa_path = "Device.GetParameter_Object_Sorted.aaaa";
+    char* child2_path = "Device.GetParameter_Object_Sorted.GetParameter_Object2.";
+    char* child2_eeee_path = "Device.GetParameter_Object_Sorted.GetParameter_Object2.eeee";
+    char* child2_dddd_path = "Device.GetParameter_Object_Sorted.GetParameter_Object2.dddd";
+    char* child1_path = "Device.GetParameter_Object_Sorted.GetParameter_Object1.";
+    char* child1_ffff_path = "Device.GetParameter_Object_Sorted.GetParameter_Object1.ffff";
+    char* child3_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.";
+    char* child3_inst1_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.1.";
+    char* child3_inst1_gggg_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.1.gggg";
+    char* child3_inst2_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.2.";
+    char* child3_inst2_gggg_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.2.gggg";
+    char* child3_inst3_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.3.";
+    char* child3_inst3_gggg_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.3.gggg";
+    char* child3_inst4_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.4.";
+    char* child3_inst4_gggg_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.4.gggg";
+    char* child3_inst5_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.5.";
+    char* child3_inst5_gggg_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.5.gggg";
+    char* child3_inst6_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.6.";
+    char* child3_inst6_gggg_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.6.gggg";
+    char* child3_inst7_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.7.";
+    char* child3_inst7_gggg_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.7.gggg";
+    char* child3_inst8_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.8.";
+    char* child3_inst8_gggg_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.8.gggg";
+    char* child3_inst9_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.9.";
+    char* child3_inst9_gggg_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.9.gggg";
+    char* child3_inst10_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.10.";
+    char* child3_inst10_gggg_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.10.gggg";
+    char* child3_inst11_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.11.";
+    char* child3_inst11_gggg_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.11.gggg";
+    int rv = 0;
+    int num_param = 0;
+
+    DM_ENG_ParameterInfoStruct** param_info_st = NULL;
+    rv = DM_ENG_GetParameterNames(DM_ENG_EntityType_ACS, (char*) objpath, false, &param_info_st);
+    assert_int_equal(rv, 0);
+
+    num_param = DM_ENG_tablen((void**) param_info_st);
+    assert_int_equal(num_param, 32);
+
+#if PRINT_RESULT
+    for(int i = 0; i < num_param; i++) {
+        printf("-> ParameterName [%s]\n", param_info_st[i]->parameterName);
+    }
+#endif
+
+    /** expect to be alphabetically sorted */
+    assert_string_equal(param_info_st[0]->parameterName, objpath);
+    assert_string_equal(param_info_st[1]->parameterName, aaaa_path);
+    assert_string_equal(param_info_st[2]->parameterName, bbbb_path);
+    assert_string_equal(param_info_st[3]->parameterName, cccc_path);
+    assert_string_equal(param_info_st[4]->parameterName, child1_path);
+    assert_string_equal(param_info_st[5]->parameterName, child1_ffff_path);
+    assert_string_equal(param_info_st[6]->parameterName, child2_path);
+    assert_string_equal(param_info_st[7]->parameterName, child2_dddd_path);
+    assert_string_equal(param_info_st[8]->parameterName, child2_eeee_path);
+    assert_string_equal(param_info_st[9]->parameterName, child3_path);
+    assert_string_equal(param_info_st[10]->parameterName, child3_inst1_path);
+    assert_string_equal(param_info_st[11]->parameterName, child3_inst1_gggg_path);
+    assert_string_equal(param_info_st[12]->parameterName, child3_inst10_path);
+    assert_string_equal(param_info_st[13]->parameterName, child3_inst10_gggg_path);
+    assert_string_equal(param_info_st[14]->parameterName, child3_inst11_path);
+    assert_string_equal(param_info_st[15]->parameterName, child3_inst11_gggg_path);
+    assert_string_equal(param_info_st[16]->parameterName, child3_inst2_path);
+    assert_string_equal(param_info_st[17]->parameterName, child3_inst2_gggg_path);
+    assert_string_equal(param_info_st[18]->parameterName, child3_inst3_path);
+    assert_string_equal(param_info_st[19]->parameterName, child3_inst3_gggg_path);
+    assert_string_equal(param_info_st[20]->parameterName, child3_inst4_path);
+    assert_string_equal(param_info_st[21]->parameterName, child3_inst4_gggg_path);
+    assert_string_equal(param_info_st[22]->parameterName, child3_inst5_path);
+    assert_string_equal(param_info_st[23]->parameterName, child3_inst5_gggg_path);
+    assert_string_equal(param_info_st[24]->parameterName, child3_inst6_path);
+    assert_string_equal(param_info_st[25]->parameterName, child3_inst6_gggg_path);
+    assert_string_equal(param_info_st[26]->parameterName, child3_inst7_path);
+    assert_string_equal(param_info_st[27]->parameterName, child3_inst7_gggg_path);
+    assert_string_equal(param_info_st[28]->parameterName, child3_inst8_path);
+    assert_string_equal(param_info_st[29]->parameterName, child3_inst8_gggg_path);
+    assert_string_equal(param_info_st[30]->parameterName, child3_inst9_path);
+    assert_string_equal(param_info_st[31]->parameterName, child3_inst9_gggg_path);
 
     if(param_info_st) {
         DM_ENG_deleteAllParameterInfoStruct(param_info_st);
@@ -638,7 +729,7 @@ void test_dmadapter_GetParameterNames_DeviceObject_NextLevel_True(UNUSED void** 
     rv = DM_ENG_GetParameterNames(DM_ENG_EntityType_ACS, objpath, true, &param_info_st);
     assert_int_equal(rv, 0);
     num_param = DM_ENG_tablen((void**) param_info_st);
-    assert_int_equal(num_param, 11);// 2 objects , 3 parameter
+    assert_int_equal(num_param, 12);// 3 objects , 3 parameter
 
     assert_int_equal(check_parameter_name(param_info_st, "Device.RootDataModelVersion", 0), 0);
     assert_int_equal(check_parameter_name(param_info_st, "Device.InterfaceStackNumberOfEntries", 0), 0);
@@ -887,6 +978,69 @@ void test_dmadapter_GetParametersValues_Object(UNUSED void** state) {
             DM_ENG_deleteAllParameterValueStruct(params_values_st);
             free(params_values_st);
         }
+    }
+}
+
+void test_dmadapter_GetParametersValues_Object_Sorted(UNUSED void** state) {
+    int num_param = 1;
+    char* objPath = "Device.GetParameter_Object_Sorted.";
+    DM_ENG_ParameterValueStruct** params_values_st = NULL;
+    char* paramsArray[num_param + 1];
+    paramsArray[0] = objPath;
+    paramsArray[1] = NULL;
+
+    char* cccc_path = "Device.GetParameter_Object_Sorted.cccc";
+    char* bbbb_path = "Device.GetParameter_Object_Sorted.bbbb";
+    char* aaaa_path = "Device.GetParameter_Object_Sorted.aaaa";
+    char* child2_eeee_path = "Device.GetParameter_Object_Sorted.GetParameter_Object2.eeee";
+    char* child2_dddd_path = "Device.GetParameter_Object_Sorted.GetParameter_Object2.dddd";
+    char* child1_ffff_path = "Device.GetParameter_Object_Sorted.GetParameter_Object1.ffff";
+    char* child3_inst1_gggg_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.1.gggg";
+    char* child3_inst2_gggg_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.2.gggg";
+    char* child3_inst3_gggg_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.3.gggg";
+    char* child3_inst4_gggg_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.4.gggg";
+    char* child3_inst5_gggg_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.5.gggg";
+    char* child3_inst6_gggg_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.6.gggg";
+    char* child3_inst7_gggg_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.7.gggg";
+    char* child3_inst8_gggg_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.8.gggg";
+    char* child3_inst9_gggg_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.9.gggg";
+    char* child3_inst10_gggg_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.10.gggg";
+    char* child3_inst11_gggg_path = "Device.GetParameter_Object_Sorted.GetParameter_Object3.11.gggg";
+
+    int rv = DM_ENG_GetParameterValues(DM_ENG_EntityType_ACS, (char**) paramsArray, &params_values_st);
+    assert_int_equal(rv, 0);
+
+    int nb_param = DM_ENG_tablen((void**) params_values_st);
+    assert_int_equal(nb_param, 17);
+
+#if PRINT_RESULT
+    for(int i = 0; i < nb_param; i++) {
+        printf("-> ParameterName [%s]\n", params_values_st[i]->parameterName);
+    }
+#endif
+
+    /** expect to be alphabetically sorted */
+    assert_string_equal(params_values_st[0]->parameterName, aaaa_path);
+    assert_string_equal(params_values_st[1]->parameterName, bbbb_path);
+    assert_string_equal(params_values_st[2]->parameterName, cccc_path);
+    assert_string_equal(params_values_st[3]->parameterName, child1_ffff_path);
+    assert_string_equal(params_values_st[4]->parameterName, child2_dddd_path);
+    assert_string_equal(params_values_st[5]->parameterName, child2_eeee_path);
+    assert_string_equal(params_values_st[6]->parameterName, child3_inst1_gggg_path);
+    assert_string_equal(params_values_st[7]->parameterName, child3_inst10_gggg_path);
+    assert_string_equal(params_values_st[8]->parameterName, child3_inst11_gggg_path);
+    assert_string_equal(params_values_st[9]->parameterName, child3_inst2_gggg_path);
+    assert_string_equal(params_values_st[10]->parameterName, child3_inst3_gggg_path);
+    assert_string_equal(params_values_st[11]->parameterName, child3_inst4_gggg_path);
+    assert_string_equal(params_values_st[12]->parameterName, child3_inst5_gggg_path);
+    assert_string_equal(params_values_st[13]->parameterName, child3_inst6_gggg_path);
+    assert_string_equal(params_values_st[14]->parameterName, child3_inst7_gggg_path);
+    assert_string_equal(params_values_st[15]->parameterName, child3_inst8_gggg_path);
+    assert_string_equal(params_values_st[16]->parameterName, child3_inst9_gggg_path);
+
+    if(params_values_st) {
+        DM_ENG_deleteAllParameterValueStruct(params_values_st);
+        free(params_values_st);
     }
 }
 

@@ -111,6 +111,8 @@ void test_dmadapter_GetParameterNames_DeviceObject_NextLevel_False(void** state)
 
 void test_dmadapter_GetParameterNames_Object_NextLevel_False(void** state);
 
+void test_dmadapter_GetParameterNames_Object_NextLevel_False_Sorted(UNUSED void** state);
+
 void test_dmadapter_GetParameterNames_Object_NextLevel_True(void** state);
 
 void test_dmadapter_GetParameterNames_Object_NextLevel_False_searchPath(void** state);
@@ -124,6 +126,8 @@ void test_dmadapter_GetParametersValues_Parameter_noAccessRights(void** state);
 void test_dmadapter_GetParametersValues_RootParameters(void** state);
 
 void test_dmadapter_GetParametersValues_Object(void** state);
+
+void test_dmadapter_GetParametersValues_Object_Sorted(void** state);
 
 void test_dmadapter_GetParametersValues_searchPath_Parameter(void** state);
 
