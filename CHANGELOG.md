@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.30 - 2024-09-26(14:27:35 +0000)
+
+### Other
+
+- cwmp/TR069: parameters are not returned in the expected order for "Device.Ethernet.Interface"
+
 ## Release v1.33.29 - 2024-09-25(18:19:09 +0000)
 
 ### Other
