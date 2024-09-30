@@ -1,0 +1,44 @@
+%define {
+    %persistent object Device {
+        %persistent object A {
+            %persistent object X[] {
+                %persistent %unique %key string Alias;
+                %persistent string P1;
+                %persistent string P2;
+                %persistent object Y[] {
+                    %persistent uint8 P1;
+                    %persistent object B {
+                        %persistent bool P1;
+                        %persistent datetime P2;
+                    }
+                    %persistent object Z [] {
+                          %persistent %unique %key string Alias;
+                          %persistent bool P1;
+                          %persistent datetime P2;
+                          %persistent uint32 P3;
+                          %persistent string P4;
+                    }
+                }
+            }
+        }
+        %persistent object C {
+            %persistent int8 P_i8 = -8;
+            %persistent int16 P_i16 = -16;
+            %persistent int32 P_i32 = -32;
+            %persistent int64 P_i64 = -64;
+            %persistent uint8 P_ui8 = 8;
+            %persistent uint16 P_ui16 = 16;
+            %persistent uint32 P_ui32 = 32;
+            %persistent uint64 P_ui64 = 64;
+            %persistent string P_s = "string";
+            %persistent csv_string P_s_csv = "csv,string";
+            %persistent ssv_string P_s_ssv = "ssv string";
+            %persistent datetime P_d;
+            %persistent bool P_b = true;
+        }
+        %persistent object D {
+            %persistent string P1;
+            %persistent int32 P2;
+        }
+    }
+}
