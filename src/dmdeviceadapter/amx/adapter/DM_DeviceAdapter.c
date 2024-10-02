@@ -594,6 +594,7 @@ static bool DM_ENG_Device_MatchingInterval(uint32_t interval) {
     uint32_t pi = (uint32_t) atoi(periodicInformInterval);
     ret = (pi == interval);
 stop:
+    free(periodicInformInterval);
     return ret;
 }
 
