@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.31 - 2024-10-03(13:14:50 +0000)
+
+### Other
+
+- cwmpd memory leak
+
 ## Release v1.33.30 - 2024-09-26(14:27:35 +0000)
 
 ### Other
