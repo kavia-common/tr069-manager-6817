@@ -119,21 +119,16 @@ static struct lws_client_connect_info lws_connect_info;
 
 //lws cannot handle session cookie
 //check LWS_WITH_CACHE_NSCOOKIEJAR for more info
-static void cwmp_client_parse_cookie(char* cookies) {
-    char* tok = strtok(cookies, ";");
-    int total_len = 0;
-    int buff_len = 256;
-    CWMPD_FREE(session_cookie);
-    if(cookies && !tok) {
-        session_cookie = strdup(cookies);
-    } else {
-        session_cookie = calloc(1, buff_len * sizeof(char));
-        if(!session_cookie) {
-            SAH_TRACEZ_ERROR("CWMPD", "malloc failed for session cookies!!");
-            return;
-        }
+static void cwmp_client_parse_cookie(char* cookie) {
+    char* tok = NULL;
+    amxc_string_t tmp_cookie;
+    amxc_string_init(&tmp_cookie, 0);
+    if((cookie == NULL) || (*cookie == 0)) {
+        SAH_TRACEZ_ERROR("CWMPD", "Invalid arg(s)");
+        goto stop;
     }
-
+    SAH_TRACEZ_INFO("CWMPD", "Cookie received: [%s]", cookie);
+    tok = strtok(cookie, ";");
     while(tok) {
         char* p = strchr((char*) tok, '=');
         char* start = tok;
@@ -151,21 +146,20 @@ static void cwmp_client_parse_cookie(char* cookies) {
         if((len > 0) && (strncasecmp(start, "Path", len) != 0) && (strncasecmp(start, "Max-Age", len) != 0)
            && (strncasecmp(start, "Expires", len) != 0) && (strncasecmp(start, "SameSite", len) != 0)
            && (strncasecmp(start, "Domain", len) != 0)) {
-            total_len += (len + 1);
-            if(total_len >= buff_len) {
-                session_cookie = (char*) realloc(session_cookie, (buff_len + 256 + 1) * sizeof(char));
-                buff_len += 256;
-                if(!session_cookie) {
-                    SAH_TRACEZ_ERROR("CWMPD", "Couldn't realloc");
-                    return;
-                }
-                session_cookie[buff_len] = '\0';
-            }
-            strcat(session_cookie, start);
-            strcat(session_cookie, ";");
+            amxc_string_appendf(&tmp_cookie, (amxc_string_is_empty(&tmp_cookie) == true) ? "%s":";%s", start);
         }
         tok = strtok(NULL, ";");
     }
+    if(amxc_string_is_empty(&tmp_cookie) == true) {
+        goto stop;
+    }
+    if(session_cookie != NULL) {
+        amxc_string_prependf(&tmp_cookie, "%s;", session_cookie);
+        CWMPD_FREE(session_cookie);
+    }
+    session_cookie = amxc_string_dup(&tmp_cookie, 0, amxc_string_text_length(&tmp_cookie));
+stop:
+    amxc_string_clean(&tmp_cookie);
 }
 
 /*generate Basic auth data*/
