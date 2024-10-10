@@ -71,9 +71,8 @@ static char randomOpaqueStr[NONCESIZE + 1]; // Max(NONCESIZE, OPAQUESIZE) + 1
 
 extern dm_com_struct g_DmComData;
 
-amxc_string_t buffer;
-
 char* g_randomCpeUrl = NULL;
+static char* server_host = NULL;
 
 static struct lws_context_creation_info lws_server_ctx_info;
 static struct lws_context* lws_server_ctx = NULL; /* server lws context */
@@ -187,9 +186,12 @@ static int cwmp_server_reply_http_no_content(struct lws* wsi) {
 // If this HTTP Message do not contain DIGEST Authentication data, send
 // an authentication request.
 static cwmp_status_t cwmp_server_validate_authentication(struct lws* wsi, const char* requested_uri) {
+    amxc_string_t buffer;
     cwmp_status_t ret = cwmp_status_ko;
     char* conn_req_username = NULL;
     char* conn_req_passwd = NULL;
+
+    amxc_string_init(&buffer, 0);
 
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_CONNECTIONREQUESTUSERNAME, &conn_req_username) != 0) {
         SAH_TRACEZ_ERROR("CWMPD", "failed to fetch acs username");
@@ -233,6 +235,7 @@ static cwmp_status_t cwmp_server_validate_authentication(struct lws* wsi, const 
     }
 
 stop:
+    amxc_string_clean(&buffer);
     CWMPD_FREE(conn_req_username);
     CWMPD_FREE(conn_req_passwd);
     return ret;
@@ -315,7 +318,7 @@ static const struct lws_protocols protocols[] = {
     { NULL, NULL, 0, 0, 0, NULL, 0} /* needed by lws */
 };
 
-static cwmp_status_t cwmp_server_init_lws(const char* server_host, int port) {
+static cwmp_status_t cwmp_server_init_lws(const char* serverhost, int port) {
     memset(&lws_server_ctx_info, 0, sizeof lws_server_ctx_info);
     void* main_loop[1] = { cwmp_evlp_get() };
     /* this will attach our server to our main evlp */
@@ -331,7 +334,7 @@ static cwmp_status_t cwmp_server_init_lws(const char* server_host, int port) {
     lws_server_ctx_info.ssl_cert_filepath = NULL;
     lws_server_ctx_info.ssl_private_key_filepath = NULL;
     // set server info struct.
-    lws_server_ctx_info.vhost_name = server_host;
+    lws_server_ctx_info.vhost_name = serverhost;
     lws_server_ctx_info.port = port;
     if(!lws_server_ctx_info.vhost_name || !(*lws_server_ctx_info.vhost_name)) {
         SAH_TRACEZ_ERROR("CWMPD", "No Connection request host is set, stop initializing server");
@@ -349,7 +352,6 @@ static cwmp_status_t cwmp_server_init_lws(const char* server_host, int port) {
 
 cwmp_status_t cwmp_server_start() {
     cwmp_status_t ret = cwmp_status_ko;
-    char* server_host = NULL;
     char* server_port = NULL;
     char* cwmp_enabled = NULL;
 
@@ -364,6 +366,10 @@ cwmp_status_t cwmp_server_start() {
         goto exit;
     }
 
+    if(server_host) {
+        free(server_host);
+        server_host = NULL;
+    }
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_LOCALIPADDRESS, &server_host) != 0) {
         SAH_TRACEZ_ERROR("CWMPD", "Failed to get: local ip address");
         goto exit;
@@ -381,6 +387,8 @@ cwmp_status_t cwmp_server_start() {
         goto exit;
     }
 
+    free(g_randomCpeUrl);
+    g_randomCpeUrl = NULL;
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_CONNECTIONREQUESTPATH, &g_randomCpeUrl) != 0) {
         SAH_TRACEZ_ERROR("CWMPD", "Failed to get: connection request path");
         goto exit;
@@ -402,7 +410,10 @@ cwmp_status_t cwmp_server_start() {
 
     ret = cwmp_status_ok;
 exit:
-    free(server_host);
+    if(server_host && (ret != cwmp_status_ok)) {
+        free(server_host);
+        server_host = NULL;
+    }
     free(server_port);
     free(cwmp_enabled);
     return ret;
@@ -413,10 +424,17 @@ cwmp_status_t cwmp_server_stop() {
     if(lws_server_vhost) {
         lws_vhost_destroy(lws_server_vhost);
     }
+    free(g_randomCpeUrl);
+    g_randomCpeUrl = NULL;
     lws_server_vhost = NULL;
     lws_context_destroy(lws_server_ctx);
     lws_server_ctx = NULL;
     // clean up maxconnections.
     cwmp_server_maxConnectionsCleanup();
+
+    if(server_host) {
+        free(server_host);
+        server_host = NULL;
+    }
     return cwmp_status_ok;
 }

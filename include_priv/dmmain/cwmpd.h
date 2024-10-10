@@ -142,6 +142,8 @@ int cwmp_timer_stop(const char* name);
 
 int cwmp_timer_start(const char* name, int waitTime, int intervalTime, timerHandler handler);
 
+void cwmp_timer_remove_all(void);
+
 unsigned int cwmp_timer_remainingTime(const char* name);
 
 //DNS Resolver

@@ -202,6 +202,7 @@ bool DM_ENG_Device_Init(void** systemCtx, void** acsCtx, const char* rpcPath, co
     da.acs.acl = aclfile;
     da.acs.acl_rules = amxa_parse_files(aclfile);
 
+    free(instance_alias);
     return result;
 }
 

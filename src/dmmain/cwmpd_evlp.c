@@ -155,6 +155,12 @@ cwmp_status_t cwmp_evlp_stop(void) {
 //Cleanup memory
 cwmp_status_t cwmp_evlp_clean(void) {
 
+    if(amxp_sig) {
+        event_del(amxp_sig);
+        free(amxp_sig);
+        amxp_sig = NULL;
+    }
+
     if(acs_bus_ev) {
         event_del(acs_bus_ev);
         free(acs_bus_ev);

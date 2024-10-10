@@ -126,6 +126,19 @@ static void timer_remove(const char* name) {
     return;
 }
 
+/**
+ * Remove all timers
+ */
+void cwmp_timer_remove_all(void) {
+    timer_list_item* item = timer_list;
+    timer_list_item* next = NULL;
+    while(item) {
+        next = item->next;
+        timer_free(item);
+        item = next;
+    }
+    timer_list = NULL;
+}
 
 /**
  * This function is the main timeout handler, this one will calls the corresponding

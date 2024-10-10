@@ -714,6 +714,8 @@ cwmp_status_t cwmp_client_init() {
 cwmp_status_t cwmp_client_stop() {
     lws_context_destroy(lws_client_ctx);
     DM_CloseHttpSession(true);
+    DM_ENG_deliveredEventListCleanup();
+    DM_ENG_acsEventListCleanup();
     return cwmp_status_ok;
 }
 
@@ -828,9 +830,11 @@ int client_startSession() {
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_SESSIONTIMEOUT, &s_timeout) == 0) {
         if(session_timeout) {
             session_timeout = atoi(s_timeout);
-            free(s_timeout);
         }
     }
+    free(s_timeout);
+    s_timeout = NULL;
+
     if(session_timeout <= 0) {
         session_timeout = DEFAULT_SESSION_TIMEOUT;
     }
