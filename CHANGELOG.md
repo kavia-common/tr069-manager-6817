@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.33 - 2024-10-10(18:06:53 +0000)
+
+### Other
+
+- - [tr069-manager] 'Reboot.CurrentBootCycle' parameter should be prefixed with 'X_PRPL-COM_'
+
 ## Release v1.33.32 - 2024-10-03(13:30:43 +0000)
 
 ### Other
