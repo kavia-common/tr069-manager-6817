@@ -276,7 +276,7 @@ void test_dmadapter_connection(UNUSED void** state) {
 
     void* systemctx = NULL;
     void* acsctx = NULL;
-    int rv = DM_ENG_DataModelConnect(acache_file, acl_file, &systemctx, &acsctx);
+    int rv = DM_ENG_DataModelConnect(acache_file, acl_file, &systemctx, &acsctx, "");
     // connect to bus
     rv += DM_ENG_ActivateNotification(DM_ENG_EntityType_SYSTEM, inform, transferComplete, requestDownload,
                                       getRPCMethods, timerStart, timerStop, timerTimeRemaining, engineEvent, duStateChangeComplete);

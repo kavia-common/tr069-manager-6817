@@ -359,7 +359,7 @@ static cwmp_status_t cwmp_app_init_dmengine() {
         return rc;
     }
     //Connect to Data-model
-    if(DM_COM_DMCONNECT(cwmp_app.persistent_rpc_path, cwmp_app.aclfile, (void**) &sys_bus_ctx, (void**) &acs_bus_ctx) != 0) {
+    if(DM_COM_DMCONNECT(cwmp_app.persistent_rpc_path, cwmp_app.aclfile, (void**) &sys_bus_ctx, (void**) &acs_bus_ctx, cwmp_app.prefix) != 0) {
         SAH_TRACEZ_ERROR("CWMPD", "Failed to initialize DM_COM");
         return rc;
     }

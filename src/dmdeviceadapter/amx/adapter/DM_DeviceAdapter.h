@@ -136,14 +136,20 @@ typedef struct dm_amx_env_t_ {
     amxc_var_t* acl_rules;
 } dm_amx_env_t;
 
+typedef struct {
+    const char* vendor_prefix;
+} dm_app_data_t;
+
 typedef struct dm_deviceadapter_t_ {
     dm_amx_env_t acs;    /* Connection used for ACS restricted access */
     dm_amx_env_t system; /* Connection used for internal com */
+    dm_app_data_t data;
 } dm_deviceadapter_t;
 
 
 dm_amx_env_t* DM_ENG_Device_GetACSInfo();
 dm_amx_env_t* DM_ENG_Device_GetSystemInfo();
+dm_app_data_t* DM_ENG_Device_GetDataInfo();
 
 #define MANAGEMENTSERVER_PATH           "Device.ManagementServer."
 #define MGMT_SRV_CONNREQUEST            "Device.ManagementServer.ConnRequest."

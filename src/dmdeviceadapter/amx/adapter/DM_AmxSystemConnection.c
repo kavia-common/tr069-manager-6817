@@ -84,7 +84,7 @@
 #define DIAGNOSTICS_TRACEROUTE_PATH                 "Device.IP.Diagnostics.TraceRoute."
 #define DIAGNOSTICS_DOWNLOADDIAGNOSTICS_PATH        "Device.IP.Diagnostics.DownloadDiagnostics."
 #define DIAGNOSTICS_UPLOADDIAGNOSTICS_PATH          "Device.IP.Diagnostics.UploadDiagnostics."
-#define REBOOT_TYPE                                 "Reboot.CurrentBootCycle"
+#define REBOOT_TYPE                                 "Reboot.%sCurrentBootCycle"
 
 //---------------------------------------------------------------------------------------------
 /**
@@ -620,18 +620,20 @@ error:
 static bool DM_ENG_Device_IsSoftwareReboot(dm_amx_env_t* amx) {
     bool ret = false;
     amxc_string_t path;
+    amxc_string_t parameter;
     amxc_var_t value;
     amxc_var_init(&value);
     amxc_string_init(&path, 0);
+    amxc_string_init(&parameter, 0);
     const char* reboot_reason;
 
-    amxc_string_setf(&path, "%s", REBOOT_TYPE);
+    amxc_string_setf(&path, REBOOT_TYPE, DM_ENG_Device_GetDataInfo()->vendor_prefix);
     int retcode = amxb_get(amx->bus_ctx, amxc_string_get(&path, 0), 0, &value, 1);
     if((retcode < 0) || amxc_var_is_null(&value)) {
         goto error;
     }
-
-    reboot_reason = GETP_CHAR(&value, "0.0.CurrentBootCycle");
+    amxc_string_setf(&parameter, "0.0.%sCurrentBootCycle", DM_ENG_Device_GetDataInfo()->vendor_prefix);
+    reboot_reason = GETP_CHAR(&value, amxc_string_get(&parameter, 0));
     if(reboot_reason && (0 == strcmp(reboot_reason, "Warm"))) {
         ret = true;
     }
@@ -639,6 +641,7 @@ static bool DM_ENG_Device_IsSoftwareReboot(dm_amx_env_t* amx) {
 error:
     amxc_var_clean(&value);
     amxc_string_clean(&path);
+    amxc_string_clean(&parameter);
     return ret;
 }
 
