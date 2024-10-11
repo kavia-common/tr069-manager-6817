@@ -90,6 +90,7 @@ int main(void) {
         cmocka_unit_test(test_dmadapter_GetParametersValues_Parameter_noAccessRights),
         cmocka_unit_test(test_dmadapter_GetParametersValues_RootParameters),
         cmocka_unit_test(test_dmadapter_GetParametersValues_Object),
+        cmocka_unit_test(test_dmadapter_gpv_001),
         cmocka_unit_test(test_dmadapter_GetParametersValues_Object_Sorted),
         cmocka_unit_test(test_dmadapter_GetParametersValues_searchPath_Parameter),
         cmocka_unit_test(test_dmadapter_GetParametersValues_searchPath_Object),

@@ -483,22 +483,6 @@
             %persistent uint8 ACSAddrFamily=0;
 
           /**
-            * This parameter makes the behavior on partial paths configurable.
-            * True : behavior before introducing this parameter (9.1). A full empty is returned if any parameter or partial path cannot be found.
-            * False : empty will only be return if :
-            *                 - The request contains only partial and all partial paths cannot be found.
-            *                 - The request contains not only partial path (but also some parameters) and at least one parameter cannot be found.
-            * @version 1.0
-            */
-            bool EmptyFullParameterList=1;
-
-          /**
-            * This parameter makes the behavior on partial paths configurable. True (and empty list) is according to the specifications. False (and an error) is the behavior before 8.1.
-            * @version 1.0
-            */
-            bool ReturnEmptyListOnPartialPath;
-
-          /**
             * To avoid booting all boxes at the same time and overloading the ACS on a power outage, cwmp waits for a random number of seconds before starting. This number defines the maximum startup delay that a box may have.
             * @version 1.0
             */

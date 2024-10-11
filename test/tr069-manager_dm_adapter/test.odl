@@ -91,13 +91,11 @@
             string Username = "cdrouter";
             uint32 PeriodicInformInterval=10000;
             bool InstanceWildcardsSupported=1;
-            bool ReturnEmptyListOnPartialPath=1;
             string ParameterKey = "randomkey";
             bool VerifyParameterType =1;
 
             object InternalSettings {
                 string Datamodel = "TR181";
-                uint32 ReturnEmptyListOnPartialPath = 1;
             }
             object ConnRequest {
                 string ConnRequestHost="0.0.0.0";
@@ -195,6 +193,8 @@
 
     }
 }
+
+#include "gpv_001.odl";
 
 %populate {
     object Device {

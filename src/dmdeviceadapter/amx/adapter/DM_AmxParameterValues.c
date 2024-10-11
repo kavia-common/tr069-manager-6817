@@ -184,12 +184,16 @@ static int DM_ENG_Device_GetParameterValues_ParseValues(dm_amx_env_t* amx, const
    @param pvsList Pointer to the resulting parameter value struct list
 
    @return
-   - Tr69 error code (90xx) in case of an error
+   - Tr69 error code (9005) in case of an error
+   - 0 if skipped, because not a tr181-component
+   - 0 if the response is from a partial path and empty
    - 0 if succesfull
  */
 int DM_ENG_Device_GetParameterValues_GetValues(dm_amx_env_t* amx, const char* path, DM_ENG_ParameterValueStruct** pvsList) {
     SAH_TRACEZ_IN("DM_DA");
     int error = 0;
+    bool partialPath = false;
+    bool wildcardIsUsed = false;
     amxc_var_t get;
     amxc_var_init(&get);
     int ret = 0;
@@ -207,9 +211,17 @@ int DM_ENG_Device_GetParameterValues_GetValues(dm_amx_env_t* amx, const char* pa
         SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "cwmp has no access rights to [%s] ", path);
     }
 
-    ret = amxb_get(amx->bus_ctx, path, (path[strlen(path) - 1] == '.') ? 20 : 0, &get, 10);
+    partialPath = (path[strlen(path) - 1] == '.');
+    wildcardIsUsed = (strstr(path, "*") != NULL);
 
-    if((ret != AMXB_STATUS_OK) || amxc_var_is_null(&get)) {
+    ret = amxb_get(amx->bus_ctx, path, partialPath ? 20 : 0, &get, 10);
+
+    if((partialPath || wildcardIsUsed) && ((ret != AMXB_STATUS_OK) || amxc_var_is_null(&get))) {
+        SAH_TRACEZ_INFO("DM_DA", "Empty response for unresolved Partial Path [%s]", path);
+        goto stop;
+    }
+
+    if((ret != AMXB_STATUS_OK)) {
         if((ret == AMXB_ERROR_NOT_SUPPORTED_SCHEME)) {
             SetErrorGotoStop(0, "Skip non tr181-component, path [%s] %d", path, ret);
         } else {
@@ -217,7 +229,7 @@ int DM_ENG_Device_GetParameterValues_GetValues(dm_amx_env_t* amx, const char* pa
         }
     }
 
-    if(path[strlen(path) - 1] == '.') {
+    if(partialPath) {
         amxa_filter_get_resp(&get, &filters);
     }
     error = DM_ENG_Device_GetParameterValues_ParseValues(amx, path, &get, pvsList);

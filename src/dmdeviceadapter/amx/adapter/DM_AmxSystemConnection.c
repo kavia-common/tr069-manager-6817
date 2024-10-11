@@ -317,9 +317,7 @@ static const char* DM_ENG_Device_ConvertToObjectName(DM_ENG_SystemParameter_t pa
     case DM_ENG_ALLOWCONNECTIONREQUESTFROMADDRESS:
     case DM_ENG_DATAMODEL:
     case DM_ENG_DATAMODELURL:
-    case DM_ENG_EMPTYFULLPARAMETERLIST:
     case DM_ENG_MAXSTARTUPDELAY:
-    case DM_ENG_RETURNEMPTYLISTONPARIALPATH:
     case DM_ENG_SSLACCEPTSELFSIGNED:
     case DM_ENG_SSLVERIFYHOSTNAME:
     case DM_ENG_SSLACCEPTEXPIRED:
@@ -450,8 +448,6 @@ static const char* DM_ENG_Device_ConvertToParameterName(DM_ENG_SystemParameter_t
     case DM_ENG_AUTOCREATEINSTANCES:               return "AutoCreateInstances";
     case DM_ENG_LOCALIPADDRESS:                    return "LocalIPAddress";
     case DM_ENG_INHIBIT_VALUE_CHANGE_UPON_BOOT:    return "InhibitValueChangeUponBoot";
-    case DM_ENG_RETURNEMPTYLISTONPARIALPATH:       return "ReturnEmptyListOnPartialPath";
-    case DM_ENG_EMPTYFULLPARAMETERLIST:            return "EmptyFullParameterList";
     case DM_ENG_ALLOWMULTIPLESCHEDULEINFORM:       return "AllowMultipleScheduleInform";
     case DM_ENG_VERIFYPARAMETERTYPE:               return "VerifyParameterType";
     case DM_ENG_ACCEPTUNSIGNEDINTASBOOLEAN:        return "AcceptUnsignedIntAsBoolean";

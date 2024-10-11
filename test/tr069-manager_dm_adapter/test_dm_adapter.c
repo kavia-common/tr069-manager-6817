@@ -729,7 +729,7 @@ void test_dmadapter_GetParameterNames_DeviceObject_NextLevel_True(UNUSED void** 
     rv = DM_ENG_GetParameterNames(DM_ENG_EntityType_ACS, objpath, true, &param_info_st);
     assert_int_equal(rv, 0);
     num_param = DM_ENG_tablen((void**) param_info_st);
-    assert_int_equal(num_param, 12);// 3 objects , 3 parameter
+    assert_int_equal(num_param, 13);// 3 objects , 3 parameter
 
     assert_int_equal(check_parameter_name(param_info_st, "Device.RootDataModelVersion", 0), 0);
     assert_int_equal(check_parameter_name(param_info_st, "Device.InterfaceStackNumberOfEntries", 0), 0);
@@ -979,6 +979,160 @@ void test_dmadapter_GetParametersValues_Object(UNUSED void** state) {
             free(params_values_st);
         }
     }
+}
+static void parameter_set(const char* obj, const char* param_name, const char* param_value) {
+    amxd_trans_t trans;
+    amxd_trans_init(&trans);
+    assert_non_null(obj);
+    assert_string_not_equal(obj, "");
+    assert_non_null(param_name);
+    assert_string_not_equal(param_name, "");
+    assert_non_null(param_value);
+    amxd_trans_select_object(&trans, amxd_dm_findf(&dm, "%s", obj));
+    amxd_trans_set_value(cstring_t, &trans, param_name, param_value);
+    assert_int_equal(amxd_trans_apply(&trans, &dm), amxd_status_ok);
+    amxd_trans_clean(&trans);
+}
+
+static void instance_add(const char* template, const uint32_t index, const char* name) {
+    amxd_trans_t trans;
+    amxd_trans_init(&trans);
+    assert_non_null(template);
+    assert_string_not_equal(template, "");
+    amxd_trans_select_object(&trans, amxd_dm_findf(&dm, "%s", template));
+    amxd_trans_add_inst(&trans, index, name);
+    assert_int_equal(amxd_trans_apply(&trans, &dm), amxd_status_ok);
+    amxd_trans_clean(&trans);
+}
+
+static void instance_del(const char* template, const uint32_t index, const char* name) {
+    amxd_trans_t trans;
+    amxd_trans_init(&trans);
+    assert_non_null(template);
+    assert_string_not_equal(template, "");
+    amxd_trans_select_object(&trans, amxd_dm_findf(&dm, "%s", template));
+    amxd_trans_del_inst(&trans, index, name);
+    assert_int_equal(amxd_trans_apply(&trans, &dm), amxd_status_ok);
+    amxd_trans_clean(&trans);
+}
+
+void test_dmadapter_gpv_001(UNUSED void** state) {
+    int num_param = 3;
+    int nb_param = 0;
+    DM_ENG_ParameterValueStruct** params_values_st = NULL;
+    char* paramsArray[num_param + 1];
+    paramsArray[0] = "Device.TheHosts.Host.*.IPv4Address.1.IPAddress";
+    paramsArray[1] = "Device.TheHosts.Host.*.IPv6Address.1.IPAddress";
+    paramsArray[2] = NULL;
+    paramsArray[num_param] = NULL;
+
+    // Test: ipv4(0) ipv6(0)
+    assert_int_equal(DM_ENG_GetParameterValues(DM_ENG_EntityType_ACS, (char**) paramsArray, &params_values_st), 0);
+    nb_param = DM_ENG_tablen((void**) params_values_st);
+    assert_int_equal(nb_param, 0);
+    assert_null(params_values_st);
+
+
+    // Test: ipv4(1) and ipv6(0)
+    instance_add("Device.TheHosts.Host.", 1, NULL);
+    instance_add("Device.TheHosts.Host.1.IPv4Address.", 1, NULL);
+    parameter_set("Device.TheHosts.Host.1.IPv4Address.1.", "IPAddress", "1.1.1.1");
+    assert_int_equal(DM_ENG_GetParameterValues(DM_ENG_EntityType_ACS, (char**) paramsArray, &params_values_st), 0);
+    nb_param = DM_ENG_tablen((void**) params_values_st);
+    assert_int_equal(nb_param, 1);
+    assert_non_null(params_values_st);
+    assert_int_equal(check_parameter_value(params_values_st, "Device.TheHosts.Host.1.IPv4Address.1.IPAddress", "1.1.1.1", DM_ENG_ParameterType_STRING), 0);
+    #if PRINT_RESULT
+    printf("------------------------------test_dmadapter_gpv_001--------------------------------\n");
+    for(int i = 0; i < nb_param; i++) {
+        printf("--> Parameter [%s] : type= %d , val= %s \n", (char*) params_values_st[i]->parameterName,
+               params_values_st[i]->type, (char*) params_values_st[i]->value);
+    }
+    printf("-------------------------------test_dmadapter_gpv_001-------------------------------\n");
+    #endif
+
+    if(params_values_st) {
+        DM_ENG_deleteAllParameterValueStruct(params_values_st);
+        free(params_values_st);
+    }
+
+    // Test: ipv4(2) and ipv6(0) and invalid path
+    paramsArray[2] = "Device.TheHosts.Host.1.InvalidParam";
+    instance_add("Device.TheHosts.Host.1.IPv4Address.", 2, NULL);
+    parameter_set("Device.TheHosts.Host.1.IPv4Address.2.", "IPAddress", "2.2.2.2");
+    assert_int_equal(DM_ENG_GetParameterValues(DM_ENG_EntityType_ACS, (char**) paramsArray, &params_values_st), 9005);
+    nb_param = DM_ENG_tablen((void**) params_values_st);
+    assert_int_equal(nb_param, 0);
+    assert_null(params_values_st);
+
+    // Test: ipv4(2) and ipv6(1)
+    paramsArray[2] = NULL;
+    instance_add("Device.TheHosts.Host.1.IPv6Address.", 1, NULL);
+    parameter_set("Device.TheHosts.Host.1.IPv6Address.1.", "IPAddress", "fe80::/10");
+    assert_int_equal(DM_ENG_GetParameterValues(DM_ENG_EntityType_ACS, (char**) paramsArray, &params_values_st), 0);
+    nb_param = DM_ENG_tablen((void**) params_values_st);
+    assert_int_equal(nb_param, 2);
+    assert_non_null(params_values_st);
+    #if PRINT_RESULT
+    printf("------------------------------test_dmadapter_gpv_001--------------------------------\n");
+    for(int i = 0; i < nb_param; i++) {
+        printf("--> Parameter [%s] : type= %d , val= %s \n", (char*) params_values_st[i]->parameterName,
+               params_values_st[i]->type, (char*) params_values_st[i]->value);
+    }
+    printf("-------------------------------test_dmadapter_gpv_001-------------------------------\n");
+    #endif
+    assert_int_equal(check_parameter_value(params_values_st, "Device.TheHosts.Host.1.IPv4Address.1.IPAddress", "1.1.1.1", DM_ENG_ParameterType_STRING), 0);
+    assert_int_equal(check_parameter_value(params_values_st, "Device.TheHosts.Host.1.IPv6Address.1.IPAddress", "fe80::/10", DM_ENG_ParameterType_STRING), 0);
+    if(params_values_st) {
+        DM_ENG_deleteAllParameterValueStruct(params_values_st);
+        free(params_values_st);
+    }
+
+
+    // Test: ipv4(2) and ipv6(2)
+    instance_add("Device.TheHosts.Host.", 2, NULL);
+    instance_add("Device.TheHosts.Host.2.IPv6Address.", 1, NULL);
+    parameter_set("Device.TheHosts.Host.2.IPv6Address.1.", "IPAddress", "fe80::/11");
+    assert_int_equal(DM_ENG_GetParameterValues(DM_ENG_EntityType_ACS, (char**) paramsArray, &params_values_st), 0);
+    nb_param = DM_ENG_tablen((void**) params_values_st);
+    assert_int_equal(nb_param, 3);
+    assert_non_null(params_values_st);
+    #if PRINT_RESULT
+    printf("------------------------------test_dmadapter_gpv_001--------------------------------\n");
+    for(int i = 0; i < nb_param; i++) {
+        printf("--> Parameter [%s] : type= %d , val= %s \n", (char*) params_values_st[i]->parameterName,
+               params_values_st[i]->type, (char*) params_values_st[i]->value);
+    }
+    printf("-------------------------------test_dmadapter_gpv_001-------------------------------\n");
+    #endif
+    assert_int_equal(check_parameter_value(params_values_st, "Device.TheHosts.Host.1.IPv4Address.1.IPAddress", "1.1.1.1", DM_ENG_ParameterType_STRING), 0);
+    assert_int_equal(check_parameter_value(params_values_st, "Device.TheHosts.Host.1.IPv6Address.1.IPAddress", "fe80::/10", DM_ENG_ParameterType_STRING), 0);
+    assert_int_equal(check_parameter_value(params_values_st, "Device.TheHosts.Host.2.IPv6Address.1.IPAddress", "fe80::/11", DM_ENG_ParameterType_STRING), 0);
+    if(params_values_st) {
+        DM_ENG_deleteAllParameterValueStruct(params_values_st);
+        free(params_values_st);
+    }
+
+    // Test: ipv4(2) and ipv6(2) and Invalid parameter
+    paramsArray[2] = "Device.TheHosts.Host.InvalidParameter";
+    assert_int_equal(DM_ENG_GetParameterValues(DM_ENG_EntityType_ACS, (char**) paramsArray, &params_values_st), 9005);
+    nb_param = DM_ENG_tablen((void**) params_values_st);
+    assert_int_equal(nb_param, 0);
+    assert_null(params_values_st);
+
+    // Test: ipv4(0) and ipv6(1), using partial path
+    paramsArray[0] = "Device.TheHosts.Host.1.";
+    paramsArray[1] = "Device.TheHosts.Host.2.IPv6Address.1.";
+    paramsArray[2] = NULL;
+    instance_del("Device.TheHosts.Host.", 1, NULL);
+    instance_del("Device.TheHosts.Host.2.IPv6Address.", 1, NULL);
+    assert_int_equal(DM_ENG_GetParameterValues(DM_ENG_EntityType_ACS, (char**) paramsArray, &params_values_st), 0);
+    nb_param = DM_ENG_tablen((void**) params_values_st);
+    assert_int_equal(nb_param, 0);
+    assert_null(params_values_st);
+
+    // remove remaining instance
+    instance_del("Device.TheHosts.Host.", 2, NULL);
 }
 
 void test_dmadapter_GetParametersValues_Object_Sorted(UNUSED void** state) {

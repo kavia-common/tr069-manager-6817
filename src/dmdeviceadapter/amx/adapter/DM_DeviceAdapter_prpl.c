@@ -472,71 +472,21 @@ stop:
  * @return Returns 0 (zero) if OK or a fault code (9002, ...) according to the TR-069.
  */
 int DM_ENG_Device_GetParameterValues(char* parameterNames[], DM_ENG_ParameterValueStruct** pvsList) {
-    unsigned int i = 0;
     unsigned int error = 0;
-
-    unsigned int partialError = 0;
-    int numberPartialPath = 0;
-    int numberPartialFail = 0;
-    int numberParameter = 0;
-    char* EmptyFullParameterList = NULL;
-    bool emptyFull = true;
 
     if(DM_ENG_Device_Common_CheckSystem(&da.acs) == false) {
         SetErrorGotoStop(DM_ENG_INTERNAL_ERROR, "Internal System error");
     }
 
-    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_EMPTYFULLPARAMETERLIST, &EmptyFullParameterList) != 0) {
-        SAH_TRACEZ_ERROR("DM_DA", "Cannot fetch the EmptyFullParameterList param");
-    }
-    if(EmptyFullParameterList) {
-        if(!strcmp(EmptyFullParameterList, "0")) {
-            emptyFull = false;
-        }
-        free(EmptyFullParameterList);
-    }
-
-    if(emptyFull == false) {
-        for(i = 0; parameterNames[i] != NULL; i++) {
-            if(( strlen(parameterNames[i]) == 0) || ( parameterNames[i][strlen(parameterNames[i]) - 1] == '.')) {
-                numberPartialPath++;
-            } else {
-                numberParameter++;
-            }
-        }
-    }
-
-    for(i = 0; parameterNames[i] != NULL; i++) {
+    for(unsigned int i = 0; parameterNames[i] != NULL; i++) {
         SAH_TRACEZ_INFO("DM_DA", "Getting values for parameter %s", parameterNames[i]);
-        if(( strlen(parameterNames[i]) == 0) || ( parameterNames[i][strlen(parameterNames[i]) - 1] == '.')) {
-            partialError = DM_ENG_Device_GetParameterValues_GetValues(&da.acs, parameterNames[i], pvsList);
-            if(partialError) {
-                numberPartialFail++;
-            }
-        } else {
-            error = DM_ENG_Device_GetParameterValues_GetValues(&da.acs, parameterNames[i], pvsList);
-        }
-        if(error) {
-            GotoStop("Error detected, stopping");
-        }
-        if(emptyFull && partialError) {
-            error = partialError;
-            GotoStop("Error detected, stopping");
-        }
+        error = DM_ENG_Device_GetParameterValues_GetValues(&da.acs, parameterNames[i], pvsList);
     }
 
 stop:
     if(error != 0) {
         DM_ENG_deleteAllParameterValueStruct(pvsList);
-    } else if((emptyFull == false) && (numberParameter == 0)) {
-        /* No other parameter than partial path in the request
-         * If all partial paths failed => set error code */
-        if(numberPartialPath == numberPartialFail) {
-            error = partialError;
-            SAH_TRACEZ_ERROR("DM_DA", "Error detected, all partial path failed");
-        }
     }
-
     return error;
 }
 

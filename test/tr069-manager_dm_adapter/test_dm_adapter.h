@@ -127,6 +127,8 @@ void test_dmadapter_GetParametersValues_RootParameters(void** state);
 
 void test_dmadapter_GetParametersValues_Object(void** state);
 
+void test_dmadapter_gpv_001(void** state);
+
 void test_dmadapter_GetParametersValues_Object_Sorted(void** state);
 
 void test_dmadapter_GetParametersValues_searchPath_Parameter(void** state);
