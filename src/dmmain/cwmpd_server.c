@@ -387,8 +387,10 @@ cwmp_status_t cwmp_server_start() {
         goto exit;
     }
 
-    free(g_randomCpeUrl);
-    g_randomCpeUrl = NULL;
+    if(g_randomCpeUrl) {
+        free(g_randomCpeUrl);
+        g_randomCpeUrl = NULL;
+    }
     if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_CONNECTIONREQUESTPATH, &g_randomCpeUrl) != 0) {
         SAH_TRACEZ_ERROR("CWMPD", "Failed to get: connection request path");
         goto exit;

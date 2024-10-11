@@ -1270,7 +1270,7 @@ int DM_ENG_Device_RemoveNotification(const char* subscriptionPath, int subscript
  *
  * @ return 0 if succesfull, -1 if an error occurred
  */
-int DM_ENG_Device_GetSubscriptions(DM_ENG_SubscriptionStruct** pResult[]) {
+int DM_ENG_Device_GetSubscriptions(DM_ENG_SubscriptionStruct** pResult) {
     SAH_TRACEZ_INFO("DM_DA", "Get subscriptions");
     if(DM_ENG_Device_ACSConnectionGetSubscriptions(&da.system, pResult) == false) {
         return -1;

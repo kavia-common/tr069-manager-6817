@@ -557,8 +557,8 @@ static void cwmp_client_https_session_init() {
         } else if(ntp_status && (strcmp(ntp_status, "Synchronized") != 0)) {
             // ntp is not synchronized, no expiration date check
             lws_connect_info.ssl_connection |= LCCSCF_ALLOW_EXPIRED;
-            free(ntp_status);
         }
+        free(ntp_status);
     }
     free(ssl_accept_expied);
 }

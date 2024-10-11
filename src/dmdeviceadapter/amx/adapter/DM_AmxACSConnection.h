@@ -71,7 +71,7 @@ bool DM_ENG_Device_ACSConnectionRemoveSubscription(dm_amx_env_t* amx, const char
 bool DM_ENG_Device_ACSConnectionHandleGetwandevice(dm_amx_env_t* amx, const char* ipaddress, char** addressFound);
 bool DM_ENG_Device_ACSConnectionHandleGetwaninterface(dm_amx_env_t* amx, const char* ipaddress, char** ppWanInterface);
 
-int DM_ENG_Device_ACSConnectionGetSubscriptions(dm_amx_env_t* amx, DM_ENG_SubscriptionStruct** pResult[]);
+int DM_ENG_Device_ACSConnectionGetSubscriptions(dm_amx_env_t* amx, DM_ENG_SubscriptionStruct** pResult);
 
 
 #ifdef __cplusplus

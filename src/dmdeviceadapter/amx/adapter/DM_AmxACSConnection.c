@@ -525,11 +525,10 @@ bool DM_ENG_Device_ACSConnectionRemoveSubscription(dm_amx_env_t* amx, const char
     - TR69 error in case of error
     - 0 in case of success
  */
-int DM_ENG_Device_ACSConnectionGetSubscriptions(dm_amx_env_t* amx, DM_ENG_SubscriptionStruct** pResult[]) {
+int DM_ENG_Device_ACSConnectionGetSubscriptions(dm_amx_env_t* amx, DM_ENG_SubscriptionStruct** pResult) {
 
     amxc_var_t subscriptions;
     int error;
-    DM_ENG_SubscriptionStruct* tempList = NULL;
     int ret;
     const amxc_htable_t* htable = NULL;
     amxc_var_init(&subscriptions);
@@ -553,10 +552,9 @@ int DM_ENG_Device_ACSConnectionGetSubscriptions(dm_amx_env_t* amx, DM_ENG_Subscr
 
         DM_ENG_SubscriptionStruct* subscription = DM_ENG_newSubscriptionStruct(path, type);
         if(subscription) {
-            DM_ENG_addSubscriptionStruct(&tempList, subscription);
+            DM_ENG_addSubscriptionStruct(pResult, subscription);
         }
     }
-    *pResult = DM_ENG_toSubscriptionStructArray(tempList);
     error = 0;
 
 stop:
