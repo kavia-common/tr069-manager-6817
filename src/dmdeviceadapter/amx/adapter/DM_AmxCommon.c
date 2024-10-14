@@ -61,6 +61,7 @@
 #include <dmengine/DM_ENG_Error.h>
 #include <debug/sahtrace.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "DM_AmxCommon.h"
 
@@ -746,6 +747,60 @@ int DM_ENG_Device_Common_String_Compare(amxc_llist_it_t* it1, amxc_llist_it_t* i
     const char* key1 = amxc_var_constcast(cstring_t, amxc_var_from_llist_it(it1));
     const char* key2 = amxc_var_constcast(cstring_t, amxc_var_from_llist_it(it2));
     return strcmp(key1 == NULL ? "" : key1, key2 == NULL ? "" : key2);
+}
+
+static bool is_valid_alias(const char* alias) {
+    bool retval = false;
+    if((alias == NULL) || (*alias == 0)) {
+        goto stop;
+    }
+    if(!isalpha(alias[0]) && (alias[0] != '_')) {
+        goto stop;
+    }
+    for(size_t i = 1; alias[i] != '\0'; i++) {
+        if(!isalnum(alias[i]) && (alias[i] != '_') && (alias[i] != '-')) {
+            goto stop;
+        }
+    }
+    retval = true;
+stop:
+    return retval;
+}
+
+bool DM_ENG_Device_Common_Is_Valid_Alias_Path(const char* path) {
+    bool retval = false;
+    char* path_ptr = NULL;
+    char* start = NULL;
+    char* end = NULL;
+
+    if((path == NULL) || (*path == 0)) {
+        printf("Invalid arg(s)\n");
+        goto stop;
+    }
+
+    if(strstr(path, "*")) {
+        printf("Invalid path \'%s\': contains wildcard(s)\n", path);
+        goto stop;
+    }
+
+    path_ptr = (char*) path;
+    while((start = strstr(path_ptr, ".[")) && (end = strstr(start, "]"))) {
+        char substring[256];
+        start += 2;
+        size_t len = end - start;
+        if(len < 256) {
+            strncpy(substring, start, len);
+            substring[len] = '\0';
+            if(is_valid_alias(substring) == false) {
+                printf("Invalid path \'%s\': contains invalid alias \'%s\'\n", path, substring);
+                goto stop;
+            }
+        }
+        path_ptr = end + 1;
+    }
+    retval = true;
+stop:
+    return retval;
 }
 
 /** @} */

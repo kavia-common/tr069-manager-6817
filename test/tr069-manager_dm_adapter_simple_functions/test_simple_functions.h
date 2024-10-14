@@ -111,83 +111,11 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 **
 ****************************************************************************/
-#ifndef __DM_ADAPTER_AMXCOMMON_H__
-#define __DM_ADAPTER_AMXCOMMON_H__
 
-#ifdef __cplusplus
-extern "C"
-{
-#endif
+#ifndef __TEST_SIMPLE_FUNCTIONS_H__
+#define __TEST_SIMPLE_FUNCTIONS_H__
 
-#include <amxc/amxc.h>
-#include <amxc/amxc_macros.h>
-#include <amxp/amxp.h>
-#include <amxd/amxd_dm.h>
-#include <amxd/amxd_path.h>
-#include <amxd/amxd_object.h>
-#include <amxb/amxb.h>
-#include <amxa/amxa.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <dmengine/DM_ENG_ParameterType.h>
-#include "DM_DeviceAdapter.h"
+/* test func */
+void test_alias_path_validation(void** state);
 
-#define EVENT_DM_OBJECT_CHANGED         "dm:object-changed"
-#define EVENT_DM_INSTANCE_ADDED         "dm:instance-added"
-#define EVENT_DM_INSTANCE_DELETED       "dm:instance-removed"
-#define EVENT_DM_FILTER_OBJECT_CHANGED  "notification in ['dm:object-changed']"
-#define EVENT_DM_FILTER_TEMPLATE        "notification in ['%s'] && parameters.%s == '%s'"
-
-#define EVENT_ENG_SRV_RESTART      "HTTP_SERVER_RESTART"
-#define EVENT_ENG_SRV_STOP         "HTTP_SERVER_STOP"
-#define EVENT_ENG_URL_CHANGED      "ACS_URL_CHANGED"
-#define EVENT_ENG_SRV_START        "HTTP_SERVER_START"
-#define EVENT_ENG_CLEAR_ACS_IP     "CLIENT_CLEAR_ACS_IP"
-
-#define ME "DM_DA"
-
-// tr181-device name on the bus
-#define TR181_DEVICE_OBJNAME "Device."
-
-#define SetErrorGotoStop(errorNumber, ...) \
-    { error = errorNumber; SAH_TRACEZ_ERROR("DM_DA", __VA_ARGS__); goto stop; }
-
-#define GotoStop(...) \
-    { SAH_TRACEZ_ERROR("DM_DA", __VA_ARGS__); goto stop; }
-
-typedef void (* notification_cb_t)(const char* path, const amxc_var_t* const data);
-
-typedef struct DM_Subscription_info {
-    int uniqueID;         // unique id
-    char* parameter;      // path to object
-    amxc_llist_it_t infoit;
-} DM_Subscription_info_t;
-
-typedef struct DM_Subscription {
-    char* objectpath;                    // path to object
-    notification_cb_t cb;                // callback used when create subscription
-    amxc_llist_t subscription_info_list; //list of pair id:parameter
-    amxc_llist_it_t it;
-} DM_Subscription_t;
-
-bool DM_ENG_Device_Common_IsValidPath(const char* acsPath);
-bool DM_ENG_Device_Common_CheckSystem(dm_amx_env_t* amx);
-bool DM_ENG_Device_Common_AmxConnect(dm_amx_env_t* amx, const char* envVariable, const char* defaultLocation, const char* envURI, const char* defaultURI);
-bool DM_ENG_Device_Common_IsWildcardPath(const char* path);
-bool DM_ENG_Device_Common_IsWildcardPathValid(const char* path);
-bool DM_ENG_Device_Common_Resolve_Path(dm_amx_env_t* amx, const char* path, amxc_var_t* resolved);
-DM_ENG_ParameterType DM_ENG_Device_Common_ConvertParameterType(u_int32_t type);
-int DM_ENG_Device_Common_AddSubscription(amxc_llist_t* list, dm_amx_env_t* amx, const char* path, const char* filter, notification_cb_t cb, int* subscriptionID);
-int DM_ENG_Device_Common_DeleteSubscription(amxc_llist_t* list, dm_amx_env_t* amx, int id);
-int DM_ENG_Device_Common_IndexToAlias(dm_amx_env_t* amx, const char* acspath, const char* path, char** resolved);
-DM_Subscription_t* DM_ENG_Device_Common_FindSubscriptionByID(amxc_llist_t* list, int id);
-DM_Subscription_t* DM_ENG_Device_Common_FindSubscription(amxc_llist_t* list, const char* path);
-void DM_ENG_Device_Common_Cleanup_Subscription(amxc_llist_t* slist, dm_amx_env_t* amx);
-int DM_ENG_Device_Common_String_Compare(amxc_llist_it_t* it1, amxc_llist_it_t* it2);
-bool DM_ENG_Device_Common_Is_Valid_Alias_Path(const char* path);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif // __DM_ADAPTER_AMXCOMMON_H__
+#endif //__TEST_SIMPLE_FUNCTIONS_H__

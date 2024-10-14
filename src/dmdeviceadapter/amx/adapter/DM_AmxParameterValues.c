@@ -309,7 +309,7 @@ int DM_ENG_Device_SetParameterValues_Validate(dm_amx_env_t* amx, DM_ENG_Paramete
     amxd_path_setf(&obj_path, false, "%s", parameterList[*i]->parameterName);
     object_path = strdup(amxd_path_get(&obj_path, AMXD_OBJECT_TERMINATE));
 
-    if(amxd_path_is_search_path(&obj_path)) {
+    if(amxd_path_is_search_path(&obj_path) && (DM_ENG_Device_Common_Is_Valid_Alias_Path(amxc_string_get(&obj_path.path, 0)) == false)) {
         DM_ENG_Device_SetParameterValuesFault(faultsList, parameterList[*i]->parameterName, DM_ENG_INVALID_PARAMETER_NAME, nbFaults);
         SetErrorGotoStop(DM_ENG_INVALID_ARGUMENTS, "Not a complete object path ");
     }
