@@ -149,7 +149,7 @@ static char* persistentRPCPath = NULL;
 /**
  * Performs the necessary initializations of the device adapter if any, when starting the DM Agent.
  */
-bool DM_ENG_Device_Init(void** systemCtx, void** acsCtx, const char* rpcPath, const char* aclfile, const char* vendoPrefix) {
+bool DM_ENG_Device_Init(void** systemCtx, void** acsCtx, const char* rpcPath, const char* aclfile, const char* vendorPrefix) {
     bool result;
     char* tmp = NULL;
     char* instance_alias = NULL;
