@@ -79,7 +79,7 @@ typedef struct resolver_context_s {
     struct ares_addrinfo_hints hints;
     bool send_boot_strap;
     amxc_llist_t event_list;
-    amxc_llist_it_t it;
+
 } resolver_context_t;
 
 typedef struct addr_info_s {
@@ -95,7 +95,6 @@ static amxp_timer_t* dns_timeout_timer = NULL;
 static int dns_ttl_val = 0;
 // list of ACS addresses with ttl.
 static amxc_llist_t ainfo_list;
-static amxc_llist_t resolver_list;
 
 static void ainfo_list_clean(amxc_llist_it_t* it) {
     addr_info_t* ainfo = amxc_container_of(it, addr_info_t, it);
@@ -128,18 +127,12 @@ static event_pair_t* event_list_findby_fd(amxc_llist_t* event_list, int fd) {
     return NULL;
 }
 
-static void cwmpd_dns_resolver_clean(amxc_llist_it_t* it) {
-    resolver_context_t* resolver = amxc_container_of(it, resolver_context_t, it);
-    amxc_llist_clean(&resolver->event_list, event_list_clean);
-    ares_destroy(resolver->ares_chann);
-    free(resolver);
-}
-
 /* clean up DNS resolver */
 static void cwmp_dns_resolver_destroy(resolver_context_t* resolver) {
     if(resolver) {
-        amxc_llist_it_take(&resolver->it);
-        cwmpd_dns_resolver_clean(&resolver->it);
+        amxc_llist_clean(&resolver->event_list, event_list_clean);
+        ares_destroy(resolver->ares_chann);
+        free(resolver);
     }
 }
 
@@ -402,8 +395,6 @@ static resolver_context_t* cwmp_dns_resolver_create() {
         return NULL;
     }
     amxc_llist_init(&resolver_ctx->event_list);
-    amxc_llist_init(&resolver_list);
-    amxc_llist_append(&resolver_list, &resolver_ctx->it);
 
     //cares init options
     resolver_ctx->ares_opts.sock_state_cb = cwmp_dns_ares_sock_cb;
@@ -542,7 +533,6 @@ cwmp_status_t cwmp_dns_stop() {
 
     ares_library_cleanup();
     amxc_llist_clean(&ainfo_list, ainfo_list_clean);
-    amxc_llist_clean(&resolver_list, cwmpd_dns_resolver_clean);
 
     return cwmp_status_ok;
 }

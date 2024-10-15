@@ -458,8 +458,6 @@ error:
     cwmp_app.da_path = NULL;
     SAH_TRACE_APP_INFO("CWMPD is exiting with code [%d]", rc);
     sahTraceClose();
-
-    amxb_be_remove_all();
     cwmp_timer_remove_all();
     amxo_parser_clean(&parser);
     amxd_dm_clean(&dm);

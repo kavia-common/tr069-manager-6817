@@ -714,8 +714,6 @@ cwmp_status_t cwmp_client_init() {
 cwmp_status_t cwmp_client_stop() {
     lws_context_destroy(lws_client_ctx);
     DM_CloseHttpSession(true);
-    DM_ENG_deliveredEventListCleanup();
-    DM_ENG_acsEventListCleanup();
     return cwmp_status_ok;
 }
 
