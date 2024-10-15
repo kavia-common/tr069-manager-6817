@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.35 - 2024-10-15(18:24:23 +0000)
+
+### Other
+
+- Fix Cookie parsing and response
+
 ## Release v1.33.34 - 2024-10-15(09:59:36 +0000)
 
 ### Other
