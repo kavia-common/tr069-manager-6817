@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.34 - 2024-10-15(09:59:36 +0000)
+
+### Other
+
+- - fix typo in the DM_ENG_Device_Init parameter
+
 ## Release v1.33.33 - 2024-10-10(18:06:53 +0000)
 
 ### Other
