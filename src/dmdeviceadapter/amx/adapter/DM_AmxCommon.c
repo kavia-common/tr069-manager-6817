@@ -774,12 +774,12 @@ bool DM_ENG_Device_Common_Is_Valid_Alias_Path(const char* path) {
     char* end = NULL;
 
     if((path == NULL) || (*path == 0)) {
-        printf("Invalid arg(s)\n");
+        SAH_TRACEZ_ERROR("DM_DA", "Invalid arg(s)");
         goto stop;
     }
 
     if(strstr(path, "*")) {
-        printf("Invalid path \'%s\': contains wildcard(s)\n", path);
+        SAH_TRACEZ_ERROR("DM_DA", "Invalid path \'%s\': contains wildcard(s)", path);
         goto stop;
     }
 
@@ -792,7 +792,7 @@ bool DM_ENG_Device_Common_Is_Valid_Alias_Path(const char* path) {
             strncpy(substring, start, len);
             substring[len] = '\0';
             if(is_valid_alias(substring) == false) {
-                printf("Invalid path \'%s\': contains invalid alias \'%s\'\n", path, substring);
+                SAH_TRACEZ_ERROR("DM_DA", "Invalid path \'%s\': contains invalid alias \'%s\'", path, substring);
                 goto stop;
             }
         }
