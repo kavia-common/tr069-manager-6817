@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.38 - 2024-10-24(10:52:59 +0000)
+
+### Other
+
+- GPV not adhering to the standard for partial paths and wildcard
+
 ## Release v1.33.37 - 2024-10-17(08:30:53 +0000)
 
 ### Other
