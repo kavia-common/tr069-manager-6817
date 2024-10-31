@@ -75,8 +75,8 @@
 #define GMAP_QUERY_TAG                  "manageable && .Active != 0"
 
 static gmap_query_t* manageable_gmap_query = NULL;
-static amxp_timer_t* retry_timer = NULL;
-
+static amxp_timer_t* gmap_retry_timer = NULL;
+static amxp_timer_t* host_retry_timer = NULL;
 static amxc_llist_t md_requests;
 
 typedef struct {
@@ -447,28 +447,16 @@ stop:
     return;
 }
 
-/*  *** TEMPORARY WORKAROUND ***
-
-    START A TIMER TO TRY TO OPEN A GMAP QUERY.
-    IT CAN HAPPEN THAT DURING BOOT GMAP-SERVER IS NOT VERY RESPONSIVE
-
-    THIS FUNCTION WILL TRY TO OPEN A GMAP QUERY
-    WHEN IT FAILS THE TIMER IS RESTARTED
-    THE TIMEOUT WILL BE DOUBLED AS LONG AS IT IS BELOW 20 SECONDS
-
-    A GOOD/BETTER SOLUTION WOULD BE THAT LIBGAMP-CLIENT PROVIDES AN ASYNCHRONOUS
-    IMPLEMENTATION OF THE OPEN QUERY FUNCTION.
- */
 static void cwmp_plugin_try_open_gmap_query(UNUSED amxp_timer_t* timer, UNUSED void* priv) {
     static int timeout = 1000;
     when_not_null(manageable_gmap_query, stop);
 
     manageable_gmap_query = gmap_query_open(GMAP_QUERY_TAG, GMAP_QUERY_NAME, cwmp_plugin_manageable_query);
     if(manageable_gmap_query == NULL) {
+        amxp_timer_start(gmap_retry_timer, timeout);
         if(timeout < 20000) {
             timeout = timeout * 2;
         }
-        amxp_timer_start(retry_timer, timeout);
     }
 stop:
     return;
@@ -513,22 +501,33 @@ stop:
     return;
 }
 
+static void cwmp_plugin_try_add_manageabledevice_subscriptions(UNUSED amxp_timer_t* timer, UNUSED void* priv) {
+    static int host_timeout = 1000;
+
+    int retval = cwmp_plugin_add_subscription(HOST_HOSTS_PATH, DM_FILTER_HOST_PHYS_CHANGED, cwmp_plugin_host_phys_changed);
+    if(retval != 0) {
+        SAH_TRACEZ_INFO(ME, "Could not create Host subscription - retrying");
+        amxp_timer_start(host_retry_timer, host_timeout);
+        if(host_timeout < 20000) {
+            host_timeout = host_timeout * 2;
+        }
+        goto stop;
+    }
+
+    cwmp_plugin_try_open_gmap_query(NULL, NULL);
+stop:
+    return;
+}
+
 void cwmp_plugin_manageabledevice_init(void) {
     amxb_bus_ctx_t* gmap_ctx = amxb_be_who_has("Devices.Device");
     when_null_trace(gmap_ctx, stop, ERROR, "gMap data model not found 'Devices.Device' - is gmap-server running?");
     gmap_client_init(gmap_ctx);
     cwmp_plugin_md_cache_init();
+    amxp_timer_new(&host_retry_timer, cwmp_plugin_try_add_manageabledevice_subscriptions, NULL);
+    amxp_timer_new(&gmap_retry_timer, cwmp_plugin_try_open_gmap_query, NULL);
 
-    int retval = cwmp_plugin_add_subscription(HOST_HOSTS_PATH, DM_FILTER_HOST_PHYS_CHANGED, cwmp_plugin_host_phys_changed);
-    when_failed_trace(retval, stop, ERROR, "Could not create Host subscription");
-
-    manageable_gmap_query = gmap_query_open(GMAP_QUERY_TAG, GMAP_QUERY_NAME, cwmp_plugin_manageable_query);
-
-    /* *** TEMPORARY WORKAROUND - SEE FUNCTION ABOVE THIS ONE *** */
-    if(manageable_gmap_query == NULL) {
-        amxp_timer_new(&retry_timer, cwmp_plugin_try_open_gmap_query, NULL);
-        amxp_timer_start(retry_timer, 10000);
-    }
+    cwmp_plugin_try_add_manageabledevice_subscriptions(NULL, NULL);
 stop:
     return;
 }
