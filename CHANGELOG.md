@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.39 - 2024-10-31(09:00:22 +0000)
+
+### Other
+
+- Manageable device is empty
+
 ## Release v1.33.38 - 2024-10-24(10:52:59 +0000)
 
 ### Other
