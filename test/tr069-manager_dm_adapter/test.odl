@@ -194,7 +194,8 @@
     }
 }
 
-#include "gpv_001.odl";
+include "gpv_001.odl";
+include "test_0001.odl";
 
 %populate {
     object Device {

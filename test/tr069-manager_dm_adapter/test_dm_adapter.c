@@ -186,6 +186,42 @@ static void handle_events(void) {
     printf("\n");
 }
 
+static void parameter_set(const char* obj, const char* param_name, const char* param_value) {
+    amxd_trans_t trans;
+    amxd_trans_init(&trans);
+    assert_non_null(obj);
+    assert_string_not_equal(obj, "");
+    assert_non_null(param_name);
+    assert_string_not_equal(param_name, "");
+    assert_non_null(param_value);
+    amxd_trans_select_object(&trans, amxd_dm_findf(&dm, "%s", obj));
+    amxd_trans_set_value(cstring_t, &trans, param_name, param_value);
+    assert_int_equal(amxd_trans_apply(&trans, &dm), amxd_status_ok);
+    amxd_trans_clean(&trans);
+}
+
+static void instance_add(const char* template, const uint32_t index, const char* name) {
+    amxd_trans_t trans;
+    amxd_trans_init(&trans);
+    assert_non_null(template);
+    assert_string_not_equal(template, "");
+    amxd_trans_select_object(&trans, amxd_dm_findf(&dm, "%s", template));
+    amxd_trans_add_inst(&trans, index, name);
+    assert_int_equal(amxd_trans_apply(&trans, &dm), amxd_status_ok);
+    amxd_trans_clean(&trans);
+}
+
+static void instance_del(const char* template, const uint32_t index, const char* name) {
+    amxd_trans_t trans;
+    amxd_trans_init(&trans);
+    assert_non_null(template);
+    assert_string_not_equal(template, "");
+    amxd_trans_select_object(&trans, amxd_dm_findf(&dm, "%s", template));
+    amxd_trans_del_inst(&trans, index, name);
+    assert_int_equal(amxd_trans_apply(&trans, &dm), amxd_status_ok);
+    amxd_trans_clean(&trans);
+}
+
 static int check_parameter_value(DM_ENG_ParameterValueStruct** pv, char* path, char* val, int type) {
     int nb_param = DM_ENG_tablen((void**) pv);
     for(int i = 0; i < nb_param; i++) {
@@ -729,7 +765,7 @@ void test_dmadapter_GetParameterNames_DeviceObject_NextLevel_True(UNUSED void** 
     rv = DM_ENG_GetParameterNames(DM_ENG_EntityType_ACS, objpath, true, &param_info_st);
     assert_int_equal(rv, 0);
     num_param = DM_ENG_tablen((void**) param_info_st);
-    assert_int_equal(num_param, 13);// 3 objects , 3 parameter
+    assert_int_equal(num_param, 14);// 3 objects , 3 parameter
 
     assert_int_equal(check_parameter_name(param_info_st, "Device.RootDataModelVersion", 0), 0);
     assert_int_equal(check_parameter_name(param_info_st, "Device.InterfaceStackNumberOfEntries", 0), 0);
@@ -979,41 +1015,6 @@ void test_dmadapter_GetParametersValues_Object(UNUSED void** state) {
             free(params_values_st);
         }
     }
-}
-static void parameter_set(const char* obj, const char* param_name, const char* param_value) {
-    amxd_trans_t trans;
-    amxd_trans_init(&trans);
-    assert_non_null(obj);
-    assert_string_not_equal(obj, "");
-    assert_non_null(param_name);
-    assert_string_not_equal(param_name, "");
-    assert_non_null(param_value);
-    amxd_trans_select_object(&trans, amxd_dm_findf(&dm, "%s", obj));
-    amxd_trans_set_value(cstring_t, &trans, param_name, param_value);
-    assert_int_equal(amxd_trans_apply(&trans, &dm), amxd_status_ok);
-    amxd_trans_clean(&trans);
-}
-
-static void instance_add(const char* template, const uint32_t index, const char* name) {
-    amxd_trans_t trans;
-    amxd_trans_init(&trans);
-    assert_non_null(template);
-    assert_string_not_equal(template, "");
-    amxd_trans_select_object(&trans, amxd_dm_findf(&dm, "%s", template));
-    amxd_trans_add_inst(&trans, index, name);
-    assert_int_equal(amxd_trans_apply(&trans, &dm), amxd_status_ok);
-    amxd_trans_clean(&trans);
-}
-
-static void instance_del(const char* template, const uint32_t index, const char* name) {
-    amxd_trans_t trans;
-    amxd_trans_init(&trans);
-    assert_non_null(template);
-    assert_string_not_equal(template, "");
-    amxd_trans_select_object(&trans, amxd_dm_findf(&dm, "%s", template));
-    amxd_trans_del_inst(&trans, index, name);
-    assert_int_equal(amxd_trans_apply(&trans, &dm), amxd_status_ok);
-    amxd_trans_clean(&trans);
 }
 
 void test_dmadapter_gpv_001(UNUSED void** state) {
@@ -1449,6 +1450,55 @@ void test_dmadapter_AddDeleteObject(UNUSED void** state) {
     amxc_string_clean(&path);
 }
 
+void test_dmadapter_test_0001_add_object_with_alias(UNUSED void** state) {
+    unsigned int pInstanceNumber;
+    DM_ENG_ParameterStatus pStatus;
+
+    const char* object_path = "Device.Test_0001.Host.[FirstHost].";
+    assert_int_equal(DM_ENG_AddObject(DM_ENG_EntityType_ACS, object_path, "", &pInstanceNumber, &pStatus), 0);
+    assert_int_equal(pInstanceNumber, 1);
+    assert_int_equal((int) pStatus, 0);
+
+    object_path = "Device.Test_0001.Host.[FirstHost].IPv4Address.[FirstIPv4].";
+    assert_int_equal(DM_ENG_AddObject(DM_ENG_EntityType_ACS, object_path, "", &pInstanceNumber, &pStatus), 0);
+    assert_int_equal(pInstanceNumber, 1);
+    assert_int_equal((int) pStatus, 0);
+
+    object_path = "Device.Test_0001.Host.[FirstHost].IPv4Address.[SecondIPv4].";
+    assert_int_equal(DM_ENG_AddObject(DM_ENG_EntityType_ACS, object_path, "", &pInstanceNumber, &pStatus), 0);
+    assert_int_equal(pInstanceNumber, 2);
+    assert_int_equal((int) pStatus, 0);
+
+    instance_del("Device.Test_0001.Host.FirstHost.IPv4Address.", 0, "SecondIPv4");
+    object_path = "Device.Test_0001.Host.[FirstHost].IPv4Address.[SecondIPv4].";
+    assert_int_equal(DM_ENG_AddObject(DM_ENG_EntityType_ACS, object_path, "", &pInstanceNumber, &pStatus), 0);
+    assert_int_equal(pInstanceNumber, 3);
+    assert_int_equal((int) pStatus, 0);
+
+    object_path = "Device.Test_0001.Host.[SecondHost].";
+    assert_int_equal(DM_ENG_AddObject(DM_ENG_EntityType_ACS, object_path, "", &pInstanceNumber, &pStatus), 0);
+    assert_int_equal(pInstanceNumber, 2);
+    assert_int_equal((int) pStatus, 0);
+
+    instance_add("Device.Test_0001.Host.SecondHost.IPv6Address.", 1, "FirstIPv6");
+    object_path = "Device.Test_0001.Host.[SecondHost].IPv6Address.[FirstIPv6].";
+    assert_int_equal(DM_ENG_AddObject(DM_ENG_EntityType_ACS, object_path, "", &pInstanceNumber, &pStatus), 9002);
+    assert_int_equal(pInstanceNumber, 0);
+    assert_int_equal((int) pStatus, -1);
+
+    object_path = "Device.Test_0001.Host.1.IPv6Address.[FirstIPv6].";
+    assert_int_equal(DM_ENG_AddObject(DM_ENG_EntityType_ACS, object_path, "", &pInstanceNumber, &pStatus), 0);
+    assert_int_equal(pInstanceNumber, 1);
+    assert_int_equal((int) pStatus, 0);
+
+    object_path = "Device.Test_0001.Host.2.IPv6Address.";
+    assert_int_equal(DM_ENG_AddObject(DM_ENG_EntityType_ACS, object_path, "", &pInstanceNumber, &pStatus), 0);
+    assert_int_equal(pInstanceNumber, 2);
+    assert_int_equal((int) pStatus, 0);
+
+    instance_del("Device.Test_0001.Host.", 0, "FirstHost");
+    instance_del("Device.Test_0001.Host.", 0, "SecondHost");
+}
 
 void test_dmadapter_SetParameterAttributes(UNUSED void** state) {
     DM_ENG_ParameterAttributesStruct** pParameterList = NULL;

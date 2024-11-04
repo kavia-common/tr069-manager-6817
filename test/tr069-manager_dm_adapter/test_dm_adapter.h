@@ -145,6 +145,8 @@ void test_dmadapter_SetParameterAttributes(void** state);
 
 void test_dmadapter_AddDeleteObject(void** state);
 
+void test_dmadapter_test_0001_add_object_with_alias(void** state);
+
 void test_dmadapter_Open_Close_Session(void** state);
 
 void test_dmadapter_Reboot(void** state);

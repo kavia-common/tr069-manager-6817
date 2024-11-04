@@ -125,6 +125,24 @@
 
 #include "DM_DeviceAdapter.h"
 
+static char* get_acs_assigned_instance_alias(amxd_path_t* path, bool remove) {
+    char* alias = NULL;
+    size_t len = 0;
+    when_null(path, stop);
+    when_str_empty(amxc_string_get(&path->path, 0), stop);
+    alias = amxd_path_get_last(path, remove);
+    when_null(alias, stop);
+    len = strlen(alias);
+    if((len > 3) && (alias[0] == '[') && (alias[len - 2] == ']') && (alias[len - 1] == '.')) {
+        memmove(alias, alias + 1, len - 3);
+        alias[len - 3] = '\0';
+    } else {
+        free(alias);
+        alias = NULL;
+    }
+stop:
+    return alias;
+}
 
 //---------------------------------------------------------------------------------------------
 /**
@@ -149,28 +167,40 @@
    - tr69 error code (e.g. 900xx) in case of an error
    - 0 if succesfull
  */
-int DM_ENG_Device_AddDeleteObject_Add(dm_amx_env_t* amx, char* objectName, unsigned int* pInstanceNumber, DM_ENG_ParameterStatus* pStatus) {
+int DM_ENG_Device_AddDeleteObject_Add(dm_amx_env_t* amx, const char* objectName, unsigned int* pInstanceNumber, DM_ENG_ParameterStatus* pStatus) {
     int error = DM_ENG_INVALID_PARAMETER_NAME;
     int rv = 0;
     amxc_var_t ret;
     amxc_var_init(&ret);
+    char* alias = NULL;
     amxd_path_t path;
-    amxd_path_init(&path, "");
+    amxd_path_init(&path, objectName);
+    const char* obj = NULL;
 
     *pStatus = DM_ENG_ParameterStatus_UNDEFINED;
     *pInstanceNumber = 0;
-    amxd_path_setf(&path, false, "%s", objectName);
 
+    when_str_empty_trace(objectName, stop, ERROR, "Add failed : object name null/empty");
     when_true_trace(objectName[strlen(objectName) - 1] != '.', stop, ERROR,
                     "Add failed : Not valid object path [%s]", objectName);
     when_false_trace(DM_ENG_Device_Common_IsValidPath(objectName), stop, ERROR,
                      "Add failed : Not valid object path [%s]", objectName);
-    when_true_trace(amxd_path_is_search_path(&path), stop, ERROR,
+    when_true_trace(amxd_path_is_search_path(&path) && (DM_ENG_Device_Common_Is_Valid_Alias_Path(amxc_string_get(&path.path, 0)) == false), stop, ERROR,
                     "Add failed : Not valid object path [%s]", objectName);
-    when_false_trace(amxa_is_add_allowed(amx->bus_ctx, amx->acl_rules, objectName), stop, ERROR,
-                     "Add failed : cwmp has no access right to [%s]", objectName);
 
-    rv = amxb_add(amx->bus_ctx, amxd_path_get(&path, AMXD_OBJECT_TERMINATE), 0, NULL, NULL, &ret, 2);
+    alias = get_acs_assigned_instance_alias(&path, true);
+    if(alias) {
+        amxc_string_replace(&path.path, "[", "", UINT32_MAX);
+        amxc_string_replace(&path.path, "]", "", UINT32_MAX);
+        obj = amxd_path_get(&path, AMXD_OBJECT_TERMINATE);
+    } else {
+        obj = objectName;
+    }
+
+    when_false_trace(amxa_is_add_allowed(amx->bus_ctx, amx->acl_rules, obj), stop, ERROR,
+                     "Add failed : cwmp has no access right to [%s]", obj);
+
+    rv = amxb_add(amx->bus_ctx, obj, 0, alias, NULL, &ret, 2);
 
     if((rv != 0) || amxc_var_is_null(&ret)) {
         SetErrorGotoStop(DM_ENG_INTERNAL_ERROR, "Add Instance failed");
@@ -181,6 +211,7 @@ int DM_ENG_Device_AddDeleteObject_Add(dm_amx_env_t* amx, char* objectName, unsig
     error = 0;
 
 stop:
+    free(alias);
     amxc_var_clean(&ret);
     amxd_path_clean(&path);
     return error;

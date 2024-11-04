@@ -1,0 +1,15 @@
+%define {
+    select Device {
+        object Test_0001 {
+            object Host[] {
+                string IPAddress;
+                object IPv4Address[] {
+                    string IPAddress;
+                }
+                object IPv6Address[] {
+                    string IPAddress;
+                }
+            }
+        }
+    }
+}
