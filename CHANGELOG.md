@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.40 - 2024-11-04(09:13:06 +0000)
+
+### Other
+
+- AddObject using Alias Identifier implementation
+
 ## Release v1.33.39 - 2024-10-31(09:00:22 +0000)
 
 ### Other
