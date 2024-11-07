@@ -87,7 +87,7 @@ void DM_ENG_Device_Reboot_DoReboot(dm_amx_env_t* amx) {
     amxc_var_init(&args);
     amxc_var_set_type(&args, AMXC_VAR_ID_HTABLE);
     amxc_var_add_key(cstring_t, &args, "Cause", "RemoteReboot");
-    amxc_var_add_key(cstring_t, &args, "Reason", "TR-069");
+    amxc_var_add_key(cstring_t, &args, "Reason", "Initiated by TR-069");
 
     rv = amxb_call(amx->bus_ctx, OBJNAME, REBOOT, &args, NULL, 5);
     if(rv != 0) {
@@ -115,7 +115,7 @@ void DM_ENG_Device_FactoryReset_DoReset(dm_amx_env_t* amx) {
     amxc_var_init(&args);
     amxc_var_set_type(&args, AMXC_VAR_ID_HTABLE);
     amxc_var_add_key(cstring_t, &args, "Cause", "RemoteFactoryReset");
-    amxc_var_add_key(cstring_t, &args, "Reason", "TR-069");
+    amxc_var_add_key(cstring_t, &args, "Reason", "Initiated by TR-069");
     rv = amxb_call(amx->bus_ctx, OBJNAME, FACTORY_RESET, &args, NULL, 5);
     if(rv != 0) {
         SAH_TRACEZ_ERROR("DM_DA", "Invoke failed Device.FactoryReset - retval = %d", rv);
