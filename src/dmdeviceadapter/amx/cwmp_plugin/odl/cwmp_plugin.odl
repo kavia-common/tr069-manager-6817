@@ -58,6 +58,7 @@
 }
 
 import "${name}.so" as "${name}";
+import "mod-dmext.so";
 
 include "${prefix_file}";
 include "${definition_file}";
