@@ -73,6 +73,8 @@
 #include "smm.h"
 
 #define SOFTWAREMODULES "CWMP_SoftwareModules."
+#define SOFTWAREMODULES_SIGNAL_REGEX "^wait:CWMP_SoftwareModules\\.$"
+
 
 typedef enum _op_status_t
 {
@@ -444,20 +446,39 @@ stop:
     return status;
 }
 
+static int monitor_smm(void) {
+    int retval = -1;
+    amxb_bus_ctx_t* bus_ctx = amxb_be_who_has(SOFTWAREMODULES);
+    when_null_trace(bus_ctx, stop, ERROR, "Unable to get SMM bus ctx");
+    retval = amxb_subscribe(bus_ctx, SOFTWAREMODULES, "notification == 'OpResultDU!'",
+                            op_handle_results, NULL);
+    when_failed_trace(retval, stop, ERROR, "Failed to create subscription [%d]", retval);
+    retval = 0;
+stop:
+    return retval;
+}
+
+static void smm_available_cb(UNUSED const char* signame,
+                             UNUSED const amxc_var_t* const data,
+                             UNUSED void* const priv) {
+    SAH_TRACEZ_WARNING(ME, "SMM available");
+    monitor_smm();
+}
+
 int smm_init(void) {
     int retval = -1;
     SAH_TRACEZ_IN(ME);
 
-    amxc_var_t ret;
-    amxc_var_init(&ret);
-
-    retval = amxb_subscribe(amxb_be_who_has(SOFTWAREMODULES), SOFTWAREMODULES, "notification == 'OpResultDU!'",
-                            op_handle_results, NULL);
-
-    when_failed_trace(retval, stop, ERROR, "Failed to create subscription [%d]", retval);
+    if(amxb_be_who_has(SOFTWAREMODULES) == NULL) {
+        amxb_wait_for_object(SOFTWAREMODULES);
+        when_failed_trace(amxp_slot_connect_filtered(NULL, SOFTWAREMODULES_SIGNAL_REGEX, NULL, smm_available_cb, NULL),
+                          stop, ERROR, "Unable to wait for SMM to become available.");
+        SAH_TRACEZ_WARNING(ME, "Waiting for SMM");
+    } else {
+        when_failed(monitor_smm(), stop);
+    }
     retval = 0;
 stop:
-    amxc_var_clean(&ret);
     SAH_TRACEZ_OUT(ME);
     return retval;
 }
