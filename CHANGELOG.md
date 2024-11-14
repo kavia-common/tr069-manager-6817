@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.41 - 2024-11-14(11:20:21 +0000)
+
+### Other
+
+- Wait for the SMM object to become available
+
 ## Release v1.33.40 - 2024-11-04(09:13:06 +0000)
 
 ### Other
