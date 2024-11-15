@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.42 - 2024-11-15(13:10:40 +0000)
+
+### Other
+
+- [Terminating dot][tr181] fix ManagementServer
+
 ## Release v1.33.41 - 2024-11-14(11:20:21 +0000)
 
 ### Other
