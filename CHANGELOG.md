@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.43 - 2024-11-20(16:31:50 +0000)
+
+### Other
+
+- - [tr069-manager] declare custom events in odl definitions
+
 ## Release v1.33.42 - 2024-11-15(13:10:40 +0000)
 
 ### Other
