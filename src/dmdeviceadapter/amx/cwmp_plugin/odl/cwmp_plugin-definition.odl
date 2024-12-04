@@ -259,22 +259,6 @@
         uint32 ManageableDeviceNotificationLimit;
 
       /**
-        * The DSCP value, with a range from 0 to 63, used to prioritize traffic in a network (Qos).
-        * Common DSCP values are:
-        * - Best Effort (default): 0
-        * - Assured Forwarding (AF) Classes : 10, 12, 14, 18, 20, 22, 26, 28, 30
-        * - Expedited Forwarding (EF): 46
-        * - Class Selector Values (Legacy TOS): 8, 16, 24, 32, 40, 48, 56
-        * Will be converted to a TOS field and set as a socket option for both server and client side.
-        * @version 8.4
-        */
-        %persistent %protected uint32 DSCP {
-          default 0;
-          on action validate call check_range [0,63];
-          userflags %upc;
-        }
-
-      /**
         * Each entry in this table corresponds to a distinct LAN Device that supports Device-Gateway Association according to [Annex F/TR-069a2] as indicated by the presence of the DHCP option specified in that Annex.
         * @version 1.0
         */

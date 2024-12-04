@@ -156,7 +156,8 @@ cwmp_status_t cwmp_dns_stop();
 void cwmp_dns_get_random_ip(char** ip);
 
 bool is_ipaddr(const char* ip);
-
-int cwmp_socket_set_dscp(struct lws* wsi);
+int ip_type(const char* ip);
+bool is_valid_ipv4(const char* ip);
+bool is_valid_ipv6(const char* ip);
 
 #endif // !_CWMPD_H_

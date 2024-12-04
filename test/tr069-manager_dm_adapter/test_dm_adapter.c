@@ -74,6 +74,7 @@
 #include "test_dm_adapter.h"
 #include <amxc/amxc_macros.h>
 #include <dmengine/DM_ENG_Device.h>
+#include <debug/sahtrace.h>
 
 #define DM_ENG_METHOD_NOT_SUPPORTED          (9000)
 #define DM_ENG_REQUEST_DENIED                (9001)
@@ -270,6 +271,9 @@ static void add_host_instance(const char* mac, const char* ip) {
 int test_dmadapter_setup(UNUSED void** state) {
     amxd_object_t* root_obj = NULL;
 
+    // sahTraceAddZone(500, "DM_ENGINE");
+    sahTraceOpen("TEST", TRACE_TYPE_STDOUT);
+
     test_register_dummy_be();
 
     assert_int_equal(amxd_dm_init(&dm), amxd_status_ok);
@@ -299,6 +303,7 @@ int test_dmadapter_teardown(UNUSED void** state) {
 
     test_unregister_dummy_be();
 
+    sahTraceClose();
     return 0;
 }
 
@@ -1134,6 +1139,14 @@ void test_dmadapter_gpv_001(UNUSED void** state) {
 
     // remove remaining instance
     instance_del("Device.TheHosts.Host.", 2, NULL);
+}
+
+void test_dmadapter_Set(UNUSED void** state) {
+    assert_int_equal(DM_ENG_UpdateQosInfo(false, NULL, -1, -1), 0);
+    assert_int_equal(DM_ENG_UpdateQosInfo(true, NULL, -1, -1), -1);
+    assert_int_equal(DM_ENG_UpdateQosInfo(true, "1.1.1.1", -1, -1), -1);
+    assert_int_equal(DM_ENG_UpdateQosInfo(true, "1.1.1.1", 8080, -1), -1);
+    assert_int_equal(DM_ENG_UpdateQosInfo(true, "1.1.1.1", 8080, 4), 0);
 }
 
 void test_dmadapter_GetParametersValues_Object_Sorted(UNUSED void** state) {

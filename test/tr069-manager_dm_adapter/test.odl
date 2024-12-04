@@ -238,3 +238,23 @@ include "test_0001.odl";
         }
     }
 }
+
+%define {
+    object QoS {
+        object Classification[] {
+            bool Enable;
+            string DestIP;
+            int32 DestPort;
+            int32 IPVersion;
+        }
+    }
+}
+
+%populate {
+    object 'QoS' {
+        object Classification {
+            instance add (0,"cwmp-client") {
+            }
+        }
+    }
+}

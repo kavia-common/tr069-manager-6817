@@ -78,15 +78,40 @@ static amxb_bus_ctx_t* acs_bus_ctx = NULL;
 static amxd_dm_t dm;
 static amxo_parser_t parser;
 
-bool is_ipaddr(const char* ip) {
-    struct in6_addr result;
-    when_null(ip, exit);
-
-    if(inet_pton(AF_INET, ip, &result) || inet_pton(AF_INET6, ip, &result)) {
-        return true;
+bool is_valid_ipv4(const char* ip) {
+    bool retval = false;
+    struct sockaddr_in sa;
+    if(ip && inet_pton(AF_INET, ip, &(sa.sin_addr))) {
+        retval = true;
     }
-exit:
-    return false;
+    return retval;
+}
+
+bool is_valid_ipv6(const char* ip) {
+    bool retval = false;
+    struct sockaddr_in6 sa6;
+    if(ip && inet_pton(AF_INET6, ip, &(sa6.sin6_addr))) {
+        retval = true;
+    }
+    return retval;
+}
+
+int ip_type(const char* ip) {
+    int retval = -1;
+    if(is_valid_ipv4(ip)) {
+        retval = 4;
+    } else if(is_valid_ipv6(ip)) {
+        retval = 6;
+    }
+    return retval;
+}
+
+bool is_ipaddr(const char* ip) {
+    bool retval = false;
+    if(is_valid_ipv4(ip) || is_valid_ipv6(ip)) {
+        retval = true;
+    }
+    return retval;
 }
 
 static void cwmp_app_handleSignal(int signal) {

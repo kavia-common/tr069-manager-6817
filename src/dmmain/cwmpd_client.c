@@ -117,6 +117,9 @@ static struct lws_context* lws_client_ctx = NULL; /* client lws context */
 static struct lws_context_creation_info lws_client_ctx_info;
 static struct lws_client_connect_info lws_connect_info;
 
+static char* qos_info_dst_ip = NULL;
+static int qos_info_dst_port = -1;
+
 //lws cannot handle session cookie
 //check LWS_WITH_CACHE_NSCOOKIEJAR for more info
 static void cwmp_client_parse_cookie(char* cookie) {
@@ -314,10 +317,6 @@ static int cwmp_client_handle_cookies(struct lws* wsi) {
 
 static int cwmp_client_connection_established_cb(struct lws* wsi) {
     int ret = CWMP_HTTP_CALLBACK_CONTINUE;
-
-    if(cwmp_socket_set_dscp(wsi) != 0) {
-        SAH_TRACEZ_WARNING("CWMPD", "Failed to set DSCP value to client connection");
-    }
 
     http_status = lws_http_client_http_response(wsi);
     SAH_TRACEZ_INFO("CWMPD", "Server return code [%d]", http_status);
@@ -583,6 +582,30 @@ static void cwmp_client_prepare_session() {
     }
 }
 
+static void update_qos_info(const char* dstIP, int dstPort) {
+    bool qos_info_changed = false;
+    SAH_TRACEZ_INFO("CWMPD", "QoS Info: dstIP [%s], dstPort [%d]", dstIP ? dstIP:"Nil", dstPort);
+
+    if((qos_info_dst_ip && !dstIP) || (!qos_info_dst_ip && dstIP) || (qos_info_dst_ip && dstIP && (strcmp(qos_info_dst_ip, dstIP) != 0))) {
+        free(qos_info_dst_ip);
+        qos_info_dst_ip = dstIP ? strdup(dstIP): NULL;
+        qos_info_changed = true;
+    }
+
+    if(qos_info_dst_port != dstPort) {
+        qos_info_dst_port = dstPort;
+        qos_info_changed = true;
+    }
+
+    if(qos_info_changed) {
+        bool enable = false;
+        if((is_ipaddr(qos_info_dst_ip)) && (qos_info_dst_port > 0)) {
+            enable = true;
+        }
+        DM_ENG_UpdateQosInfo(enable, qos_info_dst_ip, qos_info_dst_port, ip_type(qos_info_dst_ip));
+    }
+}
+
 /*get the next ACS IP address*/
 static cwmp_status_t cwmp_client_get_acsip() {
     cwmp_status_t ret = cwmp_status_ko;
@@ -626,6 +649,9 @@ static cwmp_status_t cwmp_client_get_acsip() {
     if(acs_server_ip) {
         ret = cwmp_status_ok;
     }
+
+    update_qos_info(acs_server_ip, acs_server_port);
+
     return ret;
 }
 
@@ -666,6 +692,8 @@ static cwmp_status_t cwmp_client_parse_url() {
         SAH_TRACEZ_WARNING("CWMPD", "URI port is not set, default to Port:7547");
         acs_server_port = 7547; // default tr-069 CWMP port 7547
     }
+
+    update_qos_info(acs_server_ip, acs_server_port);
 
     SAH_TRACEZ_INFO("CWMPD", "Host: %s | Scheme: %s | Port: %d | Path: %s",
                     acs_server_host,
@@ -712,6 +740,8 @@ cwmp_status_t cwmp_client_init() {
 }
 
 cwmp_status_t cwmp_client_stop() {
+    free(qos_info_dst_ip);
+    qos_info_dst_ip = NULL;
     lws_context_destroy(lws_client_ctx);
     DM_CloseHttpSession(true);
     return cwmp_status_ok;

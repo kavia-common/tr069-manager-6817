@@ -402,6 +402,20 @@ static int build_gpv_all_body(dm_amx_env_t* acs_info, xmlNodePtr node_body, amxc
     return error;
 }
 
+
+int DM_ENG_Device_Set(const char* object, amxc_var_t* values, amxc_var_t* ret) {
+    int retval = -1;
+    dm_amx_env_t* system_info = NULL;
+    if((values == NULL) || (ret == NULL)) {
+        SAH_TRACEZ_ERROR("DM_DA", "Invalid arg(s)");
+        goto stop;
+    }
+    system_info = DM_ENG_Device_GetSystemInfo();
+    retval = amxb_set(system_info->bus_ctx, object, values, ret, 5);
+stop:
+    return retval;
+}
+
 int DM_ENG_Device_GetMapping(amxc_var_t* data) {
     int retval = -1;
     dm_amx_env_t* system_info = NULL;
