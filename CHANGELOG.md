@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.33.44 - 2024-12-06(13:29:32 +0000)
+
+### Other
+
+- Rework qos classification
+
 ## Release v1.33.43 - 2024-11-20(16:31:50 +0000)
 
 ### Other
