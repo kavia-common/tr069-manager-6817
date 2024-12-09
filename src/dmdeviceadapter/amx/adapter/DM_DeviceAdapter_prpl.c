@@ -149,13 +149,13 @@ static char* persistentRPCPath = NULL;
 /**
  * Performs the necessary initializations of the device adapter if any, when starting the DM Agent.
  */
-bool DM_ENG_Device_Init(void** systemCtx, void** acsCtx, const char* rpcPath, const char* aclfile, const char* vendorPrefix) {
+bool DM_ENG_Device_Init(void** systemCtx, void** acsCtx, const char* rpcPath, const char* aclfile, const char* vendorPrefix, const char* backend, const char* uri) {
     bool result;
     char* tmp = NULL;
     char* instance_alias = NULL;
 
     da.data.vendor_prefix = vendorPrefix;
-    result = DM_ENG_Device_SystemConnectionInitialize(&da.system);
+    result = DM_ENG_Device_SystemConnectionInitialize(&da.system, backend, uri);
     if(result == false) {
         SAH_TRACEZ_ERROR("DM_DA", "Error initializing System-bus ");
         return false;
@@ -165,7 +165,7 @@ bool DM_ENG_Device_Init(void** systemCtx, void** acsCtx, const char* rpcPath, co
 
     da.acs.prefix = DM_ENG_getDatamodelPrefix();
 
-    result = DM_ENG_Device_ACSConnectionInitialize(&da.acs);
+    result = DM_ENG_Device_ACSConnectionInitialize(&da.acs, backend, uri);
     if(result == false) {
         SAH_TRACEZ_ERROR("DM_DA", "Error initializing ACS system");
         return false;

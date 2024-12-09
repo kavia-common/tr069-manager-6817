@@ -285,14 +285,11 @@ int test_dmadapter_setup(UNUSED void** state) {
     assert_int_equal(amxo_parser_parse_file(&parser, "./test.odl", root_obj), 0);
 
     handle_events();
-    // override the connection URI
-    setenv("AMXB_URI", "dummy:/tmp/dummy.sock", 1);
     return 0;
 }
 
 int test_dmadapter_teardown(UNUSED void** state) {
 
-    unsetenv("AMXB_URI");
     DM_ENG_DeactivateNotification(DM_ENG_EntityType_ANY);
     DM_ENG_Device_Unload();
 
@@ -317,7 +314,8 @@ void test_dmadapter_connection(UNUSED void** state) {
 
     void* systemctx = NULL;
     void* acsctx = NULL;
-    int rv = DM_ENG_DataModelConnect(acache_file, acl_file, &systemctx, &acsctx, "");
+
+    int rv = DM_ENG_DataModelConnect(acache_file, acl_file, &systemctx, &acsctx, "", NULL, "dummy:/tmp/dummy.sock");
     // connect to bus
     rv += DM_ENG_ActivateNotification(DM_ENG_EntityType_SYSTEM, inform, transferComplete, requestDownload,
                                       getRPCMethods, timerStart, timerStop, timerTimeRemaining, engineEvent, duStateChangeComplete);

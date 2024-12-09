@@ -62,7 +62,7 @@ extern "C"
 #include <dmengine/DM_ENG_RPCInterface.h>
 #include "DM_AmxCommon.h"
 
-bool DM_ENG_Device_SystemConnectionInitialize(dm_amx_env_t* amx);
+bool DM_ENG_Device_SystemConnectionInitialize(dm_amx_env_t* amx, const char* backend, const char* uri);
 void DM_ENG_Device_SystemConnectionCleanup(dm_amx_env_t* amx);
 char* DM_ENG_Device_SystemConnectionGetParameter(dm_amx_env_t* amx, DM_ENG_SystemParameter_t parameter);
 bool DM_ENG_Device_SystemConnectionSetParameter(dm_amx_env_t* amx, DM_ENG_SystemParameter_t parameter, char* pValue);

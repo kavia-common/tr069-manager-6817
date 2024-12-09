@@ -172,7 +172,7 @@ typedef struct DM_Subscription {
 
 bool DM_ENG_Device_Common_IsValidPath(const char* acsPath);
 bool DM_ENG_Device_Common_CheckSystem(dm_amx_env_t* amx);
-bool DM_ENG_Device_Common_AmxConnect(dm_amx_env_t* amx, const char* envVariable, const char* defaultLocation, const char* envURI, const char* defaultURI);
+bool DM_ENG_Device_Common_AmxConnect(dm_amx_env_t* amx, const char* backend, const char* uri);
 bool DM_ENG_Device_Common_IsWildcardPath(const char* path);
 bool DM_ENG_Device_Common_IsWildcardPathValid(const char* path);
 bool DM_ENG_Device_Common_Resolve_Path(dm_amx_env_t* amx, const char* path, amxc_var_t* resolved);

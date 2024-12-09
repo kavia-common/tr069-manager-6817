@@ -81,47 +81,45 @@
    Connect to Ambiorix backend.
 
    @param amx A pointer to the amx env variable that we want to initialize.
-   @param envVariable The name of the environment variable that can be used to override the defaultLocation
-   @param defaultLocation The default location of the bus you want to connect to (e.g. /var/run/pcb_sys)
+   @param backend backend to load.
+   @param uri uri to connect to.
 
    @return
    - false if an error occurred
    - true if succesfull
  */
-bool DM_ENG_Device_Common_AmxConnect(dm_amx_env_t* amx, const char* envVariable, const char* defaultLocation,
-                                     const char* envURI, const char* defaultURI) {
+bool DM_ENG_Device_Common_AmxConnect(dm_amx_env_t* amx, const char* backend, const char* uri) {
+    bool retval = false;
+    const char* backend_ptr = "/usr/bin/mods/amxb/mod-amxb-ubus.so";
+    const char* uri_ptr = "ubus:/var/run/ubus/ubus.sock";
 
-    const char* uri = getenv(envURI);
-    const char* path = getenv(envVariable);
-
-    if(!path) {
-        SAH_TRACEZ_INFO("DM_DA", "env var [%s] not found, using default path [%s]", envVariable, defaultLocation);
-        path = defaultLocation;
+    if(backend && *backend) {
+        SAH_TRACEZ_INFO("DM_DA", "Using [%s] as backend", backend);
+        backend_ptr = backend;
+    } else {
+        SAH_TRACEZ_INFO("DM_DA", "backend not available, default backend [%s] will be used", backend_ptr);
     }
 
-    if(!uri) {
-        SAH_TRACEZ_INFO("DM_DA", "env [%s] not found, using default uri [%s]", envURI, defaultURI);
-        uri = defaultURI;
+    if(uri && *uri) {
+        SAH_TRACEZ_INFO("DM_DA", "Using [%s] as uri", uri);
+        uri_ptr = uri;
+    } else {
+        SAH_TRACEZ_INFO("DM_DA", "uri not available, default uri [%s] will be used", uri_ptr);
     }
 
-    SAH_TRACEZ_INFO("DM_DA", "Loading AMX backend [%s] ...", path);
-
-    int rv = amxb_be_load(path);
-
-    if(rv != 0) {
-        SAH_TRACEZ_ERROR("DM_DA", "Failed To load AMX backend [%s]", path);
-        return false;
+    if(amxb_be_load(backend_ptr) != 0) {
+        SAH_TRACEZ_ERROR("DM_DA", "Failed To load AMX backend [%s]", backend_ptr);
+        goto stop;
     }
 
-    SAH_TRACEZ_INFO("DM_DA", "Connecting To [%s] ...", uri);
-
-    rv = amxb_connect(&amx->bus_ctx, uri);
-
-    if(rv != 0) {
-        SAH_TRACEZ_ERROR("DM_DA", "Failed to connect to bus [%s]\n", uri);
-        return false;
+    if(amxb_connect(&amx->bus_ctx, uri_ptr) != 0) {
+        SAH_TRACEZ_ERROR("DM_DA", "Failed to connect to bus [%s]", uri_ptr);
+        goto stop;
     }
-    return true;
+
+    retval = true;
+stop:
+    return retval;
 }
 
 //---------------------------------------------------------------------------------------------

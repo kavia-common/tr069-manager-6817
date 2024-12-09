@@ -85,7 +85,6 @@ extern "C"
 typedef struct _cwmp_plugin_app {
     amxd_dm_t* dm;
     amxo_parser_t* parser;
-    amxb_bus_ctx_t* amxb_bus_ctx;
     bool init_done;
 } cwmp_plugin_app_t;
 
@@ -105,7 +104,6 @@ void cwmp_plugin_set_app(amxd_dm_t* dm, amxo_parser_t* parser);
 amxd_dm_t* PRIVATE cwmp_plugin_get_dm(void);
 amxo_parser_t* PRIVATE cwmp_plugin_get_parser(void);
 amxc_var_t* PRIVATE cwmp_plugin_get_config(void);
-amxb_bus_ctx_t* PRIVATE cwmp_plugin_get_bus(void);
 
 
 

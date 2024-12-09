@@ -97,6 +97,8 @@ struct application {
     const char* ssl_client_cert;
     const char* pidFile;
     const char* persistent_rpc_path;
+    const char* backend;
+    const char* uri;
     char* da_path;
     const char* aclfile;
 };

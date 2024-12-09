@@ -762,7 +762,7 @@ static void DM_ENG_Device_SystemConnectionSleepBeforeStarting(dm_amx_env_t* amx)
     - false in case of error
     - true in case of success
  */
-bool DM_ENG_Device_SystemConnectionInitialize(dm_amx_env_t* amx) {
+bool DM_ENG_Device_SystemConnectionInitialize(dm_amx_env_t* amx, const char* backend, const char* uri) {
     int cnt = 0;
     int retcode = 0;
     int id = 0;
@@ -778,8 +778,7 @@ bool DM_ENG_Device_SystemConnectionInitialize(dm_amx_env_t* amx) {
     amxc_string_init(&valpath, 0);
     amxc_string_init(&filter, 0);
 
-    if(!DM_ENG_Device_Common_AmxConnect(amx, AMXB_BACKEND, AMXB_BACKEND_DEFAULT,
-                                        AMXB_URI, AMXB_URI_DEFAULT)) {
+    if(!DM_ENG_Device_Common_AmxConnect(amx, backend, uri)) {
         ret = false;
         GotoStop("Connection to bus failed");
     }

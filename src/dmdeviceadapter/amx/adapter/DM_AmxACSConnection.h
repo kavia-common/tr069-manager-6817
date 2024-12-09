@@ -62,7 +62,7 @@ extern "C"
 #include "DM_AmxCommon.h"
 #include <dmengine/DM_ENG_SubscriptionStruct.h>
 
-bool DM_ENG_Device_ACSConnectionInitialize(dm_amx_env_t* amx);
+bool DM_ENG_Device_ACSConnectionInitialize(dm_amx_env_t* amx, const char* backend, const char* uri);
 void DM_ENG_Device_ACSConnectionCleanup(dm_amx_env_t* amx);
 
 

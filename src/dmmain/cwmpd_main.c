@@ -195,6 +195,8 @@ static cwmp_status_t cwmp_app_parse_config(void) {
     retval = amxo_parser_parse_file(&parser, prefix_file, amxd_dm_get_root(&dm));
     when_false_trace(retval != -1, exit, ERROR, "CWMPD: ODL parsing failed - message = %s", amxo_parser_get_message(&parser));
     cwmp_app.prefix = GETP_CHAR(&parser.config, "vendor_prefix");
+    cwmp_app.backend = GETP_CHAR(&parser.config, "cwmpd_backend");
+    cwmp_app.uri = GETP_CHAR(&parser.config, "cwmpd_uri");
 
     // ODL parsing config OK
     ret = cwmp_status_ok;
@@ -384,7 +386,7 @@ static cwmp_status_t cwmp_app_init_dmengine() {
         return rc;
     }
     //Connect to Data-model
-    if(DM_COM_DMCONNECT(cwmp_app.persistent_rpc_path, cwmp_app.aclfile, (void**) &sys_bus_ctx, (void**) &acs_bus_ctx, cwmp_app.prefix) != 0) {
+    if(DM_COM_DMCONNECT(cwmp_app.persistent_rpc_path, cwmp_app.aclfile, (void**) &sys_bus_ctx, (void**) &acs_bus_ctx, cwmp_app.prefix, cwmp_app.backend, cwmp_app.uri) != 0) {
         SAH_TRACEZ_ERROR("CWMPD", "Failed to initialize DM_COM");
         return rc;
     }

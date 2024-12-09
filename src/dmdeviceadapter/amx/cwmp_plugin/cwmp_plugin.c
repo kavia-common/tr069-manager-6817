@@ -187,23 +187,6 @@ static void cwmp_plugin_init(amxd_dm_t* dm, amxo_parser_t* parser) {
     SAH_TRACEZ_INFO(ME, "cwmp_plugin started");
     cwmp_plugin_set_app(dm, parser);
     app.init_done = false;
-
-    amxc_array_t* uris = amxb_list_uris();
-    const char* uri = (const char*) amxc_array_get_data_at(uris, 0);
-    const amxc_llist_t* backends = NULL;
-    backends = amxc_var_constcast(amxc_llist_t, GET_ARG(cwmp_plugin_get_config(), "backends"));
-    const char* backend = amxc_var_constcast(cstring_t, amxc_var_from_llist_it(amxc_llist_get_first(backends)));
-
-    // setenv variables to be used by the Adapter to connect to bus
-    if(!STRING_EMPTY(uri)) {
-        setenv("AMXB_URI", uri, 1);
-        app.amxb_bus_ctx = amxb_find_uri(uri);
-    }
-    if(!STRING_EMPTY(backend)) {
-        setenv("AMXB_BACKEND", backend, 1);
-    }
-    amxc_array_delete(&uris, NULL);
-
     load_fw_controller();
     cwmp_plugin_netmodel_init();
     cwmp_plugin_transfer_init();
@@ -214,13 +197,10 @@ static void cwmp_plugin_exit(UNUSED amxd_dm_t* dm,
                              UNUSED amxo_parser_t* parser) {
     app.dm = NULL;
     app.parser = NULL;
-    app.amxb_bus_ctx = NULL;
     stop_cwmpd();
     cwmp_plugin_netmodel_cleanup();
     cwmp_plugin_manageabledevice_clean();
     cwmp_plugin_transfer_clean();
-    unsetenv("AMXB_URI");
-    unsetenv("AMXB_BACKEND");
     SAH_TRACEZ_INFO(ME, "cwmp_plugin stopped");
     if(fw_module) {
         amxm_so_close(&fw_module);
@@ -251,10 +231,6 @@ amxo_parser_t* cwmp_plugin_get_parser(void) {
 
 amxc_var_t* cwmp_plugin_get_config(void) {
     return &(app.parser->config);
-}
-
-amxb_bus_ctx_t* cwmp_plugin_get_bus(void) {
-    return app.amxb_bus_ctx;
 }
 
 int _cwmp_plugin_main(int reason, amxd_dm_t* dm, amxo_parser_t* parser) {

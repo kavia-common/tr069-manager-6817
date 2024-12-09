@@ -158,11 +158,6 @@ dm_app_data_t* DM_ENG_Device_GetDataInfo();
 #define TIME_PATH                       "Device.Time."
 #define DIAGNOSTICS_PATH                "Device.IP.Diagnostics."
 #define INFORMPARAMETER_PATH            "Device.ManagementServer.InformParameter.*."
-#define AMXB_BACKEND                    "AMXB_BACKEND"
-#define AMXB_URI                        "AMXB_URI"
-/* ubus specefic values*/
-#define AMXB_BACKEND_DEFAULT            "/usr/bin/mods/amxb/mod-amxb-ubus.so"
-#define AMXB_URI_DEFAULT                "ubus:/var/run/ubus.sock"
 
 int DM_ENG_Device_GetConfigValue(DM_ENG_SystemParameter_t parameter, char** pResult);
 

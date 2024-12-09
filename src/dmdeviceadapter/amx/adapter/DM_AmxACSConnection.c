@@ -286,11 +286,10 @@ exit:
     - false in case of error
     - true in case of success
  */
-bool DM_ENG_Device_ACSConnectionInitialize(dm_amx_env_t* amx) {
+bool DM_ENG_Device_ACSConnectionInitialize(dm_amx_env_t* amx, const char* backend, const char* uri) {
     SAH_TRACEZ_IN("DM_DA");
 
-    if(!DM_ENG_Device_Common_AmxConnect(amx, AMXB_BACKEND, AMXB_BACKEND_DEFAULT,
-                                        AMXB_URI, AMXB_URI_DEFAULT)) {
+    if(!DM_ENG_Device_Common_AmxConnect(amx, backend, uri)) {
         return false; // Connection failed
 
     }

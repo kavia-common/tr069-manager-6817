@@ -40,9 +40,6 @@
     };
 
     odl_config = "${cfg-dir}/${name}/cwmpd-config.odl";
-    auto-detect = false;
-    uris = ["ubus:"];
-    backends = ["/usr/bin/mods/amxb/mod-amxb-ubus.so"];
 
     trace-zones = {
         CWMP_PLUGIN = "${default_log_level}",

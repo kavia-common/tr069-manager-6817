@@ -23,7 +23,8 @@
         cwmpd_acl_file = "/cfg/etc/acl/merged/cwmp.json"
     };
 
-    backends = ["/usr/bin/mods/amxb/mod-amxb-ubus.so"];
+    cwmpd_backend = "/usr/bin/mods/amxb/mod-amxb-ubus.so";
+    cwmpd_uri = "ubus:/var/run/ubus/ubus.sock";
 
     trace-zones = {
         CWMPD = 200,
