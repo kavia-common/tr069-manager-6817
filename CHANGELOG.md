@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.34.0 - 2024-12-10(11:50:03 +0000)
+
+### Fixes
+
+- Reboot: Update module for compatibility with reboot service that implement TR-181 2.18
+
+### Other
+
+- [prpl][reboot-service] Implement TR-181 2.18 refactor Device.DeviceInfo.Reboots.{i}.Reason / add Device.DeviceInfo.Reboots.{i}.FirmwareUpdated (break compatibility)
+
 ## Release v1.33.44 - 2024-12-06(13:29:32 +0000)
 
 ### Other
