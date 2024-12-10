@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.34.1 - 2024-12-10(12:22:02 +0000)
+
+### Other
+
+- Rework adapter cnx to the bus
+
 ## Release v1.34.0 - 2024-12-10(11:50:03 +0000)
 
 ### Fixes
