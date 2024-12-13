@@ -254,7 +254,7 @@ void DM_ENG_Device_SystemConnectionHandleParameterChanged(const char* path, cons
 
         if((diagnosticRequest != 0) && DM_ENG_isDiagnosticRequestPending(diagnosticRequest)) {
             const char* DiagnosticsState = GETP_CHAR(parameters, "DiagnosticsState.to");
-            if((DiagnosticsState != NULL) && ((strcmp(DiagnosticsState, "Complete") == 0) || (strncmp(DiagnosticsState, "Error", 5) == 0))) {
+            if((DiagnosticsState != NULL) && ((strcmp(DiagnosticsState, "Complete") == 0) || (strcmp(DiagnosticsState, "Completed") == 0) || (strncmp(DiagnosticsState, "Error", 5) == 0))) {
                 DM_ENG_InformMessageScheduler_diagnosticsComplete();
                 DM_ENG_clearPendingDiagnosticRequest(diagnosticRequest);
             }
