@@ -559,6 +559,9 @@ static void cwmp_client_https_session_init() {
         }
         free(ntp_status);
     }
+    if(cwmp_client_gen_auth_hdr(auth_basic, NULL) != cwmp_status_ok) {
+        SAH_TRACEZ_ERROR("CWMPD", "failed to generate auth headers");
+    }
     free(ssl_accept_expied);
 }
 
