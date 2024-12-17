@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.35.0 - 2024-12-17(13:49:03 +0000)
+
+### Other
+
+- ACS server has to challenge (401) every Inform
+
 ## Release v1.34.1 - 2024-12-10(12:22:02 +0000)
 
 ### Other
