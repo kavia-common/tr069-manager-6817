@@ -456,3 +456,25 @@ clean:
     SAH_TRACEZ_OUT(ME);
 }
 
+amxd_status_t _ManagementServer_updateParameterKey(UNUSED amxd_object_t* object,
+                                                   UNUSED amxd_function_t* func,
+                                                   UNUSED amxc_var_t* args,
+                                                   UNUSED amxc_var_t* ret) {
+
+    amxd_status_t retval = amxd_status_unknown_error;
+    const char* paramKey = GET_CHAR(args, "Key");
+    amxd_object_t* management_server = amxd_dm_findf(cwmp_plugin_get_dm(), "ManagementServer");
+    amxd_trans_t* trans = NULL;
+    amxd_trans_new(&trans);
+    when_null_trace(management_server, exit, ERROR, "couldn't access ManagementServer dm");
+
+    amxd_trans_select_object(trans, management_server);
+    amxd_trans_set_attr(trans, amxd_tattr_change_ro, true);
+    amxd_trans_set_value(cstring_t, trans, "ParameterKey", paramKey);
+    when_failed_trace(amxd_trans_apply(trans, cwmp_plugin_get_dm()), exit, ERROR, "Failed to set parameterkey");
+    retval = amxd_status_ok;
+
+exit:
+    amxd_trans_delete(&trans);
+    return retval;
+}

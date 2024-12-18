@@ -113,6 +113,11 @@ amxd_status_t _ManagementServer_updateConnectionRequestURL(amxd_object_t* object
                                                            amxc_var_t* args,
                                                            amxc_var_t* ret);
 
+amxd_status_t _ManagementServer_updateParameterKey(amxd_object_t* object,
+                                                   amxd_function_t* func,
+                                                   amxc_var_t* args,
+                                                   amxc_var_t* ret);
+
 amxd_status_t _AddTransfer(amxd_object_t* object,
                            amxd_function_t* func,
                            amxc_var_t* args,

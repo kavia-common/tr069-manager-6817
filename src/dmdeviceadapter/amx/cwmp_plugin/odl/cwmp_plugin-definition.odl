@@ -110,9 +110,18 @@
         * value of ParameterKey MUST be set to empty.
         * @version 1.0
         */
-        %persistent string ParameterKey {
+        %persistent %read-only string ParameterKey {
             userflags %upc;
         }
+
+         /**
+        * Update @ref UpdateParameterKey.
+        * @param key ParameterKey
+        * @return void
+        * @error EACCESS, errors related to getting objects, function_exec_failed, invalid_parameter
+        * @version 1.0
+        */
+        void updateParameterKey(%in string Key);
 
       /**
         * The name of the interface on which to listen for connection requests.

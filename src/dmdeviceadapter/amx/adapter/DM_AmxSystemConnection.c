@@ -79,6 +79,7 @@
 #include <dmengine/DM_ENG_Error.h>
 #include "DM_DeviceAdapter.h"
 #include "DM_AmxCommon.h"
+#include <debug/sahtrace_macros.h>
 
 #define DIAGNOSTICS_IPPING_PATH                     "Device.IP.Diagnostics.IPPing."
 #define DIAGNOSTICS_TRACEROUTE_PATH                 "Device.IP.Diagnostics.TraceRoute."
@@ -529,7 +530,18 @@ bool DM_ENG_Device_SystemConnectionSetParameter(dm_amx_env_t* amx, DM_ENG_System
 
     amxc_var_add_key(cstring_t, &set, param_name, pValue);
     //amxc_var_dump(&set,STDOUT_FILENO);
-    retcode = amxb_set(amx->bus_ctx, object_name, &set, &ret, 1);
+
+    //set read-only ParameterKey
+    if(!strcmp(param_name, "ParameterKey")) {
+        when_str_empty_trace(pValue, error, ERROR, "parameterKey should not be empty");
+        amxc_var_t args;
+        amxc_var_init(&args);
+        amxc_var_set_type(&args, AMXC_VAR_ID_HTABLE);
+        amxc_var_add_key(cstring_t, &args, "Key", pValue);
+        retcode = amxb_call(amx->bus_ctx, "ManagementServer", "updateParameterKey", &args, NULL, 5);
+    } else {
+        retcode = amxb_set(amx->bus_ctx, object_name, &set, &ret, 1);
+    }
 
     if(retcode != 0) {
         SAH_TRACEZ_ERROR("DM_DA", "object set failed");
