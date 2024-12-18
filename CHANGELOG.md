@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.35.1 - 2024-12-18(09:12:59 +0000)
+
+### Other
+
+- [DATAMODEL] Incoherences under Device.ManagementServer
+
 ## Release v1.35.0 - 2024-12-17(13:49:03 +0000)
 
 ### Other
