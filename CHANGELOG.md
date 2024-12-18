@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.35.2 - 2024-12-18(11:37:57 +0000)
+
+### Other
+
+- DUT doesn't send 8 Diagnostics Complete
+
 ## Release v1.35.1 - 2024-12-18(09:12:59 +0000)
 
 ### Other
