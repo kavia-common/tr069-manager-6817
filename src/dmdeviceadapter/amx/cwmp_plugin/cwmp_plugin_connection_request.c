@@ -216,7 +216,7 @@ static void generate_mac_based_url_path(char** str, const char* ip) {
             seed = macAddress;
         }
         rnd_idx = (rnd_idx << 1) ^ *seed++;
-        *str[i] = token[rnd_idx % nb_tokens];
+        (*str)[i] = token[rnd_idx % nb_tokens];
     }
 }
 
