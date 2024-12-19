@@ -730,6 +730,10 @@ int DM_ENG_Device_GetInformParameterValues(DM_ENG_EventStruct* eventList, DM_ENG
 
     amxc_var_t* rvalues = GETI_ARG(&values, 0);
     amxc_var_for_each(value, rvalues) {
+        bool enable = GET_BOOL(value, "Enable");
+        if(!enable) {
+            continue;
+        }
         /* match eventList, Interval and Count */
         const csv_string_t el = GET_CHAR(value, "EventList");
         if(!DM_ENG_Device_MatchingEvent(el, eventList)) {
