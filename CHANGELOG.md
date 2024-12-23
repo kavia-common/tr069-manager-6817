@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## Release v1.35.3 - 2024-12-23(15:01:59 +0000)
+
+### Other
+
+- Zerotouch onboarding no longer working
+
 ## Release v1.35.2 - 2024-12-18(11:37:57 +0000)
 
 ### Other
