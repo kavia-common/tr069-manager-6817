@@ -79,7 +79,6 @@
 #include <dmengine/DM_ENG_Error.h>
 #include "DM_DeviceAdapter.h"
 #include "DM_AmxCommon.h"
-#include <debug/sahtrace_macros.h>
 
 #define DIAGNOSTICS_IPPING_PATH                     "Device.IP.Diagnostics.IPPing."
 #define DIAGNOSTICS_TRACEROUTE_PATH                 "Device.IP.Diagnostics.TraceRoute."
@@ -533,7 +532,6 @@ bool DM_ENG_Device_SystemConnectionSetParameter(dm_amx_env_t* amx, DM_ENG_System
 
     //set read-only ParameterKey
     if(!strcmp(param_name, "ParameterKey")) {
-        when_str_empty_trace(pValue, error, ERROR, "parameterKey should not be empty");
         amxc_var_t args;
         amxc_var_init(&args);
         amxc_var_set_type(&args, AMXC_VAR_ID_HTABLE);
