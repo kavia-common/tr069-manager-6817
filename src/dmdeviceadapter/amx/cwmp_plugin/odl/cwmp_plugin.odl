@@ -1,5 +1,5 @@
 #include "mod_sahtrace.odl";
-#include "global_amxb_timeouts.odl";
+#include "global_variables.odl";
 
 // default value(s) for Device.IP.Interface reference
 %config {

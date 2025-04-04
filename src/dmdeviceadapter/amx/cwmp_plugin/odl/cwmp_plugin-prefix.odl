@@ -1,3 +1,12 @@
 %config {
-   %global vendor_prefix = "X_PRPL-COM_";
+   prefix = "";
+   cfg-dir = "/etc/amx";
+   include-dirs = [
+      "${prefix}${cfg-dir}/modules"
+   ];
+}
+
+#include "global_variables.odl";
+%config {
+   %global vendor_prefix = "${global_vendor_prefix_}";
 }
