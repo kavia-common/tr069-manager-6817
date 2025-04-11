@@ -73,7 +73,8 @@ extern dm_com_struct g_DmComData;
 
 char* g_randomCpeUrl = NULL;
 
-static struct lws_context_creation_info lws_server_ctx_info;
+static struct lws_context_creation_info lws_server_ctx_info = {0};
+static char* vhost_name = NULL;
 static struct lws_context* lws_server_ctx = NULL; /* server lws context */
 static struct lws_vhost* lws_server_vhost = NULL; /* server vhost */
 
@@ -314,6 +315,14 @@ static const struct lws_protocols protocols[] = {
 };
 
 static cwmp_status_t cwmp_server_init_lws(const char* server_host, int port) {
+    if(server_host == NULL) {
+        SAH_TRACEZ_ERROR("CWMPD", "Invalid server host");
+        return cwmp_status_ko;
+    }
+    if(vhost_name) {
+        free(vhost_name);
+    }
+    vhost_name = strdup(server_host);
     memset(&lws_server_ctx_info, 0, sizeof lws_server_ctx_info);
     void* main_loop[1] = { cwmp_evlp_get() };
     /* this will attach our server to our main evlp */
@@ -329,7 +338,7 @@ static cwmp_status_t cwmp_server_init_lws(const char* server_host, int port) {
     lws_server_ctx_info.ssl_cert_filepath = NULL;
     lws_server_ctx_info.ssl_private_key_filepath = NULL;
     // set server info struct.
-    lws_server_ctx_info.vhost_name = server_host;
+    lws_server_ctx_info.vhost_name = vhost_name;
     lws_server_ctx_info.port = port;
     if(!lws_server_ctx_info.vhost_name || !(*lws_server_ctx_info.vhost_name)) {
         SAH_TRACEZ_ERROR("CWMPD", "No Connection request host is set, stop initializing server");
@@ -420,6 +429,10 @@ cwmp_status_t cwmp_server_stop() {
     lws_server_vhost = NULL;
     lws_context_destroy(lws_server_ctx);
     lws_server_ctx = NULL;
+    if(vhost_name) {
+        free(vhost_name);
+        vhost_name = NULL;
+    }
     // clean up maxconnections.
     cwmp_server_maxConnectionsCleanup();
     return cwmp_status_ok;
