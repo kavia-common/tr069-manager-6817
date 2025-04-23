@@ -223,6 +223,7 @@ static int DM_ENG_Device_GetParameterNames_GetNames(dm_amx_env_t* amx, bool next
     amxc_var_init(&result);
     amxc_var_init(&rslt);
     amxc_var_init(&ret_obj);
+    amxd_path_init(&obj_path, NULL);
 
     // Get the object from the bus
     if((amxb_get(amx->bus_ctx, path, nextlevel ? 1 : -1, &result, 1) != 0) || amxc_var_is_null(&result)) {
