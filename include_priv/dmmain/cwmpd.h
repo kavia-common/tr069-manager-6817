@@ -162,4 +162,10 @@ int ip_type(const char* ip);
 bool is_valid_ipv4(const char* ip);
 bool is_valid_ipv6(const char* ip);
 
+typedef amxc_llist_t cookie_jar_t;
+int cwmpd_cookie_cookiejar_init(cookie_jar_t** jar);
+void cwmpd_cookie_cookiejar_clean(cookie_jar_t** jar);
+int cwmpd_cookie_cookiejar_build(cookie_jar_t* jar, char* set_cookie_header);
+char* cwmpd_cookie_cookiejar_to_string(cookie_jar_t* jar);
+
 #endif // !_CWMPD_H_

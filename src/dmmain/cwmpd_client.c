@@ -109,7 +109,7 @@ static char* rcv_buf = NULL;                      /* Buffer for SOAP message rec
 static size_t rcv_buf_len = 0;                    /* SOAP buffer size */
 static int session_timeout = 0;                   /* session timeout  */
 static char* pending_msg = NULL;                  /* SOAP message waiting to be sent to ACS */
-static char* session_cookie = NULL;               /* HTTP session Cookie if any */
+cookie_jar_t* jar = NULL;
 static char* auth_hdr = NULL;                     /* Auth headers */
 static bool connected = false;
 static struct lws* lws_client_wsi = NULL;         /* client ws interface */
@@ -119,51 +119,6 @@ static struct lws_client_connect_info lws_connect_info;
 
 static char* qos_info_dst_ip = NULL;
 static int qos_info_dst_port = -1;
-
-//lws cannot handle session cookie
-//check LWS_WITH_CACHE_NSCOOKIEJAR for more info
-static void cwmp_client_parse_cookie(char* cookie) {
-    char* tok = NULL;
-    amxc_string_t tmp_cookie;
-    amxc_string_init(&tmp_cookie, 0);
-    if((cookie == NULL) || (*cookie == 0)) {
-        SAH_TRACEZ_ERROR("CWMPD", "Invalid arg(s)");
-        goto stop;
-    }
-    SAH_TRACEZ_INFO("CWMPD", "Cookie received: [%s]", cookie);
-    tok = strtok(cookie, ";");
-    while(tok) {
-        char* p = strchr((char*) tok, '=');
-        char* start = tok;
-        char* end = p;
-        int len = 0;
-        if(p) { //skip white spaces
-            while(start && (*start) == ' ') {
-                start++;
-            }
-            while(end && (*end) == ' ') {
-                end--;
-            }
-            len = end - start;
-        }
-        if((len > 0) && (strncasecmp(start, "Path", len) != 0) && (strncasecmp(start, "Max-Age", len) != 0)
-           && (strncasecmp(start, "Expires", len) != 0) && (strncasecmp(start, "SameSite", len) != 0)
-           && (strncasecmp(start, "Domain", len) != 0)) {
-            amxc_string_appendf(&tmp_cookie, (amxc_string_is_empty(&tmp_cookie) == true) ? "%s":";%s", start);
-        }
-        tok = strtok(NULL, ";");
-    }
-    if(amxc_string_is_empty(&tmp_cookie) == true) {
-        goto stop;
-    }
-    if(session_cookie != NULL) {
-        amxc_string_prependf(&tmp_cookie, "%s;", session_cookie);
-        CWMPD_FREE(session_cookie);
-    }
-    session_cookie = amxc_string_dup(&tmp_cookie, 0, amxc_string_text_length(&tmp_cookie));
-stop:
-    amxc_string_clean(&tmp_cookie);
-}
 
 /*generate Basic auth data*/
 static char* cwmp_client_auth_basic(const char* username, const char* passwd) {
@@ -309,7 +264,12 @@ static int cwmp_client_handle_cookies(struct lws* wsi) {
             SAH_TRACEZ_ERROR("CWMPD", "error when copying cookies ???");
         }
         //rebuild session cookie
-        cwmp_client_parse_cookie(server_cookie);
+        if(jar == NULL) {
+            if(cwmpd_cookie_cookiejar_init(&jar)) {
+                SAH_TRACEZ_ERROR("CWMPD", "Failed to initialise cookie");
+            }
+        }
+        cwmpd_cookie_cookiejar_build(jar, server_cookie);
         CWMPD_FREE(server_cookie);
     }
     return CWMP_HTTP_CALLBACK_CONTINUE;
@@ -412,38 +372,66 @@ static int cwmp_client_http_complete_cb() {
 
 static int cwmp_client_handshake_cb(struct lws* wsi, void* in, size_t len) {
     SAH_TRACEZ_INFO("CWMPD", "Write HTTP Headers to wsi");
+    char* jar_str = NULL;
+    int retval = CWMP_HTTP_CALLBACK_ERROR; //We couldn't write Headers something went wrong
     int msg_len = 0;
     unsigned char** p = (unsigned char**) in;
     unsigned char* end = (*p) + len;
 
-    when_null(pending_msg, error);
-    msg_len = strlen(pending_msg);
-    when_false(lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_USER_AGENT, USER_AGENT, 15, p, end) == 0, error);
-    when_false(lws_add_http_header_content_length(wsi, msg_len, p, end) == 0, error);
+    if(pending_msg == NULL) {
+        SAH_TRACEZ_INFO("CWMPD", "No pending message");
+        goto stop;
+    }
 
-    if(session_cookie) { //Handle session cookie if any
-        when_false(lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_COOKIE,
-                                                (const unsigned char*) session_cookie,
-                                                strlen(session_cookie), p, end) == 0, error);
+    msg_len = strlen(pending_msg);
+
+    if(lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_USER_AGENT, USER_AGENT, 15, p, end)) {
+        SAH_TRACEZ_ERROR("CWMPD", "Failed to add header [USER_AGENT]");
+        goto stop;
+    }
+    if(lws_add_http_header_content_length(wsi, msg_len, p, end)) {
+        SAH_TRACEZ_ERROR("CWMPD", "Failed to add header [CONTENT LENGTH]");
+        goto stop;
+    }
+
+    jar_str = cwmpd_cookie_cookiejar_to_string(jar);
+    if(jar_str) { //Handle session cookie if any
+        if(lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_COOKIE,
+                                        (const unsigned char*) jar_str,
+                                        strlen(jar_str), p, end)) {
+            SAH_TRACEZ_ERROR("CWMPD", "Failed to add header [COOKIE]");
+            goto stop;
+        }
     }
     if(auth_hdr) { //Handle Authentication
-        when_false(lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_AUTHORIZATION,
-                                                (unsigned char*) auth_hdr,
-                                                strlen(auth_hdr), p, end) == 0, error);
+        if(lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_AUTHORIZATION,
+                                        (unsigned char*) auth_hdr,
+                                        strlen(auth_hdr), p, end)) {
+            SAH_TRACEZ_ERROR("CWMPD", "Failed to add header [AUTHORIZATION]");
+            goto stop;
+        }
     }
 
     if(msg_len > 0) {
-        when_false(lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_CONTENT_TYPE, CONTENT_TYPE, 28, p, end) == 0, error);
-        when_false(lws_add_http_header_by_name(wsi, SOAP_HEADER, EMPTY_USTR, 0, p, end) == 0, error);
+        if(lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_CONTENT_TYPE, CONTENT_TYPE, 28, p, end)) {
+            SAH_TRACEZ_ERROR("CWMPD", "Failed to add header [CONTENT TYPE]");
+            goto stop;
+        }
+        if(lws_add_http_header_by_name(wsi, SOAP_HEADER, EMPTY_USTR, 0, p, end)) {
+            SAH_TRACEZ_ERROR("CWMPD", "Failed to add header [SOAP HEADER]");
+            goto stop;
+        }
     }
-
 
     //headers finished, tell lws the message body is awaiting
     lws_client_http_body_pending(wsi, 1);
-    return CWMP_HTTP_CALLBACK_CONTINUE;
-error:
-    SAH_TRACEZ_ERROR("CWMPD", "Can not write Headers to WSI, closing connection");
-    return CWMP_HTTP_CALLBACK_ERROR; //We couldn't wrie Headers something went wrong
+    retval = CWMP_HTTP_CALLBACK_CONTINUE;
+
+stop:
+    if(jar_str) {
+        free(jar_str);
+    }
+    return retval;
 }
 
 static int cwmp_client_http_writable_cb(struct lws* wsi) {
@@ -776,7 +764,7 @@ int DM_CloseHttpSession(bool closeMode) {
     CWMPD_FREE(acs_server_scheme);
     CWMPD_FREE(acs_server_ip);
     CWMPD_FREE(pending_msg);
-    CWMPD_FREE(session_cookie);
+    cwmpd_cookie_cookiejar_clean(&jar);
     CWMPD_FREE(rcv_buf);
     CWMPD_FREE(auth_hdr);
     rcv_buf_len = 0;
