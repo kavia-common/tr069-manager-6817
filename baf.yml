@@ -1,0 +1,168 @@
+name: tr069-manager
+short_description: "TR069 Manager"
+long_description: "TR069 Manager , communication daemon for tr069 protocol"
+
+type: plugin
+category: tr181-manager
+
+urls:
+  opensource: "https://gitlab.com/prpl-foundation/components/core/plugins/tr069-manager"
+
+licenses:
+  - name: "BSD-2-Clause-Patent"
+    holder: "SoftAtHome"
+
+configs:
+  CONFIG_SAH_AMX_TR069_MANAGER:
+    super: True
+    default: y
+    type: bool
+    description: "Build TR069 Manager"
+  CONFIG_SAH_AMX_TR069_MANAGER_ORDER:
+    depends: SAH_AMX_TR069_MANAGER
+    default: 98
+    type: int
+    description: "TR069 Manager start up order"
+  CONFIG_SAH_AMX_TR069_MANAGER_CERTIFICATE_NO_PEM:
+    depends: SAH_AMX_TR069_MANAGER
+    default: n
+    type: bool
+    description: "Allow not to use any certificate"
+  CONFIG_SAH_AMX_TR069_MANAGER_USE_GSDM:
+    depends: SAH_AMX_TR069_MANAGER
+    default: n
+    type: bool
+    description: "Use get_supported() instead of describe() "
+
+makefiles:
+  compile:
+    - directory: "src/dmdeviceadapter/amx"
+    - directory: "src/dmmain"
+  clean:
+    - directory: "src/dmdeviceadapter/amx"
+    - directory: "src/dmmain"
+    - directory: "test"
+  test:
+    - directory: "test"
+      target: "run"
+    - directory: "test"
+      target: "coverage"
+
+artifacts:
+- source: "output/$(MACHINE)/cwmp_plugin/cwmp_plugin.so"
+  destination: "/usr/lib/amx/cwmp_plugin/cwmp_plugin.so"
+  permissions: "0644"
+  version: False
+- source: "$(BINDIR)/amxrt"
+  destination: "$(BINDIR)/cwmp_plugin"
+  symbolic: "True"
+- source: "src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin.odl"
+  destination: "/etc/amx/cwmp_plugin/cwmp_plugin.odl"
+  permissions: "0644"
+- source: "src/dmdeviceadapter/amx/cwmp_plugin/odl/defaults.d/cwmp_plugin-defaults.odl"
+  destination: "/etc/amx/cwmp_plugin/defaults.d/00_cwmp_plugin-defaults.odl"
+  permissions: "0644"
+- source: "src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-definition.odl"
+  destination: "/etc/amx/cwmp_plugin/cwmp_plugin-definition.odl"
+  permissions: "0644"
+- source: "src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-prefix.odl"
+  destination: "/etc/amx/cwmp_plugin/cwmp_plugin-prefix.odl"
+  permissions: "0644"
+- source: "src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmpd-config.odl"
+  destination: "/etc/amx/cwmp_plugin/cwmpd-config.odl"
+  permissions: "0644"
+- source: "src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-mapping.odl"
+  destination: "/etc/amx/tr181-device/extensions/01_cwmp_plugin_mapping.odl"
+  permissions: "0644"
+- source: "src/dmdeviceadapter/amx/cwmp_plugin/scripts/cwmp_plugin.sh"
+  destination: "$(INITDIR)/cwmp_plugin"
+  permissions: "0755"
+  debug:
+    order: $(CONFIG_SAH_AMX_TR069_MANAGER_ORDER)
+  init:
+    start: $(CONFIG_SAH_AMX_TR069_MANAGER_ORDER)
+    stop: $(CONFIG_SAH_AMX_TR069_MANAGER_ORDER)
+- source: "src/dmdeviceadapter/amx/cwmp_plugin/scripts/tr069_1_fw_upgrade.sh"
+  destination: "$(BINDIR)/tr069_1_fw_upgrade"
+  permissions: "0755"
+- source: "src/dmdeviceadapter/amx/cwmp_plugin/scripts/tr069_2_vendor_logs_prepare.sh"
+  destination: "$(BINDIR)/tr069_2_vendor_logs_prepare"
+  permissions: "0755"
+- source: "src/dmdeviceadapter/amx/cwmp_plugin/scripts/tr069_1_vendor_conf_prepare.sh"
+  destination: "$(BINDIR)/tr069_1_vendor_conf_prepare"
+  permissions: "0755"
+- source: "src/dmdeviceadapter/amx/cwmp_plugin/scripts/tr069_2_webcontent.sh"
+  destination: "$(BINDIR)/tr069_2_webcontent"
+  permissions: "0755"
+- source: "src/dmdeviceadapter/amx/cwmp_plugin/scripts/tr069_3_conf_apply.sh"
+  destination: "$(BINDIR)/tr069_3_conf_apply"
+  permissions: "0755"
+- source: "output/$(MACHINE)/libdmda_amx/libdmda_amx.so"
+  destination: "$(LIBDIR)/libdmda_amx.so"
+  permissions: "0755"
+- source: "output/$(MACHINE)/cwmpd/cwmpd"
+  destination: "$(BINDIR)/cwmpd"
+  permissions: "0755"
+- source: "acl/cwmp/cwmp_plugin.json"
+  destination: "$(ACLDIR)/cwmp/cwmp_plugin.json"
+  permissions: "0660"
+
+dependencies:
+  compile:
+  - name: "libamxc"
+    min: "*"
+  - name: "libamxp"
+    min: "*"
+  - name: "libamxd"
+    min: "*"
+  - name: "libamxb"
+    min: "*"
+  - name: "libamxo"
+    min: "*"
+  - name: "libamxm"
+    min: "*"
+  - name: "libamxa"
+    min: "*"
+  - name: "mod-dmext"
+    min: "*"
+  - name: "libsahtrace"
+    min: "*"
+  - name: "libwebsockets"
+    min: "*"
+  - name: "libevent"
+    min: "*"
+  - name: "libtr69-engine"
+    min: "*"
+  - name: "uriparser"
+    min: "*"
+  - name: "c-ares"
+    min: "*"
+  - name: "libnetmodel"
+    min: "*"
+  - name: "libfiletransfer"
+    min: "*"
+  - name: "libgmap-client"
+    min: "*"
+  - name: "libxml2"
+    min: "*"
+
+  runtime:
+  - name: "libamxc"
+  - name: "libamxp"
+  - name: "libamxd"
+  - name: "libamxb"
+  - name: "libamxo"
+  - name: "libamxm"
+  - name: "libamxa"
+  - name: "mod-dmext"
+  - name: "amxrt"
+  - name: "libsahtrace"
+  - name: "libwebsockets"
+  - name: "libevent"
+  - name: "libtr69-engine"
+  - name: "uriparser"
+  - name: "c-ares"
+  - name: "libnetmodel"
+  - name: "libfiletransfer"
+  - name: "libgmap-client"
+  - name: "libxml2"
