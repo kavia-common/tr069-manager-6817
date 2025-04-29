@@ -1,2 +1,5 @@
+variables:
+  PC_ANALYSIS_TREE: "off"
+
 include:
   - remote: 'https://gitlab.com/prpl-foundation/tooling/yml-templates/raw/main/.component-pipeline.yml'
