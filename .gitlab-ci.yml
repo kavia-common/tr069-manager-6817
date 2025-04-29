@@ -1,7 +1,2 @@
-variables:
-  BUILD_DEPS: libamxc libamxj libamxd libamxp libamxb libamxo libamxm libamxa sah-lib-sahtrace-dev liburiparser-dev libtr69-engine libwebsockets libevent-dev libc-ares-dev libnetmodel libfiletransfer libgmap-client libxml2-dev
-  TEST_DEPS: mod-amxb-ubus libamxut amxb-dummy
-  BUILD_TARGET: tr069-manager
-
 include:
-  - remote: 'https://gitlab.com/soft.at.home/ci/gitlab-ci/raw/main/ambiorix-default-pipeline.yml'
+  - remote: 'https://gitlab.com/prpl-foundation/tooling/yml-templates/raw/main/.component-pipeline.yml'
