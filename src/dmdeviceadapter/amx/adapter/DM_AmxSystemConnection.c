@@ -156,6 +156,7 @@ void DM_ENG_Device_SystemConnectionHandleParameterChanged(const char* path, cons
                 DM_ENG_NotificationInterface_engineEvent(EVENT_ENG_CLEAR_ACS_IP);
                 DM_ENG_NotificationInterface_engineEvent(EVENT_ENG_SRV_RESTART);
                 DM_ENG_NotificationInterface_engineEvent(EVENT_ENG_URL_CHANGED);
+                DM_ENG_InformMessageScheduler_URLChanged();
             } else if(strcmp("AllowConnectionRequestFromUnknownHost", key) == 0) {
                 DM_ENG_NotificationInterface_engineEvent(EVENT_ENG_SRV_RESTART);
             } else if(strcmp("AllowConnectionRequestFromAddress", key) == 0) {
