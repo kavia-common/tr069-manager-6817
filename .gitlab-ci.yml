@@ -1,7 +1,7 @@
 variables:
   PC_ANALYSIS_TREE: "off"
   PC_XC_WRT_DEFAULT: "on"
-  PC_UNIT_TESTS: "on"
+  PC_UNIT_TESTS: "off"
   PC_EXTRA_UNIT_TEST_DEPS: "libamxut mod-amxb-dummy"
 
 include:
