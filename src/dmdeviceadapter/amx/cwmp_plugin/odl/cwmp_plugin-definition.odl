@@ -27,7 +27,7 @@
         * @version 1.0
         */
         %persistent string URL {
-            default "http://acs-download.qacafe.com";
+            default "https://acs-download.qacafe.com";
             userflags %upc;
         }
 

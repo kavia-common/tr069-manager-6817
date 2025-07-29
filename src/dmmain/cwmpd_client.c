@@ -72,6 +72,13 @@
 #include <event2/event.h>
 #include <string.h>
 
+#include <openssl/engine.h>
+#include <openssl/store.h>
+#include <openssl/ssl.h>
+#include <libwebsockets.h>
+
+#include "cwmpd_get_certificate_uri.h"
+
 /**********************************************************
 * Macro/Const definitions
 **********************************************************/
@@ -119,6 +126,10 @@ static struct lws_client_connect_info lws_connect_info;
 
 static char* qos_info_dst_ip = NULL;
 static int qos_info_dst_port = -1;
+
+static char* ssl_ca_cert = NULL;
+static char* ssl_client_cert = NULL;
+static char* ssl_client_key = NULL;
 
 /*generate Basic auth data*/
 static char* cwmp_client_auth_basic(const char* username, const char* passwd) {
@@ -573,6 +584,30 @@ static void cwmp_client_prepare_session() {
     }
 }
 
+static void cwmp_prepare_ssl_data() {
+    CWMPD_FREE(ssl_client_cert);
+    CWMPD_FREE(ssl_client_key);
+    CWMPD_FREE(ssl_ca_cert);
+
+    application_t app_conf = cwmp_app_getconf();
+
+    if((app_conf.ssl_certificate != NULL) && (app_conf.ssl_certificate[0] != '\0')) {
+        static const char fileprefix[] = "file://";
+        const int prefixlen = sizeof(fileprefix) - 1;
+        cwmp_get_certificate_uri(app_conf.ssl_certificate, &ssl_client_cert, &ssl_client_key);
+        if((ssl_client_cert != NULL) && (0 == strncmp(ssl_client_cert, fileprefix, prefixlen))) {
+            memmove(ssl_client_cert, ssl_client_cert + prefixlen, strlen(ssl_client_cert + prefixlen) + 1);
+        }
+        if((ssl_client_key != NULL) && (0 == strncmp(ssl_client_key, fileprefix, prefixlen))) {
+            memmove(ssl_client_key, ssl_client_key + prefixlen, strlen(ssl_client_key + prefixlen) + 1);
+        }
+    } else {
+        ssl_client_cert = strdup(app_conf.ssl_client_cert);
+        ssl_client_key = strdup(app_conf.ssl_client_priv_key);
+    }
+    ssl_ca_cert = strdup(app_conf.trustedCA);
+}
+
 static void update_qos_info(const char* dstIP, int dstPort) {
     bool qos_info_changed = false;
     SAH_TRACEZ_INFO("CWMPD", "QoS Info: dstIP [%s], dstPort [%d]", dstIP ? dstIP:"Nil", dstPort);
@@ -698,20 +733,82 @@ error:
     return ret;
 }
 
+/* Callback for initializing SSL_CTX for client using engines */
+static int cwmp_client_ssl_ctx(struct lws_context* context, SSL_CTX* ctx,
+                               const struct lws_client_connect_info* ccinfo) {
+    (void) context;
+    (void) ccinfo;
+
+    OPENSSL_init_ssl(OPENSSL_INIT_LOAD_CONFIG, NULL);
+
+    ENGINE* engine = NULL;
+    EVP_PKEY* pkey = NULL;
+    int ret = 1;
+
+    /* Load and configure PKCS#11 engine */
+    ENGINE_load_builtin_engines();
+    engine = ENGINE_by_id("pkcs11");
+    if(!engine) {
+        SAH_TRACEZ_ERROR("CWMPD", "Failed to load PKCS#11 engine\n");
+        goto cleanup;
+    }
+
+    if(!ENGINE_init(engine)) {
+        SAH_TRACEZ_ERROR("CWMPD", "Engine initialization failed\n");
+        goto cleanup;
+    }
+
+
+    /* Load client certificate */
+    if(SSL_CTX_use_certificate_file(ctx, ssl_client_cert, SSL_FILETYPE_PEM) != 1) {
+        SAH_TRACEZ_ERROR("CWMPD", "SSL_CTX_use_certificate_file failed\n");
+        goto cleanup;
+    }
+
+    /* Set trusted CA file */
+    if(SSL_CTX_load_verify_locations(ctx, ssl_ca_cert, NULL) != 1) {
+        SAH_TRACEZ_ERROR("CWMPD", "SSL_CTX_load_verify_locations failed\n");
+        goto cleanup;
+    }
+
+    /* Load private key via engine */
+    pkey = ENGINE_load_private_key(engine, ssl_client_key, NULL, NULL);
+    if(!pkey) {
+        SAH_TRACEZ_ERROR("CWMPD", "Failed to load private key via engine\n");
+        goto cleanup;
+    }
+
+    /* Assign private key to SSL context */
+    if(SSL_CTX_use_PrivateKey(ctx, pkey) != 1) {
+        SAH_TRACEZ_ERROR("CWMPD", "SSL_CTX_use_PrivateKey failed\n");
+        goto cleanup;
+    }
+    if(!SSL_CTX_check_private_key(ctx)) {
+        SAH_TRACEZ_ERROR("CWMPD", "Private key does not match certificate\n");
+        goto cleanup;
+    }
+
+    ret = 0;
+
+cleanup:
+    if(pkey) {
+        EVP_PKEY_free(pkey);
+    }
+    if(engine) {
+        ENGINE_finish(engine);
+        ENGINE_free(engine);
+    }
+    return ret;
+}
+
 /* fetch all client info from data model and feed them to server info struct*/
 cwmp_status_t cwmp_client_init() {
     SAH_TRACEZ_INFO("CWMPD", "Client initialize");
     //static struct lws_context_creation_info lws_client_ctx_info;
     memset(&lws_client_ctx_info, 0, sizeof(lws_client_ctx_info));
     void* main_loop[1] = { cwmp_evlp_get() };
-    application_t app_conf = cwmp_app_getconf();
+    cwmp_prepare_ssl_data();
     lws_client_ctx_info.protocols = protocols;
-    /* client cert ,will be sent to the server if he asked for */
-    lws_client_ctx_info.client_ssl_cert_filepath = app_conf.ssl_client_cert;
-    /* client private key if he has a certeficate */
-    lws_client_ctx_info.client_ssl_private_key_filepath = app_conf.ssl_client_priv_key;
-    /* A CA cert and CRL can be used to validate the cert send by the server */
-    lws_client_ctx_info.client_ssl_ca_filepath = app_conf.trustedCA;
     lws_client_ctx_info.options = LWS_SERVER_OPTION_LIBEVENT | LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
     lws_client_ctx_info.foreign_loops = main_loop;
     lws_client_ctx_info.port = CONTEXT_PORT_NO_LISTEN;
@@ -720,7 +817,32 @@ cwmp_status_t cwmp_client_init() {
     /* 3 client/fd/sockets max*/
     lws_client_ctx_info.fd_limit_per_thread = 3;
 
-    //Create lws context
+    /* If client key is not a path, configure openssl engines - otherwise pass key as a filepath. */
+    if((ssl_client_key != NULL) && (0 == strncmp(ssl_client_key, "pkcs11:", 7))) {
+        /* Create lws context ready for accepting TLS files as pkcs#11 URI */
+        SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
+        if(cwmp_client_ssl_ctx(NULL, ctx, NULL) != 0) {
+            return cwmp_status_ko;
+        }
+        lws_client_ctx_info.provided_client_ssl_ctx = ctx;
+    } else {
+        if(access(ssl_client_cert, F_OK) != 0) {
+            SAH_TRACEZ_WARNING("CWMPD", "client cert path is not accessible (no file or bad permissions?)");
+        }
+        if(access(ssl_client_key, F_OK) != 0) {
+            SAH_TRACEZ_WARNING("CWMPD", "client private key path is not accessible (no file or bad permissions?)");
+        }
+        if(access(ssl_ca_cert, F_OK) != 0) {
+            SAH_TRACEZ_WARNING("CWMPD", "trusted ca cert path is not accessible (no file or bad permissions?)");
+        }
+
+        /* client cert ,will be sent to the server if he asked for */
+        lws_client_ctx_info.client_ssl_cert_filepath = ssl_client_cert;
+        /* client private key if he has a certeficate */
+        lws_client_ctx_info.client_ssl_private_key_filepath = ssl_client_key;
+        /* A CA cert and CRL can be used to validate the cert send by the server */
+        lws_client_ctx_info.client_ssl_ca_filepath = ssl_ca_cert;
+    }
     lws_client_ctx = lws_create_context(&lws_client_ctx_info);
     if(lws_client_ctx == NULL) {
         SAH_TRACEZ_ERROR("CWMPD", "lws_client context creation failed");
@@ -734,6 +856,9 @@ cwmp_status_t cwmp_client_stop() {
     free(qos_info_dst_ip);
     qos_info_dst_ip = NULL;
     lws_context_destroy(lws_client_ctx);
+    CWMPD_FREE(ssl_ca_cert);
+    CWMPD_FREE(ssl_client_cert);
+    CWMPD_FREE(ssl_client_key);
     DM_CloseHttpSession(true);
     return cwmp_status_ok;
 }

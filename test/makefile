@@ -8,6 +8,7 @@ COVERREPORT = report
 
 run: $(OBJDIR)/
 	$(MAKE) -C ../src/dmdeviceadapter/amx/adapter test
+	$(MAKE) -C ../src/dmmain
 	@for dir in $(SUBDIRS); do make -C $$dir $@  || exit -1; done
 	@rm -rf $(OBJDIR)/test_*
 

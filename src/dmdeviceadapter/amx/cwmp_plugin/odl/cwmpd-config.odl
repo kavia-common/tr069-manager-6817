@@ -16,9 +16,18 @@
         // Path where to store temporary values for RPC's that need to survive a reboot
         cwmpd_persistent_rpc_path = "/etc/config/cwmp_plugin",
         cwmpd_pid_file = "/var/run/cwmp.pid",
-        cwmpd_certs_file = "/usr/lib/cwmp/cwmpdcerts.pem",
-        cwmpd_client_certs = "/usr/lib/cwmp/client_certs.pem",
-        cwmpd_client_privatekey = "/usr/lib/cwmp/client_key.pem",
+        cwmpd_certs_file = "/usr/share/ca-certificates/ca.crt",
+
+        // A path name of a row in the Security.Certificate table.
+        // If specified, cwmpd_client_certs and cwmpd_client_privatekey will be ignored
+        cwmpd_certificate = "Security.Certificate.2.",
+
+        // Deprecated, use cwmpd_certificate instead
+        cwmpd_client_certs = "",
+
+        // Deprecated, use cwmpd_certificate instead
+        cwmpd_client_privatekey = "",
+
         cwmpd_adapter_path = "/usr/lib/libdmda_amx.so",
         cwmpd_acl_file = "/cfg/etc/acl/merged/cwmp.json"
     };

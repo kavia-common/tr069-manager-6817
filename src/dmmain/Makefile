@@ -33,7 +33,7 @@ OBJECTS = $(addprefix $(OBJDIR)/,$(notdir $(SOURCES:.c=.o)))
 # TARGETS
 TARGET_BIN = $(OBJDIR)/$(COMPONENT)
 
-CFLAGS += -Werror -Wall -Wextra -Werror\
+CFLAGS += -Werror -Wall -Wextra -Werror -Wno-deprecated-declarations \
           -Wformat=2 -Wshadow \
           -Wwrite-strings -Wredundant-decls \
           -Wno-format-nonliteral \
@@ -52,7 +52,8 @@ endif
 LDFLAGS += -ldl $(STAGING_LIBDIR) -lwebsockets \
 		  $(shell pkg-config --libs libevent) \
 		  -lamxc -lamxd -lamxo -lamxb -lamxp -lamxa -lsahtrace \
-		  -ldmcom -ldmcommon -ldmengine -ldmxml_ixml -lcares -lxml2
+		  -ldmcom -ldmcommon -ldmengine -ldmxml_ixml -lcares -lxml2 \
+		  -lssl -lcrypto
 # helper functions - used in multiple targets
 define install_to
 	$(INSTALL) -d $(1)/usr/bin/

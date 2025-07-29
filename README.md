@@ -90,6 +90,19 @@ Build and install TR069 Manager
 make && sudo make install
 ```
 
+## Secure connection attributes
+
+The secure connection attributes are available through the configuration file /etc/amx/cwmp_plugin/cwmpd-config.odl
+
+### cwmpd_certificate
+
+A path name of a row in the Security.Certificate table. It is according to already standard solution from HTTPAccess: https://usp-data-models.broadband-forum.org/tr-181-2-19-1-usp.html#D.Device:2.Device.UserInterface.HTTPAccess.Certificate.
+
+E.g. cwmpd_certificate="Security.Certificate.1."
+
+cwmpd_client_certs and cwmpd_client_privatekey are deprecated and will be ignored if cwmpd_certificate is specified.
+
+
 ## UNIT Tests
 Unit tests
 ```

@@ -95,6 +95,7 @@ struct application {
     const char* trustedCA;
     const char* ssl_client_priv_key;
     const char* ssl_client_cert;
+    const char* ssl_certificate;
     const char* pidFile;
     const char* persistent_rpc_path;
     const char* backend;
