@@ -373,7 +373,7 @@ amxd_status_t _ManagementServer_updateConnectionRequestURL(UNUSED amxd_object_t*
     host = GET_CHAR(args, "host");
     port = GET_UINT32(args, "port");
 
-    if(!host || !*host || !port || !assembleConnectionRequestURL(object, url, host, port)) {
+    if(!host || !*host || !port || !assembleConnectionRequestURL(conn_request, url, host, port)) {
         retval = amxd_status_invalid_value;
         goto exit;
     }
