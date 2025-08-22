@@ -68,6 +68,7 @@
 #include <string.h>
 
 #include "DM_AmxCommon.h"
+#include "DM_AmxParameterValues.h"
 #include "DM_DeviceAdapter.h"
 //---------------------------------------------------------------------------------------------
 /**

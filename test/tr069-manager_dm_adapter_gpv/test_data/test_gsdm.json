@@ -1,0 +1,90 @@
+{
+    "Request": {
+        "Device.GSDMCheck._0001": {
+        },
+        "Device.GSDMCheck._0021": {
+        },
+        "Device.GSDMCheck.Server.Pool.{i}.Client.{i}._0001": {
+        }
+    },
+    "Response": {
+        "Device.GSDMCheck.": {
+            "parameters": {
+                "ClientNumberOfEntries": {
+                    "type": 8,
+                    "writable": false
+                }
+            },
+            "templates": {
+                "Client.": null
+            }
+        },
+        "Device.GSDMCheck.Client.{i}.": {
+            "writable": true
+        },
+        "Device.GSDMCheck.Server.": {
+            "parameters": {
+                "Enable": {
+                    "type": 12,
+                    "writable": true
+                },
+                "PoolNumberOfEntries": {
+                    "type": 8,
+                    "writable": false
+                }
+            },
+            "templates": {
+                "Pool.": null
+            }
+        },
+        "Device.GSDMCheck.Server.Pool.{i}.": {
+            "parameters": {
+                "Enable": {
+                    "type": 12,
+                    "writable": true
+                },
+                "Status": {
+                    "type": 1,
+                    "writable": true
+                },
+                "ClientNumberOfEntries": {
+                    "type": 8,
+                    "writable": false
+                }
+            },
+            "templates": {
+                "Client.": null
+            },
+            "writable": true
+        },
+        "Device.GSDMCheck.Server.Pool.{i}.Client.{i}.": {
+            "parameters": {
+                "Alias": {
+                    "type": 1,
+                    "writable": true
+                },
+                "OptionNumberOfEntries": {
+                    "type": 8,
+                    "writable": false
+                }
+            },
+            "templates": {
+                "Option.": null
+            },
+            "writable": true
+        },
+        "Device.GSDMCheck.Server.Pool.{i}.Client.{i}.Option.{i}.": {
+            "parameters": {
+                "Tag": {
+                    "type": 6,
+                    "writable": true
+                },
+                "Value": {
+                    "type": 1,
+                    "writable": true
+                }
+            },
+            "writable": true
+        }
+    }
+}

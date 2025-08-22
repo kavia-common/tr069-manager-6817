@@ -1,0 +1,25 @@
+%define {
+    object Device {
+        object IP {
+            object ActivePort[] {
+                counted with ActivePortNumberOfEntries;
+            }
+            object Diagnostics {
+                string Controller;
+                int32 DownloadDiagnosticsMaxConnections;
+            }
+        }
+    }
+}
+
+%populate {
+    object 'Device' {
+        object 'IP' {
+            parameter 'ActivePortNumberOfEntries' = 0;
+            object 'Diagnostics' {
+                parameter 'Controller' = "mod-test";
+                parameter 'DownloadDiagnosticsMaxConnections' = 999;
+            }
+        }
+    }
+}

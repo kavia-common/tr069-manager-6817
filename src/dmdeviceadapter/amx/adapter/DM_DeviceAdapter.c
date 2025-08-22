@@ -78,6 +78,7 @@
 #include "DM_AmxSystemConnection.h"
 #include "DM_AmxACSConnection.h"
 #include "DM_DeviceAdapter.h"
+#include "DM_AmxParameter.h"
 #include "DM_AmxParameterNames.h"
 #include "DM_AmxParameterValues.h"
 #include "DM_AmxAddDelete.h"
@@ -585,6 +586,48 @@ stop:
     SAH_TRACEZ_OUT("DM_DA");
     amxc_llist_clean(&filters, amxc_string_list_it_free);
     amxc_var_clean(&get_result);
+    return error;
+}
+
+int DM_ENG_Device_GPV(char* parameterNames[], dm_eng_pvs_list_t* pvs_list) {
+    unsigned int error = 0;
+
+    if(DM_ENG_Device_Common_CheckSystem(&da.acs) == false) {
+        SetErrorGotoStop(DM_ENG_INTERNAL_ERROR, "Internal System error");
+    }
+
+    amxc_var_t gsdm_data;
+    amxc_var_init(&gsdm_data);
+    amxc_var_set_type(&gsdm_data, AMXC_VAR_ID_HTABLE);
+    for(unsigned int i = 0; parameterNames[i] != NULL; i++) {
+        DM_ENG_Device_Common_Get_Gsdm_data(da.acs.bus_ctx, parameterNames[i], &gsdm_data);
+    }
+
+    for(unsigned int i = 0; parameterNames[i] != NULL; i++) {
+        SAH_TRACEZ_INFO("DM_DA", "Getting values for parameter %s", parameterNames[i]);
+        error = DM_AmxParameter_GetValues(&da.acs, parameterNames[i], pvs_list, &gsdm_data);
+        if(error) {
+            GotoStop("Error detected, stopping");
+        }
+    }
+
+stop:
+    amxc_var_clean(&gsdm_data);
+    return error;
+}
+
+int DM_ENG_Device_GPN(const char* path, bool nextLevel, dm_eng_pn_list_t* pn_list) {
+    unsigned int error = 0;
+
+    if(DM_ENG_Device_Common_CheckSystem(&da.acs) == false) {
+        SetErrorGotoStop(DM_ENG_INTERNAL_ERROR, "Internal System error");
+    }
+
+    error = DM_AmxParameter_GetNames(&da.acs, path, nextLevel, pn_list, NULL);
+    if(error) {
+        GotoStop("Error detected, stopping");
+    }
+stop:
     return error;
 }
 

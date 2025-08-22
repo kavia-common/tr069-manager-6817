@@ -78,6 +78,7 @@
 #include "DM_AmxSystemConnection.h"
 #include "DM_AmxACSConnection.h"
 #include "DM_DeviceAdapter.h"
+#include "DM_AmxParameter.h"
 #include "DM_AmxParameterNames.h"
 #include "DM_AmxParameterValues.h"
 #include "DM_AmxAddDelete.h"
@@ -500,116 +501,37 @@ stop:
     return error;
 }
 
-static xmlNodePtr xml_add_parameter_attribute_struct(xmlNodePtr node, const char* name, DM_ENG_NotificationMode nm, char** al) {
-    char notification[2];
-    xmlNodePtr pas_node = NULL;
-    xmlNodePtr al_node = NULL;
-    uint32_t al_count = 0;
-    amxc_string_t al_node_attr_value;
-    amxc_string_init(&al_node_attr_value, 0);
-    pas_node = xmlNewChild(node, NULL, BAD_CAST "ParameterAttributeStruct", NULL);
-    xmlNewChild(pas_node, NULL, BAD_CAST "Name", BAD_CAST name);
-    sprintf(notification, "%u", nm);
-    xmlNewChild(pas_node, NULL, BAD_CAST "Notification", BAD_CAST notification);
-    al_node = xmlNewChild(pas_node, NULL, BAD_CAST "AccessList", BAD_CAST "");
-    if(al) {
-        while(al[al_count] != NULL) {
-            xmlNewChild(al_node, NULL, BAD_CAST "string", BAD_CAST al[al_count]);
-            al_count++;
+int DM_ENG_Device_GPV(char* parameterNames[], dm_eng_pvs_list_t* pvs_list) {
+    unsigned int error = 0;
+
+    if(DM_ENG_Device_Common_CheckSystem(&da.acs) == false) {
+        SetErrorGotoStop(DM_ENG_INTERNAL_ERROR, "Internal System error");
+    }
+
+    for(unsigned int i = 0; parameterNames[i] != NULL; i++) {
+        SAH_TRACEZ_INFO("DM_DA", "Getting values for parameter %s", parameterNames[i]);
+        error = DM_AmxParameter_GetValues(&da.acs, parameterNames[i], pvs_list, NULL);
+        if(error) {
+            GotoStop("Error detected, stopping");
         }
     }
-    amxc_string_appendf(&al_node_attr_value, "string[%d]", al_count);
-    xmlNewProp(al_node, BAD_CAST "soap-enc:arrayType", BAD_CAST amxc_string_get(&al_node_attr_value, 0));
-    amxc_string_clean(&al_node_attr_value);
-    return pas_node;
-}
 
-static int build_gpa_all_body(dm_amx_env_t* acs_info, xmlNodePtr node_body, amxc_var_t* get_result) {
-    SAH_TRACEZ_IN("DM_DA");
-    int error = 0;
-    const char* path = "Device.";
-    const amxc_htable_t* htable = NULL;
-    const char* key = NULL;
-    xmlNodePtr rsp_node = NULL;
-    xmlNodePtr plist_node = NULL;
-    amxc_string_t pvs_node_attr_value;
-    uint32_t param_count = 0;
-    amxc_string_init(&pvs_node_attr_value, 0);
-    amxc_htable_t cache_dict;
-    DM_ENG_CacheDict_Build(&cache_dict);
-    rsp_node = xmlNewChild(node_body, NULL, BAD_CAST "cwmp:GetParameterAttributesResponse", NULL);
-    plist_node = xmlNewChild(rsp_node, NULL, BAD_CAST "ParameterList", NULL);
-    amxc_var_for_each(entry, GETI_ARG(get_result, 0)) {
-        htable = amxc_var_constcast(amxc_htable_t, entry);
-        if(amxc_htable_is_empty(htable)) {
-            continue;
-        }
-        key = amxc_var_key(entry);
-        SAH_TRACEZ_INFO("DM_DA", "Key [%s]", key);
-        amxc_htable_iterate(hit, htable) {
-            DM_ENG_NotificationMode nm;
-            char** al;
-            char* alias_path = NULL;
-            const char* param_key = amxc_htable_it_get_key(hit);
-            amxc_string_t param_name;
-            amxc_string_init(&param_name, 0);
-            amxc_string_setf(&param_name, "0.parameters.%s", param_key);
-            amxc_string_clean(&param_name);
-            amxc_string_init(&param_name, 0);
-            amxc_string_setf(&param_name, "%s%s", key, param_key);
-            if(acs_info->instanceAlias) {
-                DM_ENG_Device_Common_IndexToAlias(acs_info, path, amxc_string_get(&param_name, 0), &alias_path);
-            }
-            SAH_TRACEZ_INFO("DM_DA", "Name [%s]", alias_path != NULL ? alias_path : amxc_string_get(&param_name, 0));
-            DM_ENG_CacheDict_GetInfo(&cache_dict, amxc_string_get(&param_name, 0), &nm, &al);
-            if(nm == DM_ENG_NotificationMode_FORCED) {
-                nm = DM_ENG_NotificationMode_ACTIVE;
-            }
-            xml_add_parameter_attribute_struct(plist_node, alias_path != NULL ? alias_path : amxc_string_get(&param_name, 0), nm, al);
-            param_count++;
-
-            error = 0;
-            amxc_string_clean(&param_name);
-            free(alias_path);
-        }
-    }
-    amxc_string_appendf(&pvs_node_attr_value, "cwmp:ParameterAttributeStruct[%d]", param_count);
-    xmlNewProp(plist_node, BAD_CAST "soap-enc:arrayType", BAD_CAST amxc_string_get(&pvs_node_attr_value, 0));
-    amxc_string_clean(&pvs_node_attr_value);
-    DM_ENG_CacheDict_Destroy(&cache_dict);
-    SAH_TRACEZ_OUT("DM_DA");
+stop:
     return error;
 }
 
-int DM_ENG_Device_GetParameterAttributesAll(xmlNodePtr node_body) {
-    SAH_TRACEZ_IN("DM_DA");
-    int error = 0;
-    int ret = 0;
-    amxc_llist_t filters;
-    amxc_llist_init(&filters);
-    const char* path = "Device.";
-    amxc_var_t get_result;
-    amxc_var_init(&get_result);
-    dm_amx_env_t* acs_info = DM_ENG_Device_GetACSInfo();
-    amxa_resolve_search_paths(acs_info->bus_ctx, acs_info->acl_rules, path);
-    amxa_get_filters(acs_info->acl_rules, AMXA_PERMIT_GET, &filters, path);
-    if(!amxa_is_get_allowed(&filters, path)) {
-        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "cwmp has no access rights to [%s] ", path);
+int DM_ENG_Device_GPN(const char* path, bool nextLevel, dm_eng_pn_list_t* pn_list) {
+    unsigned int error = 0;
+
+    if(DM_ENG_Device_Common_CheckSystem(&da.acs) == false) {
+        SetErrorGotoStop(DM_ENG_INTERNAL_ERROR, "Internal System error");
     }
-    ret = amxb_get(acs_info->bus_ctx, path, -1, &get_result, 10);
-    if((ret != AMXB_STATUS_OK) || amxc_var_is_null(&get_result)) {
-        if((ret == AMXB_ERROR_NOT_SUPPORTED_SCHEME)) {
-            SetErrorGotoStop(0, "Skip non tr181-component, path [%s] %d", path, ret);
-        } else {
-            SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "Failed to get object path [%s] error [%d] ", path, ret);
-        }
+
+    error = DM_AmxParameter_GetNames(&da.acs, path, nextLevel, pn_list, NULL);
+    if(error) {
+        GotoStop("Error detected, stopping");
     }
-    amxa_filter_get_resp(&get_result, &filters);
-    build_gpa_all_body(acs_info, node_body, &get_result);
 stop:
-    SAH_TRACEZ_OUT("DM_DA");
-    amxc_llist_clean(&filters, amxc_string_list_it_free);
-    amxc_var_clean(&get_result);
     return error;
 }
 

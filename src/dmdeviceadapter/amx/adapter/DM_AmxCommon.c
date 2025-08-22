@@ -60,10 +60,13 @@
 #include <dmengine/DM_ENG_Device.h>
 #include <dmengine/DM_ENG_Error.h>
 #include <debug/sahtrace.h>
+#include <debug/sahtrace_macros.h>
 #include <string.h>
 #include <ctype.h>
 
 #include "DM_AmxCommon.h"
+
+#define ME "DM_DA"
 
 
 //---------------------------------------------------------------------------------------------
@@ -345,7 +348,7 @@ int DM_ENG_Device_Common_IndexToAlias(dm_amx_env_t* amx, const char* acspath, co
                 const amxc_htable_t* htable = amxc_var_constcast(amxc_htable_t, GETI_ARG(&get, 0));
                 amxc_htable_iterate(hit, htable) {
                     amxc_var_t* alias_var = amxc_var_from_htable_it(hit);
-                    const char* val = amxc_var_constcast(cstring_t, GETP_ARG(alias_var, "Alias"));
+                    const char* val = amxc_var_constcast(cstring_t, GET_ARG(alias_var, "Alias"));
                     if(val) {
                         alias = strdup(val);
                         break;
@@ -799,6 +802,226 @@ bool DM_ENG_Device_Common_Is_Valid_Alias_Path(const char* path) {
     retval = true;
 stop:
     return retval;
+}
+
+bool DM_ENG_Device_Common_Is_Alias_Based(const char* path) {
+    const char* p = path;
+    while(*p) {
+        if(*p == '[') {
+            const char* end = strchr(p, ']');
+            if(end && (end > p + 1)) {
+                return true;
+            }
+        }
+        p++;
+    }
+    return false;
+}
+
+alias_list_t DM_ENG_Device_Common_Extract_Aliases(const char* path) {
+    alias_list_t result = {0};
+    result.entries = NULL;
+    result.count = 0;
+    result.total_alias_length = 0;
+
+    char* path_copy = strdup(path);
+    char* token;
+    int token_index = 0;
+
+    token = strtok(path_copy, ".");
+    while(token != NULL) {
+        size_t len = strlen(token);
+        if((len >= 3) && (token[0] == '[') && (token[len - 1] == ']')) {
+            result.entries = realloc(result.entries, (result.count + 1) * sizeof(alias_entry_t));
+            result.entries[result.count].index = token_index;
+            result.entries[result.count].alias = strdup(token);
+            result.total_alias_length += len;
+            result.count++;
+        }
+        token = strtok(NULL, ".");
+        token_index++;
+    }
+
+    free(path_copy);
+    return result;
+}
+
+void DM_ENG_Device_Common_Clean_Aliases(alias_list_t* aliases) {
+    if(aliases) {
+        for(size_t i = 0; i < aliases->count; ++i) {
+            free(aliases->entries[i].alias);
+        }
+        free(aliases->entries);
+    }
+}
+
+char* DM_ENG_Device_Common_Modify_Path_With_Aliases(const char* path, alias_list_t aliases) {
+    char* path_copy = strdup(path);
+    char* token;
+
+    bool is_partial_path = path[strlen(path) - 1] == '.';
+
+    size_t buf_size = strlen(path) + aliases.total_alias_length + 1;
+    char* new_path = malloc(buf_size);
+    new_path[0] = '\0';
+
+    int index = 0;
+    token = strtok(path_copy, ".");
+
+    while(token) {
+        const char* replacement = token;
+        for(size_t i = 0; i < aliases.count; ++i) {
+            if(aliases.entries[i].index == index) {
+                replacement = aliases.entries[i].alias;
+                break;
+            }
+        }
+
+        strcat(new_path, replacement);
+
+        token = strtok(NULL, ".");
+        if((token != NULL) || is_partial_path) {
+            strcat(new_path, ".");
+        }
+
+        index++;
+    }
+
+    free(path_copy);
+    return new_path;
+}
+
+bool DM_ENG_Device_Common_EndsWithDot(const char* s) {
+    size_t len = strlen(s);
+    return len > 0 && s[len - 1] == '.';
+}
+
+void DM_ENG_Device_Common_Get_Gsdm_data(amxb_bus_ctx_t* bus_ctx, const char* parameter_name, amxc_var_t* data) {
+    uint32_t flags = AMXB_FLAG_PARAMETERS;
+    char* supported_path = NULL;
+    amxc_var_t gsdm;
+    amxd_path_t parameter_name_path;
+    amxc_var_t* request = NULL;
+    amxc_var_t* response = NULL;
+    amxd_status_t gsdm_status = amxd_status_ok;
+    amxc_string_t buffer;
+    const amxc_htable_t* gsdm_htable = NULL;
+    amxc_array_t* gsdm_keys = NULL;
+
+    amxc_var_init(&gsdm);
+    amxd_path_init(&parameter_name_path, parameter_name);
+    amxc_string_init(&buffer, 0);
+
+    when_str_empty_trace(parameter_name, stop, ERROR, "Invalid parameter name provided");
+    when_true_trace(amxc_var_is_null(data), stop, ERROR, "Invalid argument: data is nil");
+    when_true_trace(amxc_var_type_of(data) != AMXC_VAR_ID_HTABLE, stop, ERROR, "Invalid argument: data has invalid type");
+
+    supported_path = amxd_path_build_supported_path(&parameter_name_path);
+    when_str_empty_trace(supported_path, stop, ERROR, "Failed to build supported path for [%s]", parameter_name);
+
+    if(!DM_ENG_Device_Common_EndsWithDot(parameter_name)) {
+        flags = flags | AMXB_FLAG_FIRST_LVL;
+    }
+
+    request = GET_ARG(data, "Request");
+    if(amxc_var_is_null(request)) {
+        request = amxc_var_add_key(amxc_htable_t, data, "Request", NULL);
+    }
+
+    response = GET_ARG(data, "Response");
+    if(amxc_var_is_null(response)) {
+        response = amxc_var_add_key(amxc_htable_t, data, "Response", NULL);
+    }
+
+    amxc_string_setf(&buffer, "%s_%04X", supported_path, flags);
+    if(amxc_var_get_key(request, amxc_string_get(&buffer, 0), AMXC_VAR_FLAG_DEFAULT)) {
+        SAH_TRACEZ_INFO(ME, "[%s_%04X] was already requested", supported_path, flags);
+        goto stop;
+    } else {
+        amxc_var_add_key(amxc_htable_t, request, amxc_string_get(&buffer, 0), NULL);
+    }
+
+    gsdm_status = amxb_get_supported(bus_ctx, supported_path, flags, &gsdm, 1);
+    when_failed_trace(gsdm_status, stop, WARNING, "amxb_get_supported(%s,%04X) failed with status [%d] - Parameter name [%s]",
+                      supported_path, flags, gsdm_status, parameter_name);
+
+    // gsdmdata must be sorted for setting the template objects to the parent
+    gsdm_htable = amxc_var_constcast(amxc_htable_t, GET_ARG(&gsdm, "0"));
+    gsdm_keys = amxc_htable_get_sorted_keys(gsdm_htable);
+    for(uint32_t i = 0; i < amxc_array_capacity(gsdm_keys); i++) {
+        const char* key = (const char*) amxc_array_it_get_data(amxc_array_get_at(gsdm_keys, i));
+        amxc_var_t* v = amxc_var_from_htable_it(amxc_htable_get(gsdm_htable, key));
+        amxc_var_t* key_var = amxc_var_get_key(response, key, AMXC_VAR_FLAG_DEFAULT);
+        if(amxc_var_is_null(key_var)) {
+            key_var = amxc_var_add_key(amxc_htable_t, response, key, NULL);
+        }
+
+        amxc_var_t* access_var = GET_ARG(v, "access");
+        if(access_var) {
+            amxc_var_add_key(bool, key_var, "writable", amxc_var_dyncast(bool, access_var));
+            SAH_TRACEZ_INFO(ME, "GSDM Info: Adding to key [%s]: Writable [%d]", key, amxc_var_dyncast(bool, access_var));
+        }
+
+        bool is_multi_instance = GET_BOOL(v, "is_multi_instance");
+        if(is_multi_instance) {
+            amxd_path_t gsdm_pathstr;
+            char* template = NULL;
+            const char* parent_path = NULL;
+
+            amxd_path_init(&gsdm_pathstr, key);
+            // take out the second last element
+            template = amxd_path_get_last(&gsdm_pathstr, true);
+            free(template);
+            template = amxd_path_get_last(&gsdm_pathstr, true);
+            parent_path = amxd_path_get(&gsdm_pathstr, AMXD_OBJECT_TERMINATE);
+
+            amxc_var_t* parent_var = amxc_var_get_key(response, parent_path, AMXC_VAR_FLAG_DEFAULT);
+            // use this as a key to add the template object to the parent
+            if(amxc_var_is_null(parent_var)) {
+                SAH_TRACEZ_WARNING(ME, "No parent [%s] found for path:[%s]", parent_path, key);
+            } else {
+                amxc_var_t* parent_templates_var = amxc_var_get_key(parent_var, "templates", AMXC_VAR_FLAG_DEFAULT);
+                if(!parent_templates_var) {
+                    parent_templates_var = amxc_var_add_new_key(parent_var, "templates");
+                    amxc_var_set_type(parent_templates_var, AMXC_VAR_ID_HTABLE);
+                }
+                if(amxc_htable_contains(amxc_var_constcast(amxc_htable_t, parent_templates_var), template) == false) {
+                    amxc_var_add_new_key(parent_templates_var, template);
+                    SAH_TRACEZ_INFO(ME, "GSDM Info: Adding to key [%s]: Template [%s]", parent_path, template);
+                }
+            }
+            free(template);
+            template = NULL;
+            amxd_path_clean(&gsdm_pathstr);
+        }
+
+        amxc_var_t* supported_params = GET_ARG(v, "supported_params");
+        if(amxc_var_is_null(supported_params) || amxc_var_is_null(GETI_ARG(supported_params, 0))) {
+            SAH_TRACEZ_INFO(ME, "[%s] doesn't have supported params, or has empty supported params. Skip adding parameters", key);
+            continue;
+        }
+
+        amxc_var_t* parameters = amxc_var_add_new_key(key_var, "parameters");
+        amxc_var_set_type(parameters, AMXC_VAR_ID_HTABLE);
+        amxc_var_for_each(p, GET_ARG(v, "supported_params")) {
+            const char* parameter_key = GET_CHAR(p, "param_name");
+            if(parameter_key && *parameter_key) {
+                int32_t parameter_type = GET_INT32(p, "type");
+                int32_t access = GET_INT32(p, "access");
+                amxc_var_t* htable = amxc_var_add_key(amxc_htable_t, parameters, parameter_key, NULL);
+                amxc_var_add_key(int32_t, htable, "type", parameter_type);
+                amxc_var_add_key(bool, htable, "writable", access == 1 ? true : false);
+                SAH_TRACEZ_INFO(ME, "GSDM Info: Adding to key [%s]: Parameter [%s], Type [%d], Writable [%d]", key, parameter_key, parameter_type, access);
+            }
+        }
+    }
+
+stop:
+    amxc_array_delete(&gsdm_keys, NULL);
+    amxc_string_clean(&buffer);
+    amxc_var_clean(&gsdm);
+    amxd_path_clean(&parameter_name_path);
+    free(supported_path);
 }
 
 /** @} */

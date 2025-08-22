@@ -151,6 +151,8 @@ dm_amx_env_t* DM_ENG_Device_GetACSInfo();
 dm_amx_env_t* DM_ENG_Device_GetSystemInfo();
 dm_app_data_t* DM_ENG_Device_GetDataInfo();
 
+typedef int (* dm_eng_device_get_values_t) (dm_amx_env_t* acs, const char* parameterName, amxc_htable_t* pList, amxc_var_t* gsdm_data);
+
 #define MANAGEMENTSERVER_PATH           "Device.ManagementServer."
 #define MGMT_SRV_CONNREQUEST            "Device.ManagementServer.ConnRequest."
 #define MGMT_SRV_INTERNALSETTINGS       "Device.ManagementServer.InternalSettings."
@@ -160,6 +162,8 @@ dm_app_data_t* DM_ENG_Device_GetDataInfo();
 #define INFORMPARAMETER_PATH            "Device.ManagementServer.InformParameter.*."
 
 int DM_ENG_Device_GetConfigValue(DM_ENG_SystemParameter_t parameter, char** pResult);
+int DM_ENG_Device_GPV(char* parameterNames[], dm_eng_pvs_list_t* pvs_list);
+int DM_ENG_Device_GPN(const char* path, bool nextLevel, dm_eng_pn_list_t* pn_list);
 
 #ifdef __cplusplus
 }

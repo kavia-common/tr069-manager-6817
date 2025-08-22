@@ -162,7 +162,7 @@ void DM_ENG_Device_ACSConnectionHandleNotification(const char* path, const amxc_
         if(DM_ENG_ValueWasCachedInParameterAttributesCache(acs_path, value) == 0) {
             DM_ENG_ParameterValueStruct* nextParam = NULL;
             DM_ENG_GetParameterAttributesCacheEllement(acs_path, &mode, &acclist);
-            SAH_TRACEZ_INFO("DM_DA", "notificationmode for element %s = %d", acs_path, mode);
+            SAH_TRACEZ_INFO("DM_DA", "notification mode for element %s = %d", acs_path, mode);
             if(DM_ENG_Device_GetParameterValues_GetValues(acs, acs_path, &pvsList) != 0) {
                 SAH_TRACEZ_ERROR("DM_DA", "Could not get ParameterValueStruct for param %s", acs_path);
                 goto stop;
@@ -172,7 +172,7 @@ void DM_ENG_Device_ACSConnectionHandleNotification(const char* path, const amxc_
             while(pvsList != NULL) {
                 nextParam = pvsList->next;
                 pvsList->next = NULL;
-                SAH_TRACEZ_INFO("DM_ENGINE", "Adding [%s] with mode [%d] to inform message", pvsList->parameterName, mode);
+                SAH_TRACEZ_INFO("DM_DA", "Adding [%s] with mode [%d] to inform message", pvsList->parameterName, mode);
                 DM_ENG_InformMessageScheduler_parameterValueChanged(pvsList, mode);
                 pvsList = nextParam;
             }
