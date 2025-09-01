@@ -1,0 +1,16 @@
+%populate {
+    object ProcessMonitor.Test {
+        instance add ("cwmp_plugin") {
+            parameter Name = "cwmp_plugin";
+            parameter Type = "Plugin";
+            parameter Subject = "ManagementServer";
+            parameter MaxFailNum = 2;
+            parameter MaxFailDuration = -1;
+            parameter FailAction = "RESTART";
+            parameter RebootAfterRestartThreshold = 3;
+            parameter TestInterval = 60;
+            parameter TestIntervalMultiplier = 2;
+            parameter TestResetInterval = 300;
+        }
+    }
+}

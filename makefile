@@ -35,6 +35,7 @@ install: all
 	$(INSTALL) -d -m 0755 $(DEST)$(BINDIR)
 	ln -sfr $(DEST)$(BINDIR)/amxrt $(DEST)$(BINDIR)/cwmp_plugin
 	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin.odl $(DEST)/etc/amx/cwmp_plugin/cwmp_plugin.odl
+	$(INSTALL) -D -p -m 0644 odl/amx-processmonitor/test-cwmp_plugin.odl $(DEST)/etc/amx/amx-processmonitor/defaults.d/43-test-cwmp_plugin.odl
 	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/defaults.d/cwmp_plugin-defaults.odl $(DEST)/etc/amx/cwmp_plugin/defaults.d/00_cwmp_plugin-defaults.odl
 	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-definition.odl $(DEST)/etc/amx/cwmp_plugin/cwmp_plugin-definition.odl
 	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-prefix.odl $(DEST)/etc/amx/cwmp_plugin/cwmp_plugin-prefix.odl
@@ -56,6 +57,7 @@ package: all
 	rm -f $(PKGDIR)$(BINDIR)/cwmp_plugin
 	ln -sfr $(PKGDIR)$(BINDIR)/amxrt $(PKGDIR)$(BINDIR)/cwmp_plugin
 	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin.odl $(PKGDIR)/etc/amx/cwmp_plugin/cwmp_plugin.odl
+	$(INSTALL) -D -p -m 0644 odl/amx-processmonitor/test-cwmp_plugin.odl $(PKGDIR)/etc/amx/amx-processmonitor/defaults.d/43-test-cwmp_plugin.odl
 	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/defaults.d/cwmp_plugin-defaults.odl $(PKGDIR)/etc/amx/cwmp_plugin/defaults.d/00_cwmp_plugin-defaults.odl
 	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-definition.odl $(PKGDIR)/etc/amx/cwmp_plugin/cwmp_plugin-definition.odl
 	$(INSTALL) -D -p -m 0644 src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-prefix.odl $(PKGDIR)/etc/amx/cwmp_plugin/cwmp_plugin-prefix.odl
