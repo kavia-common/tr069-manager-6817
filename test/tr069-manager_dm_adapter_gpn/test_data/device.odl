@@ -8,6 +8,14 @@
                 string Controller;
                 int32 DownloadDiagnosticsMaxConnections;
             }
+            object Interface[] {
+                string Alias;
+                bool Enable;
+                object IPv4Address[] {
+                    string Alias;
+                    string IPAddress;
+                }
+            }
         }
     }
 }
@@ -19,6 +27,28 @@
             object 'Diagnostics' {
                 parameter 'Controller' = "mod-test";
                 parameter 'DownloadDiagnosticsMaxConnections' = 999;
+            }
+            object 'Interface' {
+                instance add(1) {
+                    parameter 'Alias' = "loopback";
+                    parameter 'Enable' = 1;
+                    object 'IPv4Address' {
+                        instance add(1) {
+                            parameter 'Alias' = "loopback_ipv4";
+                            parameter 'IPAddress' = "127.0.0.1";
+                        }
+                    }
+                }
+                instance add(2) {
+                    parameter 'Alias' = "wan";
+                    parameter 'Enable' = 1;
+                    object 'IPv4Address' {
+                        instance add(1) {
+                            parameter 'Alias' = "primary";
+                            parameter 'IPAddress' = "172.17.0.11";
+                        }
+                    }
+                }
             }
         }
     }

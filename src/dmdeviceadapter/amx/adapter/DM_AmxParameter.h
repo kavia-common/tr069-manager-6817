@@ -122,9 +122,9 @@ extern "C"
 #include "DM_AmxCommon.h"
 
 typedef void (* add_parameter_to_list_t) (amxc_htable_t* plist, const char* param_path, amxc_var_t* param_var, const char* paramkey, amxc_var_t* info);
-typedef void (* add_acs_path_to_list_t) (amxc_htable_t* plist, const char* acs_path, amxc_var_t* info, amxc_var_t* gsdm_data);
-typedef void (* add_object_to_list_t) (amxc_htable_t* plist, const char* object_path, amxc_var_t* info, amxc_var_t* gsdm_data);
-typedef int (* parse_get_t) (dm_amx_env_t* amx, const char* acspath, amxc_var_t* object, amxc_htable_t* plist, amxc_var_t* ext_gsdm_data);
+typedef void (* add_acs_path_to_list_t) (amxc_htable_t* plist, const char* acs_path, bool nextlevel, amxc_var_t* info, amxc_var_t* gsdm_data);
+typedef void (* add_object_to_list_t) (amxc_htable_t* plist, const char* acs_path, const char* object_path, bool nextlevel, amxc_var_t* info, amxc_var_t* gsdm_data);
+typedef int (* parse_get_t) (dm_amx_env_t* amx, const char* acspath, bool nextlevel, amxc_var_t* object, amxc_htable_t* plist, amxc_var_t* ext_gsdm_data);
 
 int DM_AmxParameter_GetValues(dm_amx_env_t* amx, const char* path, dm_eng_pvs_list_t* pvs_list, amxc_var_t* gsdm_data);
 int DM_AmxParameter_GetNames(dm_amx_env_t* amx, const char* path, bool nextLevel, dm_eng_pn_list_t* pn_list, amxc_var_t* gsdm_data);

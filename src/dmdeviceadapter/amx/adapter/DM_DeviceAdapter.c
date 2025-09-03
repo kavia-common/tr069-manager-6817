@@ -600,7 +600,7 @@ int DM_ENG_Device_GPV(char* parameterNames[], dm_eng_pvs_list_t* pvs_list) {
     amxc_var_init(&gsdm_data);
     amxc_var_set_type(&gsdm_data, AMXC_VAR_ID_HTABLE);
     for(unsigned int i = 0; parameterNames[i] != NULL; i++) {
-        DM_ENG_Device_Common_Get_Gsdm_data(da.acs.bus_ctx, parameterNames[i], &gsdm_data);
+        DM_ENG_Device_Common_Get_Gsdm_data(da.acs.bus_ctx, parameterNames[i], false, &gsdm_data);
     }
 
     for(unsigned int i = 0; parameterNames[i] != NULL; i++) {

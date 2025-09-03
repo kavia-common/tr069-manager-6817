@@ -896,7 +896,37 @@ bool DM_ENG_Device_Common_EndsWithDot(const char* s) {
     return len > 0 && s[len - 1] == '.';
 }
 
-void DM_ENG_Device_Common_Get_Gsdm_data(amxb_bus_ctx_t* bus_ctx, const char* parameter_name, amxc_var_t* data) {
+
+bool DM_ENG_Device_Common_IsParameterPath(const char* path) {
+    bool ret = false;
+    when_str_empty(path, exit);
+    when_true(DM_ENG_Device_Common_EndsWithDot(path), exit);
+    when_true(DM_ENG_Device_Common_IsWildcardPath(path), exit);
+
+    ret = true;
+exit:
+    return ret;
+}
+
+static void DM_ENG_Device_Common_Add_Object_To_Parent(const char* parent_path, amxc_var_t* response, const char* template) {
+    amxc_var_t* parent_var = amxc_var_get_key(response, parent_path, AMXC_VAR_FLAG_DEFAULT);
+    // use this as a key to add the template object to the parent
+    if(amxc_var_is_null(parent_var)) {
+        SAH_TRACEZ_WARNING(ME, "No parent [%s] found", parent_path);
+    } else {
+        amxc_var_t* parent_object_var = amxc_var_get_key(parent_var, "objects", AMXC_VAR_FLAG_DEFAULT);
+        if(!parent_object_var) {
+            parent_object_var = amxc_var_add_new_key(parent_var, "objects");
+            amxc_var_set_type(parent_object_var, AMXC_VAR_ID_HTABLE);
+        }
+        if(amxc_htable_contains(amxc_var_constcast(amxc_htable_t, parent_object_var), template) == false) {
+            amxc_var_add_new_key(parent_object_var, template);
+            SAH_TRACEZ_INFO(ME, "GSDM Info: Adding to key [%s]: Template [%s]", parent_path, template);
+        }
+    }
+}
+
+void DM_ENG_Device_Common_Get_Gsdm_data(amxb_bus_ctx_t* bus_ctx, const char* parameter_name, bool nextlevel, amxc_var_t* data) {
     uint32_t flags = AMXB_FLAG_PARAMETERS;
     char* supported_path = NULL;
     amxc_var_t gsdm;
@@ -919,7 +949,7 @@ void DM_ENG_Device_Common_Get_Gsdm_data(amxb_bus_ctx_t* bus_ctx, const char* par
     supported_path = amxd_path_build_supported_path(&parameter_name_path);
     when_str_empty_trace(supported_path, stop, ERROR, "Failed to build supported path for [%s]", parameter_name);
 
-    if(!DM_ENG_Device_Common_EndsWithDot(parameter_name)) {
+    if(nextlevel || DM_ENG_Device_Common_IsParameterPath(parameter_name)) {
         flags = flags | AMXB_FLAG_FIRST_LVL;
     }
 
@@ -962,36 +992,25 @@ void DM_ENG_Device_Common_Get_Gsdm_data(amxb_bus_ctx_t* bus_ctx, const char* par
             SAH_TRACEZ_INFO(ME, "GSDM Info: Adding to key [%s]: Writable [%d]", key, amxc_var_dyncast(bool, access_var));
         }
 
-        bool is_multi_instance = GET_BOOL(v, "is_multi_instance");
-        if(is_multi_instance) {
+        if(DM_ENG_Device_Common_IsParameterPath(parameter_name) == false) {
+            bool is_multi_instance = GET_BOOL(v, "is_multi_instance");
+            char* object = NULL;
             amxd_path_t gsdm_pathstr;
-            char* template = NULL;
-            const char* parent_path = NULL;
-
             amxd_path_init(&gsdm_pathstr, key);
-            // take out the second last element
-            template = amxd_path_get_last(&gsdm_pathstr, true);
-            free(template);
-            template = amxd_path_get_last(&gsdm_pathstr, true);
-            parent_path = amxd_path_get(&gsdm_pathstr, AMXD_OBJECT_TERMINATE);
 
-            amxc_var_t* parent_var = amxc_var_get_key(response, parent_path, AMXC_VAR_FLAG_DEFAULT);
-            // use this as a key to add the template object to the parent
-            if(amxc_var_is_null(parent_var)) {
-                SAH_TRACEZ_WARNING(ME, "No parent [%s] found for path:[%s]", parent_path, key);
-            } else {
-                amxc_var_t* parent_templates_var = amxc_var_get_key(parent_var, "templates", AMXC_VAR_FLAG_DEFAULT);
-                if(!parent_templates_var) {
-                    parent_templates_var = amxc_var_add_new_key(parent_var, "templates");
-                    amxc_var_set_type(parent_templates_var, AMXC_VAR_ID_HTABLE);
-                }
-                if(amxc_htable_contains(amxc_var_constcast(amxc_htable_t, parent_templates_var), template) == false) {
-                    amxc_var_add_new_key(parent_templates_var, template);
-                    SAH_TRACEZ_INFO(ME, "GSDM Info: Adding to key [%s]: Template [%s]", parent_path, template);
-                }
+            if(is_multi_instance) {
+                // take out the second last element
+                object = amxd_path_get_last(&gsdm_pathstr, true);
+                free(object);
+                object = amxd_path_get_last(&gsdm_pathstr, true);
+                DM_ENG_Device_Common_Add_Object_To_Parent(amxd_path_get(&gsdm_pathstr, AMXD_OBJECT_TERMINATE), response, object);
+            } else if(key && (strcmp(key, parameter_name) != 0)) {
+                // consider child object - take out the last element
+                object = amxd_path_get_last(&gsdm_pathstr, true);
+                DM_ENG_Device_Common_Add_Object_To_Parent(amxd_path_get(&gsdm_pathstr, AMXD_OBJECT_TERMINATE), response, object);
             }
-            free(template);
-            template = NULL;
+            free(object);
+            object = NULL;
             amxd_path_clean(&gsdm_pathstr);
         }
 

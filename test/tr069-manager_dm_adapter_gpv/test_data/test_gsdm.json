@@ -15,8 +15,9 @@
                     "writable": false
                 }
             },
-            "templates": {
-                "Client.": null
+            "objects": {
+                "Client.": null,
+                "Server.": null
             }
         },
         "Device.GSDMCheck.Client.{i}.": {
@@ -33,7 +34,7 @@
                     "writable": false
                 }
             },
-            "templates": {
+            "objects": {
                 "Pool.": null
             }
         },
@@ -52,7 +53,7 @@
                     "writable": false
                 }
             },
-            "templates": {
+            "objects": {
                 "Client.": null
             },
             "writable": true
@@ -68,7 +69,7 @@
                     "writable": false
                 }
             },
-            "templates": {
+            "objects": {
                 "Option.": null
             },
             "writable": true

@@ -164,13 +164,15 @@ static void verify_parameter_list(
 void test_gpn(UNUSED void** state) {
     struct {
         bool enable;
+        bool nextlevel;
         const char* input_path;
         pn_t expected[MAX_EXPECTED_PARAMETERS];
         size_t expected_count;
     } test_cases[] = {
         {
             true,
-            "Device.IP.", //requested path
+            false,        // nextlevel set to false
+            "Device.IP.", // requested parial path
             {             // expected
                 {"Device.IP.", false},
                 {"Device.IP.ActivePortNumberOfEntries", false},
@@ -178,10 +180,63 @@ void test_gpn(UNUSED void** state) {
                 {"Device.IP.Diagnostics.", false},
                 {"Device.IP.Diagnostics.Controller", true},
                 {"Device.IP.Diagnostics.DownloadDiagnosticsMaxConnections", true},
+                {"Device.IP.Interface.", true},
+                {"Device.IP.Interface.1.", true},
+                {"Device.IP.Interface.1.Alias", true},
+                {"Device.IP.Interface.1.Enable", true},
+                {"Device.IP.Interface.1.IPv4Address.", true},
+                {"Device.IP.Interface.1.IPv4Address.1.", true},
+                {"Device.IP.Interface.1.IPv4Address.1.Alias", true},
+                {"Device.IP.Interface.1.IPv4Address.1.IPAddress", true},
+                {"Device.IP.Interface.2.", true},
+                {"Device.IP.Interface.2.Alias", true},
+                {"Device.IP.Interface.2.Enable", true},
+                {"Device.IP.Interface.2.IPv4Address.", true},
+                {"Device.IP.Interface.2.IPv4Address.1.", true},
+                {"Device.IP.Interface.2.IPv4Address.1.Alias", true},
+                {"Device.IP.Interface.2.IPv4Address.1.IPAddress", true},
+                {NULL, false}
+            },
+            21
+        },
+        {
+            true,
+            true,         // nextlevel set to true
+            "Device.IP.", // requested parial path
+            {             // expected
+                {"Device.IP.ActivePortNumberOfEntries", false},
+                {"Device.IP.ActivePort.", true},
+                {"Device.IP.Diagnostics.", false},
+                {"Device.IP.Interface.", true},
+                {NULL, false}
+            },
+            4
+        },
+        {
+            true,
+            true,                                   // nextlevel set to true
+            "Device.IP.Interface.*.IPv4Address.*.", // requested wildcard path
+            {                                       // expected
+                {"Device.IP.Interface.1.IPv4Address.1.", true},
+                {"Device.IP.Interface.1.IPv4Address.1.Alias", true},
+                {"Device.IP.Interface.1.IPv4Address.1.IPAddress", true},
+                {"Device.IP.Interface.2.IPv4Address.1.", true},
+                {"Device.IP.Interface.2.IPv4Address.1.Alias", true},
+                {"Device.IP.Interface.2.IPv4Address.1.IPAddress", true},
                 {NULL, false}
             },
             6
-        }
+        },
+        {
+            true,
+            false,                              // nextlevel set to false
+            "Device.IP.Diagnostics.Controller", // requested parameter path
+            {                                   // expected
+                {"Device.IP.Diagnostics.Controller", true},
+                {NULL, false}
+            },
+            1
+        },
     };
 
     static const size_t test_case_count = sizeof(test_cases) / sizeof(test_cases[0]);
@@ -199,7 +254,7 @@ void test_gpn(UNUSED void** state) {
         double cpu_time_used;
         start = clock();
 
-        assert_int_equal(DM_ENG_Device_GPN(test_cases[i].input_path, false, &pn_list), 0);
+        assert_int_equal(DM_ENG_Device_GPN(test_cases[i].input_path, test_cases[i].nextlevel, &pn_list), 0);
 
         end = clock();
         cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;

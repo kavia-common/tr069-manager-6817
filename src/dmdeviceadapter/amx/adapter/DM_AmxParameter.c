@@ -106,7 +106,8 @@ stop:
     return info;
 }
 
-static void DM_AmxParameter_ParseForEachParameter(dm_amx_env_t* amx, const char* acs_path, const char* object_path, const amxc_htable_it_t* param_it, amxc_htable_t* plist, add_parameter_to_list_t add_param_to_list, alias_list_t aliases, amxc_var_t* info) {
+static void DM_AmxParameter_ParseForEachParameter(dm_amx_env_t* amx, const char* acs_path, const char* object_path, const amxc_htable_it_t* param_it,
+                                                  amxc_htable_t* plist, add_parameter_to_list_t add_param_to_list, alias_list_t aliases, amxc_var_t* info) {
     const char* param_key = amxc_htable_it_get_key(param_it);
     amxc_var_t* param_var = amxc_var_from_htable_it(param_it);
     char* alias_path = NULL;
@@ -132,7 +133,9 @@ static void DM_AmxParameter_ParseForEachParameter(dm_amx_env_t* amx, const char*
     amxc_string_clean(&parampath_str);
 }
 
-static void DM_AmxParameter_ParseForEachObject(dm_amx_env_t* amx, const char* acs_path, const amxc_htable_it_t* object_it, amxc_htable_t* plist, amxc_var_t* gsdm_data, add_object_to_list_t add_object_to_list, add_parameter_to_list_t add_param_to_list, alias_list_t aliases) {
+static void DM_AmxParameter_ParseForEachObject(dm_amx_env_t* amx, const char* acs_path, bool nextlevel, const amxc_htable_it_t* object_it,
+                                               amxc_htable_t* plist, amxc_var_t* gsdm_data, add_object_to_list_t add_object_to_list,
+                                               add_parameter_to_list_t add_param_to_list, alias_list_t aliases) {
     const char* object_path = amxc_htable_it_get_key(object_it);
     amxc_var_t* info = NULL;
     char* alias_path = NULL;
@@ -149,7 +152,7 @@ static void DM_AmxParameter_ParseForEachObject(dm_amx_env_t* amx, const char* ac
     }
 
     if(add_object_to_list != NULL) {
-        add_object_to_list(plist, alias_path != NULL ? alias_path : object_path, info, gsdm_data);
+        add_object_to_list(plist, acs_path, alias_path != NULL ? alias_path : object_path, nextlevel, info, gsdm_data);
     }
 
     parameters = amxc_var_constcast(amxc_htable_t, amxc_var_from_htable_it(object_it));
@@ -161,7 +164,9 @@ stop:
     free(alias_path);
 }
 
-static int DM_AmxParameter_Parse(dm_amx_env_t* amx, const char* acs_path, amxc_var_t* object, amxc_htable_t* plist, amxc_var_t* ext_gsdm_data, add_acs_path_to_list_t add_acs_path_to_list, add_object_to_list_t add_object_to_list, add_parameter_to_list_t add_param_to_list) {
+static int DM_AmxParameter_Parse(dm_amx_env_t* amx, const char* acs_path, bool nextlevel, amxc_var_t* object,
+                                 amxc_htable_t* plist, amxc_var_t* ext_gsdm_data, add_acs_path_to_list_t add_acs_path_to_list,
+                                 add_object_to_list_t add_object_to_list, add_parameter_to_list_t add_param_to_list) {
     int error = 0;
     const amxc_htable_t* object_htable = NULL;
     alias_list_t aliases = {0};
@@ -172,7 +177,7 @@ static int DM_AmxParameter_Parse(dm_amx_env_t* amx, const char* acs_path, amxc_v
     amxc_var_init(&gsdm_data);
     amxc_var_set_type(&gsdm_data, AMXC_VAR_ID_HTABLE);
     if(ext_gsdm_data == NULL) {
-        DM_ENG_Device_Common_Get_Gsdm_data(amx->bus_ctx, acs_path, &gsdm_data);
+        DM_ENG_Device_Common_Get_Gsdm_data(amx->bus_ctx, acs_path, nextlevel, &gsdm_data);
         gsdm_in_use = &gsdm_data;
     } else {
         gsdm_in_use = ext_gsdm_data;
@@ -184,12 +189,12 @@ static int DM_AmxParameter_Parse(dm_amx_env_t* amx, const char* acs_path, amxc_v
 
     if(add_acs_path_to_list) {
         info = DM_AmxParameter_GetGsdmInfo(acs_path, gsdm_in_use);
-        add_acs_path_to_list(plist, acs_path, info, gsdm_in_use);
+        add_acs_path_to_list(plist, acs_path, nextlevel, info, gsdm_in_use);
     }
 
     object_htable = amxc_var_constcast(amxc_htable_t, GETI_ARG(object, 0));
     amxc_htable_iterate(object_it, object_htable) {
-        DM_AmxParameter_ParseForEachObject(amx, acs_path, object_it, plist, gsdm_in_use, add_object_to_list, add_param_to_list, aliases);
+        DM_AmxParameter_ParseForEachObject(amx, acs_path, nextlevel, object_it, plist, gsdm_in_use, add_object_to_list, add_param_to_list, aliases);
     }
 
     DM_ENG_Device_Common_Clean_Aliases(&aliases);
@@ -245,35 +250,53 @@ exit:
     return;
 }
 
-static void DM_AmxParameter_AddTemplateObjectsToPN(dm_eng_pn_list_t* pn_list, const char* object_path, amxc_var_t* info, amxc_var_t* gsdm_data) {
-    amxc_string_t template_pathstr;
-    const char* template_path = NULL;
-    amxc_var_t* templates = NULL;
-    amxc_var_t* template_info = NULL;
+static void DM_AmxParameter_AddObjectsToPN(dm_eng_pn_list_t* pn_list, const char* object_path, amxc_var_t* info, amxc_var_t* gsdm_data) {
+    amxc_string_t object_pathstr;
+    const char* object_pathc = NULL;
+    amxc_var_t* objects = NULL;
+    amxc_var_t* object_info = NULL;
 
-    amxc_string_init(&template_pathstr, 0);
+    amxc_string_init(&object_pathstr, 0);
 
-    templates = GET_ARG(info, "templates");
-    when_null(templates, exit);
+    objects = GET_ARG(info, "objects");
+    when_null(objects, exit);
 
-    amxc_htable_iterate(hit, amxc_var_constcast(amxc_htable_t, templates)) {
-        const char* template = amxc_htable_it_get_key(hit);
-        amxc_string_clean(&template_pathstr);
-        amxc_string_setf(&template_pathstr, "%s%s", object_path, template);
-        template_path = amxc_string_get(&template_pathstr, 0);
+    amxc_htable_iterate(hit, amxc_var_constcast(amxc_htable_t, objects)) {
+        const char* object = amxc_htable_it_get_key(hit);
+        amxc_string_clean(&object_pathstr);
+        amxc_string_setf(&object_pathstr, "%s%s", object_path, object);
+        object_pathc = amxc_string_get(&object_pathstr, 0);
 
-        template_info = DM_AmxParameter_GetGsdmInfo(template_path, gsdm_data);
-        when_true_trace(amxc_var_is_null(template_info), exit, INFO, "No GSDM info found for [%s]", template_path);
-        DM_AmxParameter_AddSingleObjectToPN(pn_list, template_path, template_info);
+        object_info = DM_AmxParameter_GetGsdmInfo(object_pathc, gsdm_data);
+        when_true_trace(amxc_var_is_null(object_info), exit, INFO, "No GSDM info found for [%s]", object_pathc);
+        DM_AmxParameter_AddSingleObjectToPN(pn_list, object_pathc, object_info);
     }
 exit:
-    amxc_string_clean(&template_pathstr);
+    amxc_string_clean(&object_pathstr);
     return;
 }
 
-static void DM_AmxParameter_AddObjectToPN(dm_eng_pn_list_t* pn_list, const char* object_path, amxc_var_t* info, amxc_var_t* gsdm_data) {
-    DM_AmxParameter_AddSingleObjectToPN(pn_list, object_path, info);
-    DM_AmxParameter_AddTemplateObjectsToPN(pn_list, object_path, info, gsdm_data);
+static void DM_AmxParameter_AddAcsPathToPN(dm_eng_pn_list_t* pn_list, const char* acs_path, bool nextlevel, amxc_var_t* info, amxc_var_t* gsdm_data) {
+    when_true(DM_ENG_Device_Common_IsParameterPath(acs_path), stop);
+    when_true(DM_ENG_Device_Common_IsWildcardPath(acs_path), stop);
+
+    if(nextlevel == false) {
+        DM_AmxParameter_AddSingleObjectToPN(pn_list, acs_path, info);
+    }
+    DM_AmxParameter_AddObjectsToPN(pn_list, acs_path, info, gsdm_data);
+stop:
+    return;
+}
+
+static void DM_AmxParameter_AddObjectToPN(dm_eng_pn_list_t* pn_list, const char* acs_path, const char* object_path, bool nextlevel, amxc_var_t* info, amxc_var_t* gsdm_data) {
+    when_true(DM_ENG_Device_Common_IsParameterPath(acs_path), stop);
+
+    if((nextlevel == false) || (strcmp(acs_path, object_path) != 0)) {
+        DM_AmxParameter_AddSingleObjectToPN(pn_list, object_path, info);
+    }
+    DM_AmxParameter_AddObjectsToPN(pn_list, object_path, info, gsdm_data);
+stop:
+    return;
 }
 
 static void DM_AmxParameter_AddParameterToPN(dm_eng_pn_list_t* pn_list, const char* param_path, UNUSED amxc_var_t* param_var, const char* param_key, amxc_var_t* info) {
@@ -298,15 +321,15 @@ exit:
     amxc_string_clean(&parameters_str);
 }
 
-static int DM_AmxParameter_ParseValues(dm_amx_env_t* amx, const char* acs_path, amxc_var_t* object, dm_eng_pvs_list_t* pvs_list, amxc_var_t* ext_gsdm_data) {
-    return DM_AmxParameter_Parse(amx, acs_path, object, pvs_list, ext_gsdm_data, NULL, NULL, DM_AmxParameter_AddParameterToPVS);
+static int DM_AmxParameter_ParseValues(dm_amx_env_t* amx, const char* acs_path, bool nextlevel, amxc_var_t* object, dm_eng_pvs_list_t* pvs_list, amxc_var_t* ext_gsdm_data) {
+    return DM_AmxParameter_Parse(amx, acs_path, nextlevel, object, pvs_list, ext_gsdm_data, NULL, NULL, DM_AmxParameter_AddParameterToPVS);
 }
 
-static int DM_AmxParameter_ParseNames(dm_amx_env_t* amx, const char* acs_path, amxc_var_t* object, dm_eng_pn_list_t* pn_list, amxc_var_t* ext_gsdm_data) {
-    return DM_AmxParameter_Parse(amx, acs_path, object, pn_list, ext_gsdm_data, DM_AmxParameter_AddObjectToPN, DM_AmxParameter_AddObjectToPN, DM_AmxParameter_AddParameterToPN);
+static int DM_AmxParameter_ParseNames(dm_amx_env_t* amx, const char* acs_path, bool nextlevel, amxc_var_t* object, dm_eng_pn_list_t* pn_list, amxc_var_t* ext_gsdm_data) {
+    return DM_AmxParameter_Parse(amx, acs_path, nextlevel, object, pn_list, ext_gsdm_data, DM_AmxParameter_AddAcsPathToPN, DM_AmxParameter_AddObjectToPN, DM_AmxParameter_AddParameterToPN);
 }
 
-static int DM_AmxParameter_Get(dm_amx_env_t* amx, const char* path, bool nextLevel, amxc_htable_t* plist, amxc_var_t* gsdm_data, parse_get_t parse_get) {
+static int DM_AmxParameter_Get(dm_amx_env_t* amx, const char* path, bool nextlevel, amxc_htable_t* plist, amxc_var_t* gsdm_data, parse_get_t parse_get) {
     int error = 0;
     int32_t depth = 0;
     bool is_partialpath = false;
@@ -333,7 +356,7 @@ static int DM_AmxParameter_Get(dm_amx_env_t* amx, const char* path, bool nextLev
     is_wildcardpath = (strstr(path, "*") != NULL);
 
     /* if nextlevel : restrict to only first level parameters */
-    if(nextLevel) {
+    if(nextlevel) {
         depth = 0;
     } else {
         depth = is_partialpath ? -1 : 0;
@@ -359,7 +382,7 @@ static int DM_AmxParameter_Get(dm_amx_env_t* amx, const char* path, bool nextLev
     }
 
     if(parse_get != NULL) {
-        error = parse_get(amx, path, &get, plist, gsdm_data);
+        error = parse_get(amx, path, nextlevel, &get, plist, gsdm_data);
     }
 
 stop:
@@ -372,8 +395,15 @@ int DM_AmxParameter_GetValues(dm_amx_env_t* amx, const char* path, dm_eng_pvs_li
     return DM_AmxParameter_Get(amx, path, false, pvs_list, gsdm_data, DM_AmxParameter_ParseValues);
 }
 
-int DM_AmxParameter_GetNames(dm_amx_env_t* amx, const char* path, bool nextLevel, dm_eng_pn_list_t* pn_list, amxc_var_t* gsdm_data) {
-    return DM_AmxParameter_Get(amx, path, nextLevel, pn_list, gsdm_data, DM_AmxParameter_ParseNames);
+int DM_AmxParameter_GetNames(dm_amx_env_t* amx, const char* path, bool nextlevel, dm_eng_pn_list_t* pn_list, amxc_var_t* gsdm_data) {
+    int error = 0;
+
+    if(DM_ENG_Device_Common_IsParameterPath(path) && nextlevel) {
+        SetErrorGotoStop(DM_ENG_INVALID_ARGUMENTS, "Return an error if we request the nextlevel names of a parameter");
+    }
+    error = DM_AmxParameter_Get(amx, path, nextlevel, pn_list, gsdm_data, DM_AmxParameter_ParseNames);
+stop:
+    return error;
 }
 
 // /** @} */

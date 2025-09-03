@@ -201,7 +201,8 @@ alias_list_t DM_ENG_Device_Common_Extract_Aliases(const char* path);
 void DM_ENG_Device_Common_Clean_Aliases(alias_list_t* aliases);
 char* DM_ENG_Device_Common_Modify_Path_With_Aliases(const char* path, alias_list_t aliases);
 bool DM_ENG_Device_Common_EndsWithDot(const char* s);
-void DM_ENG_Device_Common_Get_Gsdm_data(amxb_bus_ctx_t* bus_ctx, const char* parameter_name, amxc_var_t* data);
+bool DM_ENG_Device_Common_IsParameterPath(const char* path);
+void DM_ENG_Device_Common_Get_Gsdm_data(amxb_bus_ctx_t* bus_ctx, const char* parameter_name, bool nextlevel, amxc_var_t* data);
 
 #ifdef __cplusplus
 }
