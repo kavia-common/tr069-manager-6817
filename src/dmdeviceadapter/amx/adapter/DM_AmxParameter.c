@@ -140,6 +140,11 @@ static void DM_AmxParameter_ParseForEachObject(dm_amx_env_t* amx, const char* ac
     amxc_var_t* info = NULL;
     char* alias_path = NULL;
     const amxc_htable_t* parameters = NULL;
+    amxd_path_t acs_dpath;
+    amxd_path_t object_dpath;
+
+    amxd_path_init(&acs_dpath, acs_path);
+    amxd_path_init(&object_dpath, object_path);
 
     info = DM_AmxParameter_GetGsdmInfo(object_path, gsdm_data);
     when_true_trace(amxc_var_is_null(info), stop, INFO, "No GSDM info found for [%s]", object_path);
@@ -155,12 +160,17 @@ static void DM_AmxParameter_ParseForEachObject(dm_amx_env_t* amx, const char* ac
         add_object_to_list(plist, acs_path, alias_path != NULL ? alias_path : object_path, nextlevel, info, gsdm_data);
     }
 
+    /* avoid adding indepth parameters when nextlevel is set */
+    when_true(nextlevel && (amxd_path_get_depth(&object_dpath) > amxd_path_get_depth(&acs_dpath)), stop);
+
     parameters = amxc_var_constcast(amxc_htable_t, amxc_var_from_htable_it(object_it));
     amxc_htable_iterate(param_it, parameters) {
         DM_AmxParameter_ParseForEachParameter(amx, acs_path, object_path, param_it, plist, add_param_to_list, aliases, info);
     }
 
 stop:
+    amxd_path_clean(&acs_dpath);
+    amxd_path_clean(&object_dpath);
     free(alias_path);
 }
 
@@ -294,7 +304,9 @@ static void DM_AmxParameter_AddObjectToPN(dm_eng_pn_list_t* pn_list, const char*
     if((nextlevel == false) || (strcmp(acs_path, object_path) != 0)) {
         DM_AmxParameter_AddSingleObjectToPN(pn_list, object_path, info);
     }
-    DM_AmxParameter_AddObjectsToPN(pn_list, object_path, info, gsdm_data);
+    if(nextlevel == false) {
+        DM_AmxParameter_AddObjectsToPN(pn_list, object_path, info, gsdm_data);
+    }
 stop:
     return;
 }
