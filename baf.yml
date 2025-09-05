@@ -166,3 +166,8 @@ dependencies:
   - name: "libfiletransfer"
   - name: "libgmap-client"
   - name: "libxml2"
+
+doc:
+  parser: "amx"
+  odl:
+    - "src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin.odl"

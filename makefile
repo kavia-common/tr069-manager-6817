@@ -77,11 +77,6 @@ changelog:
 
 doc:
 	$(eval ODLFILES += src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin.odl)
-	$(eval ODLFILES += src/dmdeviceadapter/amx/cwmp_plugin/odl/defaults.d/cwmp_plugin-defaults.odl)
-	$(eval ODLFILES += src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-definition.odl)
-	$(eval ODLFILES += src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-prefix.odl)
-	$(eval ODLFILES += src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmpd-config.odl)
-	$(eval ODLFILES += src/dmdeviceadapter/amx/cwmp_plugin/odl/cwmp_plugin-mapping.odl)
 
 	mkdir -p output/xml
 	mkdir -p output/html
