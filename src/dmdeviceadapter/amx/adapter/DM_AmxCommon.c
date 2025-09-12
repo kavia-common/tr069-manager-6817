@@ -143,13 +143,15 @@ DM_ENG_ParameterType DM_ENG_Device_Common_ConvertParameterType(u_int32_t type) {
     case AMXC_VAR_ID_INT8:
     case AMXC_VAR_ID_INT16:
     case AMXC_VAR_ID_INT32:
-    case AMXC_VAR_ID_INT64:
         return DM_ENG_ParameterType_INT;
+    case AMXC_VAR_ID_INT64:
+        return DM_ENG_ParameterType_LONG;
     case AMXC_VAR_ID_UINT8:
     case AMXC_VAR_ID_UINT16:
     case AMXC_VAR_ID_UINT32:
-    case AMXC_VAR_ID_UINT64:
         return DM_ENG_ParameterType_UINT;
+    case AMXC_VAR_ID_UINT64:
+        return DM_ENG_ParameterType_ULONG;
     case AMXC_VAR_ID_CSTRING:
     case AMXC_VAR_ID_CSV_STRING:
     case AMXC_VAR_ID_SSV_STRING:
