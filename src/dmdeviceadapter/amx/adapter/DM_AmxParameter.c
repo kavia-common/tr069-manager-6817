@@ -410,6 +410,11 @@ int DM_AmxParameter_GetValues(dm_amx_env_t* amx, const char* path, dm_eng_pvs_li
 int DM_AmxParameter_GetNames(dm_amx_env_t* amx, const char* path, bool nextlevel, dm_eng_pn_list_t* pn_list, amxc_var_t* gsdm_data) {
     int error = 0;
 
+    if(strlen(path) == 0 && nextlevel == true) {
+        DM_AmxParameter_AddSingleObjectToPN(pn_list, "Device.", NULL);
+        goto stop;
+    }
+
     if(DM_ENG_Device_Common_IsParameterPath(path) && nextlevel) {
         SetErrorGotoStop(DM_ENG_INVALID_ARGUMENTS, "Return an error if we request the nextlevel names of a parameter");
     }
