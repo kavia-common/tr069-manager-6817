@@ -8589,7 +8589,7 @@ void test_gsdm(UNUSED void** state) {
     amxc_var_set_type(&gsdm_data, AMXC_VAR_ID_HTABLE);
 
     for(unsigned int i = 0; parameterNames[i] != NULL; i++) {
-        DM_ENG_Device_Common_Get_Gsdm_data(acs_info->bus_ctx, parameterNames[i], false, &gsdm_data);
+        DM_ENG_Device_Common_Get_Gsdm_data(acs_info, parameterNames[i], false, &gsdm_data);
     }
 
     assert_int_equal(compare_gsdm_data(&gsdm_data, "./test_data/test_gsdm.json"), 0);

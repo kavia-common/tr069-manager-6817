@@ -926,7 +926,8 @@ static void DM_ENG_Device_Common_Add_Object_To_Parent(const char* parent_path, a
     }
 }
 
-void DM_ENG_Device_Common_Get_Gsdm_data(amxb_bus_ctx_t* bus_ctx, const char* parameter_name, bool nextlevel, amxc_var_t* data) {
+int DM_ENG_Device_Common_Get_Gsdm_data(dm_amx_env_t* amx, const char* parameter_name, bool nextlevel, amxc_var_t* data) {
+    int error = 0;
     uint32_t flags = AMXB_FLAG_PARAMETERS;
     char* supported_path = NULL;
     amxc_var_t gsdm;
@@ -937,7 +938,9 @@ void DM_ENG_Device_Common_Get_Gsdm_data(amxb_bus_ctx_t* bus_ctx, const char* par
     amxc_string_t buffer;
     const amxc_htable_t* gsdm_htable = NULL;
     amxc_array_t* gsdm_keys = NULL;
+    amxc_llist_t filters;
 
+    amxc_llist_init(&filters);
     amxc_var_init(&gsdm);
     amxd_path_init(&parameter_name_path, parameter_name);
     amxc_string_init(&buffer, 0);
@@ -971,9 +974,19 @@ void DM_ENG_Device_Common_Get_Gsdm_data(amxb_bus_ctx_t* bus_ctx, const char* par
         amxc_var_add_key(amxc_htable_t, request, amxc_string_get(&buffer, 0), NULL);
     }
 
-    gsdm_status = amxb_get_supported(bus_ctx, supported_path, flags, &gsdm, 1);
+    amxa_resolve_search_paths(amx->bus_ctx, amx->acl_rules, parameter_name);
+    amxa_get_filters(amx->acl_rules, AMXA_PERMIT_GET, &filters, parameter_name);
+
+    if(!amxa_is_get_allowed(&filters, parameter_name)) {
+        SetErrorGotoStop(DM_ENG_INVALID_PARAMETER_NAME, "cwmp has no access rights to [%s] ", parameter_name);
+    }
+
+    gsdm_status = amxb_get_supported(amx->bus_ctx, supported_path, flags, &gsdm, 1);
     when_failed_trace(gsdm_status, stop, WARNING, "amxb_get_supported(%s,%04X) failed with status [%d] - Parameter name [%s]",
                       supported_path, flags, gsdm_status, parameter_name);
+
+    // apply filter to gsdm data
+    amxa_filter_get_resp(&gsdm, &filters);
 
     // gsdmdata must be sorted for setting the template objects to the parent
     gsdm_htable = amxc_var_constcast(amxc_htable_t, GET_ARG(&gsdm, "0"));
@@ -1036,11 +1049,13 @@ void DM_ENG_Device_Common_Get_Gsdm_data(amxb_bus_ctx_t* bus_ctx, const char* par
     }
 
 stop:
+    amxc_llist_clean(&filters, amxc_string_list_it_free);
     amxc_array_delete(&gsdm_keys, NULL);
     amxc_string_clean(&buffer);
     amxc_var_clean(&gsdm);
     amxd_path_clean(&parameter_name_path);
     free(supported_path);
+    return error;
 }
 
 /** @} */

@@ -187,7 +187,10 @@ static int DM_AmxParameter_Parse(dm_amx_env_t* amx, const char* acs_path, bool n
     amxc_var_init(&gsdm_data);
     amxc_var_set_type(&gsdm_data, AMXC_VAR_ID_HTABLE);
     if(ext_gsdm_data == NULL) {
-        DM_ENG_Device_Common_Get_Gsdm_data(amx->bus_ctx, acs_path, nextlevel, &gsdm_data);
+        error = DM_ENG_Device_Common_Get_Gsdm_data(amx, acs_path, nextlevel, &gsdm_data);
+        if(error) {
+            GotoStop("Error detected, stopping");
+        }
         gsdm_in_use = &gsdm_data;
     } else {
         gsdm_in_use = ext_gsdm_data;
@@ -207,6 +210,7 @@ static int DM_AmxParameter_Parse(dm_amx_env_t* amx, const char* acs_path, bool n
         DM_AmxParameter_ParseForEachObject(amx, acs_path, nextlevel, object_it, plist, gsdm_in_use, add_object_to_list, add_param_to_list, aliases);
     }
 
+stop:
     DM_ENG_Device_Common_Clean_Aliases(&aliases);
     amxc_var_clean(&gsdm_data);
     return error;
@@ -410,7 +414,7 @@ int DM_AmxParameter_GetValues(dm_amx_env_t* amx, const char* path, dm_eng_pvs_li
 int DM_AmxParameter_GetNames(dm_amx_env_t* amx, const char* path, bool nextlevel, dm_eng_pn_list_t* pn_list, amxc_var_t* gsdm_data) {
     int error = 0;
 
-    if(strlen(path) == 0 && nextlevel == true) {
+    if((strlen(path) == 0) && (nextlevel == true)) {
         DM_AmxParameter_AddSingleObjectToPN(pn_list, "Device.", NULL);
         goto stop;
     }
