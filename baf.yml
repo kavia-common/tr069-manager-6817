@@ -38,9 +38,11 @@ makefiles:
   compile:
     - directory: "src/dmdeviceadapter/amx"
     - directory: "src/dmmain"
+    - directory: "src/dmdeviceadapter/amx/cwmp_plugin/scripts"
   clean:
     - directory: "src/dmdeviceadapter/amx"
     - directory: "src/dmmain"
+    - directory: "src/dmdeviceadapter/amx/cwmp_plugin/scripts"
     - directory: "test"
   test:
     - directory: "test"

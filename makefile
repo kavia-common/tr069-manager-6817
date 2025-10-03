@@ -22,10 +22,12 @@ endef
 all:
 	$(MAKE) -C src/dmdeviceadapter/amx all
 	$(MAKE) -C src/dmmain all
+	$(MAKE) -C src/dmdeviceadapter/amx/cwmp_plugin/scripts all
 
 clean:
 	$(MAKE) -C src/dmdeviceadapter/amx clean
 	$(MAKE) -C src/dmmain clean
+	$(MAKE) -C src/dmdeviceadapter/amx/cwmp_plugin/scripts clean
 	$(MAKE) -C test clean
 
 install: all
