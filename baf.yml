@@ -20,7 +20,7 @@ configs:
     description: "Build TR069 Manager"
   CONFIG_SAH_AMX_TR069_MANAGER_ORDER:
     depends: SAH_AMX_TR069_MANAGER
-    default: 98
+    default: 97
     type: int
     description: "TR069 Manager start up order"
   CONFIG_SAH_AMX_TR069_MANAGER_CERTIFICATE_NO_PEM:

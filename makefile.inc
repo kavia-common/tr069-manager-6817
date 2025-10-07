@@ -45,4 +45,4 @@ DOCDIR ?= $(PREFIX)share/doc/tr069-manager
 PROCMONDIR ?= $(PREFIX)lib/processmonitor/scripts
 
 # default config options
-CONFIG_SAH_AMX_TR069_MANAGER_ORDER ?= 98
+CONFIG_SAH_AMX_TR069_MANAGER_ORDER ?= 97
