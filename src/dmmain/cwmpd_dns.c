@@ -73,14 +73,16 @@ typedef struct event_pair_s {
     amxc_llist_it_t it;
 } event_pair_t;
 
-typedef struct resolver_context_s {
+typedef struct _resolver_t {
+    char* host;
+    bool dirty;
     ares_channel ares_chann;
-    struct ares_options ares_opts;
     struct ares_addrinfo_hints hints;
-    bool send_boot_strap;
     amxc_llist_t event_list;
-
-} resolver_context_t;
+    amxp_timer_t* clean_timer;
+    amxp_timer_t* timeout_timer;
+    amxc_llist_it_t it;
+} resolver_t;
 
 typedef struct addr_info_s {
     char* ip;
@@ -90,11 +92,11 @@ typedef struct addr_info_s {
 
 //TTL timer
 static amxp_timer_t* dns_ttl_timer = NULL;
-static amxp_timer_t* dns_clean_timer = NULL;
-static amxp_timer_t* dns_timeout_timer = NULL;
 static int dns_ttl_val = 0;
 // list of ACS addresses with ttl.
 static amxc_llist_t ainfo_list;
+static amxc_llist_t resolver_list;
+static bool send_bootstrap = false;
 
 static void ainfo_list_clean(amxc_llist_it_t* it) {
     addr_info_t* ainfo = amxc_container_of(it, addr_info_t, it);
@@ -127,11 +129,14 @@ static event_pair_t* event_list_findby_fd(amxc_llist_t* event_list, int fd) {
     return NULL;
 }
 
-/* clean up DNS resolver */
-static void cwmp_dns_resolver_destroy(resolver_context_t* resolver) {
+static void resolver_clean(amxc_llist_it_t* it) {
+    resolver_t* resolver = amxc_container_of(it, resolver_t, it);
     if(resolver) {
         amxc_llist_clean(&resolver->event_list, event_list_clean);
         ares_destroy(resolver->ares_chann);
+        amxp_timer_delete(&resolver->clean_timer);
+        amxp_timer_delete(&resolver->timeout_timer);
+        free(resolver->host);
         free(resolver);
     }
 }
@@ -151,8 +156,7 @@ static void cwmp_dns_update_dm() {
         }
     }
 
-    if(DM_ENG_SetManagementServerValue(DM_ENG_EntityType_SYSTEM,
-                                       DM_ENG_ACSIPLIST,
+    if(DM_ENG_SetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ACSIPLIST,
                                        amxc_string_get(&addr_list_str, 0)) != 0) {
         SAH_TRACEZ_ERROR("CWMPD", "failed to update data model ACSIPLIST");
     }
@@ -230,23 +234,22 @@ static void cwmp_dns_read_ai(struct ares_addrinfo* ai) {
 }
 
 /* clean resolver callback */
-static void cwmp_dns_clean(UNUSED amxp_timer_t* timer, void* priv) {
-    SAH_TRACEZ_INFO("CWMPD", "DNS resolver clean");
-    amxp_timer_delete(&dns_clean_timer);
-    dns_clean_timer = NULL;
-    amxp_timer_delete(&dns_timeout_timer);
-    dns_timeout_timer = NULL;
-    cwmp_dns_resolver_destroy((resolver_context_t*) priv);
+static void resolver_clean_timer_cb(UNUSED amxp_timer_t* timer, void* priv) {
+    resolver_t* resolver = (resolver_t*) priv;
+    if(resolver) {
+        amxc_llist_it_take(&resolver->it);
+        resolver_clean(&resolver->it);
+    }
 }
 
 /* DNS TTL expired callback */
-static void cwmp_dns_expired(UNUSED amxp_timer_t* timer, UNUSED void* priv) {
-    cwmp_dns_resolve(false);
+static void dns_ttl_timer_cb(UNUSED amxp_timer_t* timer, UNUSED void* priv) {
+    cwmp_dns_resolve(false, "DNS expired (TTL)");
 }
 
 /* fd callback */
 static void cwmp_dns_fd_event_cb(int fd, short flags, void* arg) {
-    resolver_context_t* resolver = (resolver_context_t*) arg;
+    resolver_t* resolver = (resolver_t*) arg;
     int write = ARES_SOCKET_BAD;
     int read = ARES_SOCKET_BAD;
 
@@ -259,14 +262,14 @@ static void cwmp_dns_fd_event_cb(int fd, short flags, void* arg) {
     ares_process_fd(resolver->ares_chann, read, write);
 }
 
-static void cwmp_dns_timeout_cb(UNUSED amxp_timer_t* timer, void* priv) {
-    resolver_context_t* resolver = (resolver_context_t*) priv;
+static void resolver_timeout_timer_cb(UNUSED amxp_timer_t* timer, void* priv) {
+    resolver_t* resolver = (resolver_t*) priv;
     if(resolver) {
         ares_process_fd(resolver->ares_chann, ARES_SOCKET_BAD, ARES_SOCKET_BAD);
     }
 }
 
-static void cwmp_dns_fd_poll_stop(resolver_context_t* resolver, int fd) {
+static void cwmp_dns_fd_poll_stop(resolver_t* resolver, int fd) {
     event_pair_t* fd_poll_event = event_list_findby_fd(&resolver->event_list, fd);
 
     if(!fd_poll_event) {
@@ -280,7 +283,7 @@ static void cwmp_dns_fd_poll_stop(resolver_context_t* resolver, int fd) {
     fd_poll_event = NULL;
 }
 
-static void cwmp_dns_fd_poll_start(resolver_context_t* resolver, short events, int fd) {
+static void cwmp_dns_fd_poll_start(resolver_t* resolver, short events, int fd) {
     event_pair_t* fd_poll_event = event_list_findby_fd(&resolver->event_list, fd);
 
     if(!fd_poll_event) {
@@ -304,22 +307,28 @@ static void cwmp_dns_fd_poll_start(resolver_context_t* resolver, short events, i
     event_add(fd_poll_event->fd_event, NULL);
 }
 
+static void resolver_clean_timer_start(resolver_t* resolver) {
+    if(resolver) {
+        if(!resolver->clean_timer) {
+            amxp_timer_new(&resolver->clean_timer, resolver_clean_timer_cb, (void*) resolver);
+            // the callback must finish before we can destroy ares channels
+            amxp_timer_start(resolver->clean_timer, 2000);
+        }
+    }
+}
+
 /* socket callback, called twice per query if ok, multiple times if there is a timeout */
 static void cwmp_dns_ares_sock_cb(UNUSED void* data, int fd, int read, int write) {
     short events = 0;
-    resolver_context_t* resolver = (resolver_context_t*) data;
+    resolver_t* resolver = (resolver_t*) data;
 
     SAH_TRACEZ_INFO("CWMPD", "ares_fd [%d] state [read:%d] [write:%d]", fd, read, write);
 
     if((read + write) == 0) {
         cwmp_dns_fd_poll_stop(resolver, fd);
         if(amxc_llist_is_empty(&resolver->event_list)) {
-            amxp_timer_stop(dns_timeout_timer);
-            if(!dns_clean_timer) {
-                amxp_timer_new(&dns_clean_timer, cwmp_dns_clean, (void*) resolver);
-                // the callback must finish before we can destroy ares channels
-                amxp_timer_start(dns_clean_timer, 2000);
-            }
+            amxp_timer_stop(resolver->timeout_timer);
+            resolver_clean_timer_start(resolver);
         }
     } else {
         if(read) {
@@ -331,40 +340,55 @@ static void cwmp_dns_ares_sock_cb(UNUSED void* data, int fd, int read, int write
 
         cwmp_dns_fd_poll_start(resolver, events, fd);
 
-        if(!dns_timeout_timer) {
-            amxp_timer_new(&dns_timeout_timer, cwmp_dns_timeout_cb, (void*) resolver);
-            amxp_timer_set_interval(dns_timeout_timer, 2000);
-            amxp_timer_start(dns_timeout_timer, 2000);
+        if(!resolver->timeout_timer) {
+            amxp_timer_new(&resolver->timeout_timer, resolver_timeout_timer_cb, (void*) resolver);
+            amxp_timer_set_interval(resolver->timeout_timer, 2000);
+            amxp_timer_start(resolver->timeout_timer, 2000);
         }
     }
 }
 
 /* main resolver callback */
 static void cwmp_dns_resolve_cb(void* data, int status, UNUSED int timeouts, struct ares_addrinfo* ai) {
-    resolver_context_t* resolver = (resolver_context_t*) data;
+    resolver_t* resolver = (resolver_t*) data;
 
-    amxp_timer_stop(dns_timeout_timer);
+    if(resolver == NULL) {
+        SAH_TRACEZ_ERROR("CWMPD", "Invalid resolver");
+        goto stop;
+    }
+
+    amxp_timer_stop(resolver->timeout_timer);
+    resolver_clean_timer_start(resolver);
+
+    if(resolver->dirty) {
+        SAH_TRACEZ_INFO("CWMPD", "Resolver marked as dirty, new resolution is expected");
+        goto stop;
+    }
 
     if((status == ARES_SUCCESS) && ai && ai->nodes) {
+        SAH_TRACEZ_INFO("CWMPD", "DNS resolution succeeded");
         cwmp_dns_read_ai(ai);
         cwmp_dns_update_dm();
         cwmp_dns_schedule();
     } else {
         //DNS resolution failed, retry in 5 sec
-        SAH_TRACEZ_ERROR("CWMPD", "DNS lookup Failed next in 5 sec,ares_error [%s]", ares_strerror(status));
+        SAH_TRACEZ_ERROR("CWMPD", "DNS resolution failed next in 5 sec,ares_error [%s]", ares_strerror(status));
         amxp_timer_start(dns_ttl_timer, 5 * 1000);
-    }
-
-    if(ai) {
-        ares_freeaddrinfo(ai);
     }
 
     //even if DNS resolution is failed, try to send the bootstrap
     //this will update dmengine, so it send a bootstrap next time
     //DNS is OK
-    if(resolver->send_boot_strap) {
+    if(send_bootstrap) {
         DM_ENG_InformMessageScheduler_bootstrapInform();
+        send_bootstrap = false;
     }
+
+stop:
+    if(ai) {
+        ares_freeaddrinfo(ai);
+    }
+    return;
 }
 
 static int cwmp_dns_get_aifamily() {
@@ -385,39 +409,48 @@ static int cwmp_dns_get_aifamily() {
     return ai_family;
 }
 
-static resolver_context_t* cwmp_dns_resolver_create() {
+static resolver_t* resolver_create(const char* host) {
     int optmask = 0;
     int status = 0;
-    resolver_context_t* resolver_ctx = calloc(1, sizeof(resolver_context_t));
+    struct ares_options options;
 
-    if(!resolver_ctx) {
+    if((host == NULL) || (*host == 0)) {
+        SAH_TRACEZ_ERROR("CWMPD", "Invalid host, cannot create a new dns resolver");
+        return NULL;
+    }
+
+    resolver_t* resolver = calloc(1, sizeof(resolver_t));
+
+    if(!resolver) {
         SAH_TRACEZ_ERROR("CWMPD", "malloc failed, cannot create a new dns resolver");
         return NULL;
     }
-    amxc_llist_init(&resolver_ctx->event_list);
+    amxc_llist_init(&resolver->event_list);
 
     //cares init options
-    resolver_ctx->ares_opts.sock_state_cb = cwmp_dns_ares_sock_cb;
-    resolver_ctx->ares_opts.tries = 1;
-    resolver_ctx->ares_opts.sock_state_cb_data = resolver_ctx;
+    options.sock_state_cb = cwmp_dns_ares_sock_cb;
+    options.tries = 1;
+    options.sock_state_cb_data = resolver;
     optmask = ARES_OPT_SOCK_STATE_CB | ARES_OPT_TRIES;
 
-    status = ares_init_options(&resolver_ctx->ares_chann,
-                               &resolver_ctx->ares_opts,
+    status = ares_init_options(&resolver->ares_chann,
+                               &options,
                                optmask);
 
     if(status != ARES_SUCCESS) {
         SAH_TRACEZ_ERROR("CWMPD", "ares init_options error [%s]", ares_strerror(status));
-        free(resolver_ctx);
+        free(resolver);
         return NULL;
     }
 
     //setup hints
-    resolver_ctx->hints.ai_family = cwmp_dns_get_aifamily();
-    resolver_ctx->hints.ai_socktype = SOCK_DGRAM;
-    resolver_ctx->hints.ai_flags = ARES_AI_CANONNAME | ARES_AI_ENVHOSTS | ARES_AI_NOSORT;
+    resolver->hints.ai_family = cwmp_dns_get_aifamily();
+    resolver->hints.ai_socktype = SOCK_DGRAM;
+    resolver->hints.ai_flags = ARES_AI_CANONNAME | ARES_AI_ENVHOSTS | ARES_AI_NOSORT;
 
-    return resolver_ctx;
+    resolver->host = strdup(host);
+    return resolver;
+
 }
 
 static const char* cwmp_dns_get_host(char* acsurl) {
@@ -447,17 +480,28 @@ static void cwmp_dns_set_static_ip(const char* host) {
     }
 }
 
-static cwmp_status_t cwmp_dns_ares_resolution(bool send_boot_strap, const char* host) {
-    resolver_context_t* resolver = cwmp_dns_resolver_create();
+static void mark_resolvers_as_dirty() {
+    resolver_t* resolver = NULL;
+    amxc_llist_for_each(lit, &resolver_list) {
+        resolver = amxc_container_of(lit, resolver_t, it);
+        if(resolver) {
+            resolver->dirty = true;
+        }
+    }
+}
+
+static cwmp_status_t cwmp_dns_ares_resolution(const char* host, const char* reason) {
+    resolver_t* resolver = resolver_create(host);
     if(!resolver) {
         return cwmp_status_ko;
     }
-    //keep track of the url changed event
-    resolver->send_boot_strap = send_boot_strap;
+
+    amxc_llist_append(&resolver_list, &resolver->it);
 
     // initiate a new DNS query
+    SAH_TRACEZ_INFO("CWMPD", "NEW DNS RESOLUTION - Host [%s] - Reason [%s]", resolver->host ? resolver->host:"nil", reason ? reason:"nil");
     ares_getaddrinfo(resolver->ares_chann,
-                     host, NULL,
+                     resolver->host, NULL,
                      &resolver->hints,
                      cwmp_dns_resolve_cb,
                      (void*) resolver);
@@ -465,7 +509,7 @@ static cwmp_status_t cwmp_dns_ares_resolution(bool send_boot_strap, const char* 
 }
 
 /* start dns resolution for ACS host */
-cwmp_status_t cwmp_dns_resolve(bool send_boot_strap) {
+cwmp_status_t cwmp_dns_resolve(bool url_changed, const char* reason) {
     cwmp_status_t ret = cwmp_status_ko;
     char* acsurl = NULL;
     const char* host = NULL;
@@ -479,20 +523,34 @@ cwmp_status_t cwmp_dns_resolve(bool send_boot_strap) {
         SAH_TRACEZ_ERROR("CWMPD", "ACS HOST is NULL, exit");
         goto error;
     }
+
+    if(url_changed) {
+        amxc_llist_clean(&ainfo_list, ainfo_list_clean);
+        if(DM_ENG_SetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ACSIPLIST, "") != 0) {
+            SAH_TRACEZ_ERROR("CWMPD", "failed to update data model ACSIPLIST");
+        }
+        send_bootstrap = true;
+    }
+
     //stop any scheduled DNS
     if(amxp_timer_remaining_time(dns_ttl_timer) > 0) {
         amxp_timer_stop(dns_ttl_timer);
     }
 
-    if(is_ipaddr(host)) {
+    // Mark previous resolvers as dirty. The result of dirty resolver is ignored.
+    mark_resolvers_as_dirty();
+
+    if((host == NULL) || (*host == 0)) {
+        SAH_TRACEZ_INFO("CWMPD", "Host is null/empty");
+    } else if(is_ipaddr(host)) {
         cwmp_dns_set_static_ip(host);
-        if(send_boot_strap) {
-            //URL changed tell dmengine to send a bootstrap
+        if(send_bootstrap) {
             DM_ENG_InformMessageScheduler_bootstrapInform();
+            send_bootstrap = false;
         }
     } else {
         SAH_TRACEZ_INFO("CWMPD", "Starting NEW DNS lookup [%s]", host);
-        if(cwmp_dns_ares_resolution(send_boot_strap, host) == cwmp_status_ko) {
+        if(cwmp_dns_ares_resolution(host, reason) == cwmp_status_ko) {
             SAH_TRACEZ_ERROR("CWMPD", "Failed to send DNS query");
             goto error;
         }
@@ -502,81 +560,45 @@ error:
     if(acsurl) {
         free(acsurl);
     }
+
+    if(ret != cwmp_status_ok) {
+        SAH_TRACEZ_ERROR("CWMPD", "DNS resolution call failed, retry in 5 sec");
+        amxp_timer_start(dns_ttl_timer, 5 * 1000);
+    }
+
     return ret;
 }
 
 cwmp_status_t cwmp_dns_init() {
-
+    cwmp_status_t retval = cwmp_status_ko;
+    SAH_TRACEZ_IN("CWMPD");
     int status = ares_library_init(ARES_LIB_INIT_ALL);
 
     if(status != ARES_SUCCESS) {
         SAH_TRACEZ_ERROR("CWMPD", "ares library_init error [%s]", ares_strerror(status));
-        return cwmp_status_ko;
+        goto stop;
     }
 
-    amxp_timer_new(&dns_ttl_timer, cwmp_dns_expired, NULL);
+    amxp_timer_new(&dns_ttl_timer, dns_ttl_timer_cb, NULL);
+    amxc_llist_init(&ainfo_list);
+    amxc_llist_init(&resolver_list);
+    retval = cwmp_status_ok;
 
-    return cwmp_status_ok;
+stop:
+    SAH_TRACEZ_OUT("CWMPD");
+    return retval;
 }
 
-cwmp_status_t cwmp_dns_stop() {
-
-    SAH_TRACEZ_INFO("CWMPD", "Stop DNS resolver");
+cwmp_status_t cwmp_dns_clean() {
+    SAH_TRACEZ_IN("CWMPD");
     if(dns_ttl_timer) {
-        amxp_timer_stop(dns_ttl_timer);
         amxp_timer_delete(&dns_ttl_timer);
     }
-    //force clean resolver
-    if(dns_clean_timer) {
-        amxp_timer_start(dns_clean_timer, 0);
-    }
 
-    ares_library_cleanup();
     amxc_llist_clean(&ainfo_list, ainfo_list_clean);
+    amxc_llist_clean(&resolver_list, resolver_clean);
+    ares_library_cleanup();
 
+    SAH_TRACEZ_OUT("CWMPD");
     return cwmp_status_ok;
-}
-
-// the CPE SHOULD randomly choose an IP address from the list. When the CPE is unable to reach the ACS,
-// it SHOULD randomly select a different IP address from the list and attempt to contact the ACS at the
-// new IP address. This behavior ensures that CPEs will balance their requests between different ACSs
-// if multiple IP addresses represent different ACSs.
-void cwmp_dns_get_random_ip(char** ip) {
-    char* acsiplist = NULL;
-    int64_t count = 0;
-    amxc_string_t addr_list_str;
-    amxc_var_t ip_list;
-    amxc_string_init(&addr_list_str, 0);
-    amxc_var_init(&ip_list);
-
-    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ACSIPLIST, &acsiplist) != 0) {
-        SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the ACSIP list");
-    }
-    if((acsiplist != NULL) && (strlen(acsiplist) > 1)) {
-        amxc_string_set(&addr_list_str, acsiplist);
-        amxc_string_csv_to_var(&addr_list_str, &ip_list, NULL);
-        amxc_var_for_each(var, &ip_list) {
-            count++;
-        }
-        if(count >= 1) {
-            int rand_index = (rand() % count);
-            amxc_var_t* ip_var = amxc_var_get_index(&ip_list, rand_index, AMXC_VAR_FLAG_DEFAULT);
-            const char* ipaddr = amxc_var_constcast(cstring_t, ip_var);
-            if(ipaddr != NULL) {
-                SAH_TRACEZ_ERROR("CWMPD", "Select  ip [%s] from list", ipaddr);
-                *ip = strdup(ipaddr);
-            }
-        }
-    } else {
-        SAH_TRACEZ_INFO("CWMPD", "There is no ip on datamodel");
-        if(dns_clean_timer == NULL) {
-            //No DNS cache, start a new DNS query
-            SAH_TRACEZ_ERROR("CWMPD", "Start a new dsn resolution");
-            cwmp_dns_resolve(false);
-        }
-    }
-
-    amxc_var_clean(&ip_list);
-    amxc_string_clean(&addr_list_str);
-    free(acsiplist);
 }

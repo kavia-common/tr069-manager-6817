@@ -287,7 +287,7 @@ static cwmp_status_t cwmp_app_clean() {
         SAH_TRACEZ_ERROR("CWMPD", "failed to stop HTTP server");
         status = cwmp_status_ko;
     }
-    if(cwmp_dns_stop() != cwmp_status_ok) {
+    if(cwmp_dns_clean() != cwmp_status_ok) {
         SAH_TRACEZ_ERROR("CWMPD", "DNS cleanup failed");
         status = cwmp_status_ko;
     }
@@ -318,11 +318,10 @@ int cwmp_app_engineEventHandler(const char* eventType) {
             SAH_TRACEZ_ERROR("CWMPD", "Starting HTTP server failed");
             raise(SIGTERM);
         }
-    } else if(strcmp(eventType, EVENT_ENG_CLEAR_ACS_IP) == 0) {
-        cwmp_client_clear_ACSIP();// clear acs ip
     } else if(strcmp(eventType, EVENT_ENG_URL_CHANGED) == 0) {
         SAH_TRACEZ_ERROR("CWMPD", "ACS URL changed : resolve new address");
-        cwmp_dns_resolve(true);
+        cwmp_client_clear_ACSIP();
+        cwmp_dns_resolve(true, "URL Changed");
     } else {
         SAH_TRACEZ_INFO("CWMPD", "unhandled engine event [%s]", eventType);
     }
@@ -409,7 +408,7 @@ static cwmp_status_t cwmp_app_init_services() {
     }
 
     /* Resolve ACS URL before starting the cwmp_client*/
-    if(cwmp_dns_resolve(false) != cwmp_status_ok) {
+    if(cwmp_dns_resolve(false, "First resolution") != cwmp_status_ok) {
         SAH_TRACEZ_INFO("CWMPD", "Failed to start DNS resolution");
         goto error;
     }

@@ -78,7 +78,6 @@
 #define EVENT_ENG_SRV_RESTART      "HTTP_SERVER_RESTART"
 #define EVENT_ENG_SRV_STOP         "HTTP_SERVER_STOP"
 #define EVENT_ENG_SRV_START        "HTTP_SERVER_START"
-#define EVENT_ENG_CLEAR_ACS_IP     "CLIENT_CLEAR_ACS_IP"
 #define EVENT_ENG_URL_CHANGED      "ACS_URL_CHANGED"
 
 typedef enum server_state {INIT = 0, RUN, EXIT, ERROR } server_state_t;
@@ -152,11 +151,9 @@ unsigned int cwmp_timer_remainingTime(const char* name);
 //DNS Resolver
 cwmp_status_t cwmp_dns_init();
 
-cwmp_status_t cwmp_dns_resolve(bool send_boot_strap);
+cwmp_status_t cwmp_dns_resolve(bool url_changed, const char* reason);
 
-cwmp_status_t cwmp_dns_stop();
-
-void cwmp_dns_get_random_ip(char** ip);
+cwmp_status_t cwmp_dns_clean();
 
 bool is_ipaddr(const char* ip);
 int ip_type(const char* ip);

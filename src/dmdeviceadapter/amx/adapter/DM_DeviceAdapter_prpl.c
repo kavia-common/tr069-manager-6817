@@ -230,6 +230,7 @@ bool DM_ENG_Device_Release() {
     DM_ENG_Device_SystemConnectionCleanup(&da.system);
     free(persistentRPCPath);
     persistentRPCPath = NULL;
+    amxb_be_remove_all();
     SAH_TRACEZ_OUT("DM_DA");
     return result;
 }

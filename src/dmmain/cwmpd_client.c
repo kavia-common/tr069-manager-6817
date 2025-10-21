@@ -310,8 +310,7 @@ static int cwmp_client_connection_established_cb(struct lws* wsi) {
         if(!connected) {
             connected = true;
             //store ACSIP in persistent storage
-            if(DM_ENG_SetManagementServerValue(DM_ENG_EntityType_SYSTEM,
-                                               DM_ENG_ACSIP,
+            if(DM_ENG_SetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ACSIP,
                                                acs_server_ip) != 0) {
                 SAH_TRACEZ_ERROR("CWMPD", "ACSIP failed to update data model");
             }
@@ -632,6 +631,43 @@ static void update_qos_info(const char* dstIP, int dstPort) {
     }
 }
 
+// the CPE SHOULD randomly choose an IP address from the list. When the CPE is unable to reach the ACS,
+// it SHOULD randomly select a different IP address from the list and attempt to contact the ACS at the
+// new IP address. This behavior ensures that CPEs will balance their requests between different ACSs
+// if multiple IP addresses represent different ACSs.
+static void cwmp_get_random_ip(char** ip) {
+    char* acsiplist = NULL;
+    int64_t count = 0;
+    amxc_string_t addr_list_str;
+    amxc_var_t ip_list;
+    amxc_string_init(&addr_list_str, 0);
+    amxc_var_init(&ip_list);
+
+    if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ACSIPLIST, &acsiplist) != 0) {
+        SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the ACSIP list");
+    }
+    if((acsiplist != NULL) && (strlen(acsiplist) > 1)) {
+        amxc_string_set(&addr_list_str, acsiplist);
+        amxc_string_csv_to_var(&addr_list_str, &ip_list, NULL);
+        amxc_var_for_each(var, &ip_list) {
+            count++;
+        }
+        if(count >= 1) {
+            int rand_index = (rand() % count);
+            amxc_var_t* ip_var = amxc_var_get_index(&ip_list, rand_index, AMXC_VAR_FLAG_DEFAULT);
+            const char* ipaddr = amxc_var_constcast(cstring_t, ip_var);
+            if(ipaddr != NULL) {
+                SAH_TRACEZ_ERROR("CWMPD", "Select  ip [%s] from list", ipaddr);
+                *ip = strdup(ipaddr);
+            }
+        }
+    }
+
+    amxc_var_clean(&ip_list);
+    amxc_string_clean(&addr_list_str);
+    free(acsiplist);
+}
+
 /*get the next ACS IP address*/
 static cwmp_status_t cwmp_client_get_acsip() {
     cwmp_status_t ret = cwmp_status_ko;
@@ -642,8 +678,7 @@ static cwmp_status_t cwmp_client_get_acsip() {
     } else {
         //try to reuse the same ip from the last session
         SAH_TRACEZ_INFO("CWMPD", "Try to reuse the same ip from the last session");
-        if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM,
-                                           DM_ENG_ACSIP,
+        if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ACSIP,
                                            &acs_server_ip) != 0) {
             SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the ACS SERVER URL");
         }
@@ -651,8 +686,7 @@ static cwmp_status_t cwmp_client_get_acsip() {
         if(acs_server_ip && (strlen(acs_server_ip) != 0)) {
             char* ip_list = NULL;
             bool valid_ip = false;
-            if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM,
-                                               DM_ENG_ACSIPLIST,
+            if(DM_ENG_GetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ACSIPLIST,
                                                &ip_list) != 0) {
                 SAH_TRACEZ_ERROR("CWMPD", "Cannot fetch the ACS SERVER URL");
                 return ret;
@@ -663,12 +697,12 @@ static cwmp_status_t cwmp_client_get_acsip() {
             if(!valid_ip) {
                 //the IP is no longer part of the dns_pool
                 CWMPD_FREE(acs_server_ip);
-                cwmp_dns_get_random_ip(&acs_server_ip);
+                cwmp_get_random_ip(&acs_server_ip);
             }
             CWMPD_FREE(ip_list);
         } else {
             CWMPD_FREE(acs_server_ip);
-            cwmp_dns_get_random_ip(&acs_server_ip);
+            cwmp_get_random_ip(&acs_server_ip);
         }
     }
 
@@ -864,13 +898,6 @@ cwmp_status_t cwmp_client_stop() {
 }
 
 void cwmp_client_clear_ACSIP() {
-    SAH_TRACEZ_INFO("CWMPD", "CLEAN ACSIP From data model");
-    if(DM_ENG_SetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ACSIP, "") != 0) {
-        SAH_TRACEZ_ERROR("CWMPD", "ACSIP failed to update data model");
-    }
-    if(DM_ENG_SetManagementServerValue(DM_ENG_EntityType_SYSTEM, DM_ENG_ACSIPLIST, "") != 0) {
-        SAH_TRACEZ_ERROR("CWMPD", "failed to update data model ACSIPLIST");
-    }
     CWMPD_FREE(acs_server_ip);
 }
 
@@ -966,6 +993,11 @@ int client_startSession() {
 
     if(cwmp_client_get_acsip() == cwmp_status_ko) {
         SAH_TRACEZ_ERROR("CWMPD", "Cannot get a valid ACS ip");
+        /**
+         * To improve robustness and ensure cwmpd can recover from a potential bad state (e.g., cwmpd stops attempting DNS resolution),
+         * trigger DNS resolution if no valid ACS IP is found to prevent the device from failing to contact the ACS.
+         */
+        cwmp_dns_resolve(false, "No ACS IP found");
         return -1;
     }
 

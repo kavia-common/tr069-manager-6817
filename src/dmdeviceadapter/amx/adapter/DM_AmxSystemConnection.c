@@ -153,7 +153,6 @@ void DM_ENG_Device_SystemConnectionHandleParameterChanged(const char* path, cons
                    ...
                    - First time connection of the CPE to the ACS after the ACS URL has been modified in any way. */
                 /* DNS resolution is needed before sending the bootstrap */
-                DM_ENG_NotificationInterface_engineEvent(EVENT_ENG_CLEAR_ACS_IP);
                 DM_ENG_NotificationInterface_engineEvent(EVENT_ENG_SRV_RESTART);
                 DM_ENG_NotificationInterface_engineEvent(EVENT_ENG_URL_CHANGED);
                 DM_ENG_InformMessageScheduler_URLChanged();
@@ -543,7 +542,7 @@ bool DM_ENG_Device_SystemConnectionSetParameter(dm_amx_env_t* amx, DM_ENG_System
     }
 
     if(retcode != 0) {
-        SAH_TRACEZ_ERROR("DM_DA", "object set failed");
+        SAH_TRACEZ_ERROR("DM_DA", "Failed to set parameter value, obj:[%s] - param:[%s]", object_name, param_name);
         rv = false;
         goto error;
     }
@@ -598,7 +597,7 @@ char* DM_ENG_Device_SystemConnectionGetParameter(dm_amx_env_t* amx, DM_ENG_Syste
     retcode = amxb_get(amx->bus_ctx, amxc_string_get(&path, 0), 0, &value, 1);
 
     if((retcode != 0) || amxc_var_is_null(&value)) {
-        SAH_TRACEZ_ERROR("DM_DA", "Failed to get parameter value (%s%s)", object_name, param_name);
+        SAH_TRACEZ_ERROR("DM_DA", "Failed to get parameter value, obj:[%s] - param:[%s]", object_name, param_name);
         goto error;
     }
 
