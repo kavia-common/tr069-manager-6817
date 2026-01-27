@@ -1,3 +1,4 @@
 output/
 test/*/run_test
 openwrt/
+.file_activity_report.json
